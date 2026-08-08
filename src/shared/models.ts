@@ -156,7 +156,7 @@ export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
 export const DEPENDENCY_DEFS: { id: string; label: string; step: string; detect?: string; allow?: string[] }[] = [
   { id: "task", label: "Task (go-task)", step: `      - uses: arduino/setup-task@v3.0.0\n        with:\n          version: 3.x\n          repo-token: \${{ secrets.GITHUB_TOKEN }}` },
   { id: "go", label: "Go", step: `      - uses: actions/setup-go@v7.0.0\n        with:\n          go-version: stable`, detect: "hashFiles('**/go.mod') != ''", allow: ["gofmt( .*)?", "go (fmt|vet|test|build|run|mod|generate|tool)( .*)?"] },
-  { id: "rust", label: "Rust", step: `      - uses: dtolnay/rust-toolchain@stable`, detect: "hashFiles('**/Cargo.toml') != ''", allow: ["cargo( .*)?", "rustfmt( .*)?", "rustc( .*)?"] },
+  { id: "rust", label: "Rust", step: `      - uses: dtolnay/rust-toolchain@stable`, detect: "hashFiles('**/Cargo.toml') != ''", allow: ["cargo( .*)?", "rustfmt( .*)?", "rustc( .*)?", "rustup( .*)?"] },
   { id: "node", label: "Node.js / TypeScript", step: `      - uses: actions/setup-node@v7.0.0\n        with:\n          node-version: lts/*`, detect: "hashFiles('**/package.json') != ''", allow: ["npm( .*)?", "npx( .*)?", "yarn( .*)?", "pnpm( .*)?", "bun( .*)?", "bunx( .*)?"] },
   { id: "python", label: "Python", step: `      - uses: actions/setup-python@v7.0.0\n        with:\n          python-version: '3.x'`, detect: "hashFiles('**/pyproject.toml', '**/requirements.txt', '**/setup.py') != ''", allow: ["python3?( .*)?", "pip3?( .*)?", "pytest( .*)?", "ruff( .*)?", "uv( .*)?"] },
 ];
