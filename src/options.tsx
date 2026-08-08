@@ -12,6 +12,7 @@ import { Button } from "@/ui/components/button";
 import { AccountsTab } from "./ui/options/AccountsTab";
 import { OrchestratorTab } from "./ui/options/OrchestratorTab";
 import { AgentsTab } from "./ui/options/AgentsTab";
+import { ModelsTab } from "./ui/options/ModelsTab";
 import { PromptsTab } from "./ui/options/PromptsTab";
 import { WorkflowTab } from "./ui/options/WorkflowTab";
 import { DependenciesTab } from "./ui/options/DependenciesTab";
@@ -200,6 +201,7 @@ function Options() {
       <Tabs defaultValue="accounts">
         <TabsList>
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
+          <TabsTrigger value="models">Models</TabsTrigger>
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
           <TabsTrigger value="prompts">Prompts</TabsTrigger>
@@ -226,6 +228,10 @@ function Options() {
           />
         </TabsContent>
 
+        <TabsContent value="models" className="flex flex-col gap-4">
+          <ModelsTab modelsText={modelsText} setModelsText={setModelsText} />
+        </TabsContent>
+
         <TabsContent value="orchestrator" className="flex flex-col gap-4">
           <OrchestratorTab perms={perms} setPerms={setPerms} refine={refine} setRefine={setRefine} init={init} setInit={setInit} />
         </TabsContent>
@@ -235,7 +241,7 @@ function Options() {
         </TabsContent>
 
         <TabsContent value="prompts" className="flex flex-col gap-4">
-          <PromptsTab promptsText={promptsText} setPromptsText={setPromptsText} modelsText={modelsText} setModelsText={setModelsText} instructions={instructions} setInstructions={setInstructions} refinePromptText={refinePromptText} setRefinePromptText={setRefinePromptText} />
+          <PromptsTab promptsText={promptsText} setPromptsText={setPromptsText} instructions={instructions} setInstructions={setInstructions} refinePromptText={refinePromptText} setRefinePromptText={setRefinePromptText} />
         </TabsContent>
 
         <TabsContent value="workflow" className="flex flex-col gap-4">
