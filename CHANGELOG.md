@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.1](https://github.com/inference-gateway/opentask/compare/v1.8.0...v1.8.1) (2026-08-08)
+
+### 🐛 Bug Fixes
+
+* **install:** wire reviewInline toggle into generated workflow template ([#130](https://github.com/inference-gateway/opentask/issues/130)) ([9a4a260](https://github.com/inference-gateway/opentask/commit/9a4a26065f916c61ab6624b7c93d25f3ed66d46d))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer-action to v0.46.2 ([#131](https://github.com/inference-gateway/opentask/issues/131)) ([b95b43e](https://github.com/inference-gateway/opentask/commit/b95b43e392a85f0bbbcc9a3c574a3bcba7b4218e))
+
 ## [1.8.0](https://github.com/inference-gateway/opentask/compare/v1.7.1...v1.8.0) (2026-08-08)
 
 ### ✨ Features
