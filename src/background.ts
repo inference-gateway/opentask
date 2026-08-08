@@ -238,6 +238,7 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
   const debug = (await storage.get<boolean>("debug")) ?? false;
   const visionModel = (await storage.get<string>("visionModel")) ?? "";
   const imageModel = (await storage.get<string>("imageModel")) ?? "";
+  const reviewInline = (await storage.get<boolean>("reviewInline")) ?? false;
   const deps = await loadDependencies();
   const defaultModel = models.some((m) => m.model === model) ? model : models[0].model;
 
@@ -252,7 +253,7 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
   const defaultBranch = (await repoRes.json()).default_branch;
   const headSha = await headShaFor(owner, repo, defaultBranch);
 
-  const yaml = workflowYaml(models, defaultModel, bot, perms, enabledPlugins(plugins), agents, timeout, instructions, deps, debug, visionModel, imageModel);
+  const yaml = workflowYaml(models, defaultModel, bot, perms, enabledPlugins(plugins), agents, timeout, instructions, deps, debug, visionModel, imageModel, reviewInline);
   const content = btoa(yaml);
 
   const current = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}?ref=${defaultBranch}`);
