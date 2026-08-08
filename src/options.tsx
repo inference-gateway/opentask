@@ -44,6 +44,7 @@ function Options() {
   const [timeout, setTimeoutMin] = useState<number>(DEFAULT_TIMEOUT);
   const [plugins, setPlugins] = useState<PluginOption[]>(DEFAULT_PLUGINS);
   const [debug, setDebug] = useState(false);
+  const [reviewInline, setReviewInline] = useState(false);
   const [visionModel, setVisionModel] = useState("");
   const [imageModel, setImageModel] = useState("");
   const [deps, setDeps] = useState<DependenciesConfig>(DEFAULT_DEPENDENCIES);
@@ -72,6 +73,7 @@ function Options() {
       setInit(isInitConfig(it) ? it : DEFAULT_INIT);
       setTimeoutMin(normalizeTimeout(await storage.get<unknown>("timeout")));
       setDebug((await storage.get<boolean>("debug")) ?? false);
+      setReviewInline((await storage.get<boolean>("reviewInline")) ?? false);
       setVisionModel((await storage.get<string>("visionModel")) ?? "");
       setImageModel((await storage.get<string>("imageModel")) ?? "");
       const pl = await storage.get<unknown>("plugins");
@@ -135,6 +137,7 @@ function Options() {
     await storage.set("init", init);
     await storage.set("timeout", normalizeTimeout(timeout));
     await storage.set("debug", debug);
+    await storage.set("reviewInline", reviewInline);
     await storage.set("visionModel", visionModel.trim());
     await storage.set("imageModel", imageModel.trim());
     await storage.set("plugins", plugins);
@@ -175,6 +178,7 @@ function Options() {
     setInit(DEFAULT_INIT);
     setTimeoutMin(DEFAULT_TIMEOUT);
     setDebug(false);
+    setReviewInline(false);
     setPlugins(DEFAULT_PLUGINS);
     setDeps(DEFAULT_DEPENDENCIES);
     setStatus("Reset to defaults (not yet saved).");
@@ -235,7 +239,7 @@ function Options() {
         </TabsContent>
 
         <TabsContent value="workflow" className="flex flex-col gap-4">
-          <WorkflowTab timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} />
+          <WorkflowTab timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} />
         </TabsContent>
 
         <TabsContent value="dependencies" className="flex flex-col gap-4">

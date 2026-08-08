@@ -11,6 +11,8 @@ export function WorkflowTab({
   setPlugins,
   debug,
   setDebug,
+  reviewInline,
+  setReviewInline,
   visionModel,
   setVisionModel,
   imageModel,
@@ -22,6 +24,8 @@ export function WorkflowTab({
   setPlugins: (p: PluginOption[]) => void;
   debug: boolean;
   setDebug: (v: boolean) => void;
+  reviewInline: boolean;
+  setReviewInline: (v: boolean) => void;
   visionModel: string;
   setVisionModel: (v: string) => void;
   imageModel: string;
@@ -62,6 +66,21 @@ export function WorkflowTab({
       >
         <ToggleRow checked={debug} onChange={setDebug}>
           Verbose agent logs
+        </ToggleRow>
+      </Section>
+
+      <Section
+        title="Inline PR review comments"
+        description={
+          <>
+            When enabled and the run is a review (<em>pull_request_review_comment</em> trigger), findings are posted as inline,
+            line-anchored comments with one-click suggestion blocks (Files Changed tab). Off by default.{" "}
+            <strong>Re-install the workflow</strong> after changing this.
+          </>
+        }
+      >
+        <ToggleRow checked={reviewInline} onChange={setReviewInline}>
+          Post inline suggestion comments on review triggers
         </ToggleRow>
       </Section>
 

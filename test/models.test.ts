@@ -86,6 +86,11 @@ test("workflowYaml wires the debug flag onto infer-action, off by default", () =
   expect(workflowYaml(models, def, noBot, DEFAULT_PERMISSIONS, [], [], DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, true)).toContain(`debug: true`);
 });
 
+test("workflowYaml omits review-inline by default, emits when enabled", () => {
+  expect(workflowYaml(models, def, noBot)).not.toContain("review-inline:");
+  expect(workflowYaml(models, def, noBot, DEFAULT_PERMISSIONS, [], [], DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, false, "", "", true)).toContain('review-inline: "true"');
+});
+
 test("workflowYaml exposes an enable_git input defaulting to the createPRs permission", () => {
   expect(workflowYaml(models, def, noBot, DEFAULT_PERMISSIONS)).toContain('enable_git:\n        description: Enable git operations - branch, commit, PR (workflow_dispatch only)\n        required: false\n        default: "true"');
   expect(workflowYaml(models, def, noBot, { createPRs: false, createIssues: true, comment: true })).toContain('default: "false"');
