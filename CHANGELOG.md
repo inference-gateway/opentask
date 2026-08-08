@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0](https://github.com/inference-gateway/opentask/compare/v1.7.1...v1.8.0) (2026-08-08)
+
+### ✨ Features
+
+* **deps:** add rustup to Rust allow list for cargo miri support ([#128](https://github.com/inference-gateway/opentask/issues/128)) ([b8f2b4a](https://github.com/inference-gateway/opentask/commit/b8f2b4a121eb58189a5dceb24e853d1d32f657f8)), closes [#127](https://github.com/inference-gateway/opentask/issues/127)
+* **options:** move Install models from Prompts tab to new Models tab ([#126](https://github.com/inference-gateway/opentask/issues/126)) ([77f3b69](https://github.com/inference-gateway/opentask/commit/77f3b69f34c74330ded9ed9a2fbf07ea1c4354a3))
+* **workflow:** add review-inline toggle for inline PR review comments ([#125](https://github.com/inference-gateway/opentask/issues/125)) ([8365e96](https://github.com/inference-gateway/opentask/commit/8365e96050cf11b27a589f80b0805592c358b1c4))
+
 ## [1.7.1](https://github.com/inference-gateway/opentask/compare/v1.7.0...v1.7.1) (2026-08-07)
 
 ### 🔧 Miscellaneous
