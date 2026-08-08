@@ -10,8 +10,6 @@ export function PromptsTab({
   setInstructions,
   refinePromptText,
   setRefinePromptText,
-  modelsText,
-  setModelsText,
 }: {
   promptsText: string;
   setPromptsText: (v: string) => void;
@@ -19,8 +17,6 @@ export function PromptsTab({
   setInstructions: (v: string) => void;
   refinePromptText: string;
   setRefinePromptText: (v: string) => void;
-  modelsText: string;
-  setModelsText: (v: string) => void;
 }) {
   return (
     <>
@@ -75,25 +71,6 @@ export function PromptsTab({
           spellCheck={false}
           value={refinePromptText}
           onChange={(e) => setRefinePromptText(e.target.value)}
-        />
-      </Section>
-
-      <Section
-        title="Install models"
-        description={
-          <>
-            A JSON array of <code>{"{ model, keyInput, secret }"}</code>. Offered in the toolbar popup's
-            Install dropdown; the first entry is the default. <code>keyInput</code> is the infer-action
-            provider-key input (e.g. <code>anthropic-api-key</code>) and <code>secret</code> is the repo
-            secret it reads. Add custom models here.
-          </>
-        }
-      >
-        <Textarea
-          className={JSON_CLASS}
-          spellCheck={false}
-          value={modelsText}
-          onChange={(e) => setModelsText(e.target.value)}
         />
       </Section>
     </>
