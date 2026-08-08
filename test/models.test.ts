@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PROVIDERS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, isModelOption, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl, prBody, workflowYaml, type DependenciesConfig } from "../src/shared/models";
+import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PROVIDERS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEPENDENCY_DEFS, isModelOption, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl, prBody, workflowYaml, type DependenciesConfig } from "../src/shared/models";
 
 const models = DEFAULT_MODELS;
 const def = "anthropic/claude-sonnet-4-6";
@@ -355,6 +355,18 @@ test("auto-detect grants allow entries for every language runtime", () => {
   expect(yaml).toContain("cargo( .*)?");
   expect(yaml).toContain("npm( .*)?");
   expect(yaml).toContain("pytest( .*)?");
+});
+
+test("Rust allow regexes match cargo miri, cargo clippy, cargo, and rustup component add miri", () => {
+  const rust = DEPENDENCY_DEFS.find((d) => d.id === "rust")!;
+  const cargoRe = new RegExp(`^${rust.allow!.find((a) => a.startsWith("cargo"))!}$`);
+  const rustupRe = new RegExp(`^${rust.allow!.find((a) => a.startsWith("rustup"))!}$`);
+  expect(cargoRe.test("cargo miri test")).toBe(true);
+  expect(cargoRe.test("cargo clippy")).toBe(true);
+  expect(cargoRe.test("cargo")).toBe(true);
+  expect(rustupRe.test("rustup component add miri")).toBe(true);
+  expect(rustupRe.test("rustup")).toBe(true);
+  expect(cargoRe.test("rustup component add miri")).toBe(false);
 });
 
 test("isDependenciesConfig accepts a valid config and rejects bad shapes", () => {
