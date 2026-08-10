@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.2](https://github.com/inference-gateway/opentask/compare/v1.8.1...v1.8.2) (2026-08-10)
+
+### 🐛 Bug Fixes
+
+* **infer:** fix board lifecycle in template models.ts - set QA after PR opened, not Done ([#134](https://github.com/inference-gateway/opentask/issues/134)) ([aae050e](https://github.com/inference-gateway/opentask/commit/aae050e3e40d0b3af4aaed7b7e0a8290d2b52bad))
+* **infer:** set board status to QA after PR opened, not Done ([#133](https://github.com/inference-gateway/opentask/issues/133)) ([55476a7](https://github.com/inference-gateway/opentask/commit/55476a7883b5a2e120cee8da6d8ca9e8df747fd1))
+
 ## [1.8.1](https://github.com/inference-gateway/opentask/compare/v1.8.0...v1.8.1) (2026-08-08)
 
 ### 🐛 Bug Fixes
