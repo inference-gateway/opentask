@@ -1,5 +1,19 @@
 import { Section } from "./Section";
 import { Textarea } from "@/ui/components/textarea";
+import { Button } from "@/ui/components/button";
+import { DEFAULT_PROMPTS } from "@/shared/prompts";
+import { DEFAULT_INSTRUCTIONS } from "@/shared/models";
+import { DEFAULT_REFINE_PROMPT } from "@/shared/task";
+
+function RestoreDefaults({ onClick }: { onClick: () => void }) {
+  return (
+    <div className="flex justify-end">
+      <Button variant="outline" size="sm" onClick={onClick}>
+        Restore defaults
+      </Button>
+    </div>
+  );
+}
 
 const JSON_CLASS = "font-mono text-xs min-h-48";
 
@@ -34,6 +48,7 @@ export function PromptsTab({
           value={promptsText}
           onChange={(e) => setPromptsText(e.target.value)}
         />
+        <RestoreDefaults onClick={() => setPromptsText(JSON.stringify(DEFAULT_PROMPTS, null, 2))} />
       </Section>
 
       <Section
@@ -53,6 +68,7 @@ export function PromptsTab({
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
         />
+        <RestoreDefaults onClick={() => setInstructions(DEFAULT_INSTRUCTIONS)} />
       </Section>
 
       <Section
@@ -72,6 +88,7 @@ export function PromptsTab({
           value={refinePromptText}
           onChange={(e) => setRefinePromptText(e.target.value)}
         />
+        <RestoreDefaults onClick={() => setRefinePromptText(DEFAULT_REFINE_PROMPT)} />
       </Section>
     </>
   );
