@@ -246,8 +246,9 @@ misses the issue and does not scale:
   items to find it.
 - Set Status with \`gh project item-edit --id <item-id> --project-id <project-id>
   --field-id <field-id> --single-select-option-id <option-id>\`: the option closest to
-  "In Progress" BEFORE you start changing anything, and the option closest to "Done" when
-  your work is complete (code changes committed and pushed).`;
+  "In Progress" BEFORE you start changing anything, and the option closest to "QA" right
+  after the pull request is opened (fall back to "Done" only when no QA-like option
+  exists). Never set "Done" - that happens at merge.`;
 
 // Canonical infer-action issue-agent.yml, pinned to a release. The model is a
 // workflow_dispatch choice input (options = the configured models, default = the
@@ -423,6 +424,6 @@ To route runs to a self-hosted llama.cpp endpoint (e.g. a GPU provisioned from t
 
 ### Project board tracking
 
-When an issue it works on is on a GitHub project board, the agent keeps the board's Status in sync (In Progress on start, Done on completion), best-effort. Board writes require a token with **Projects** permission: the default \`GITHUB_TOKEN\` cannot access Projects v2, so enable the GitHub App option (with Projects: read and write) for this to take effect${bot.enabled ? " - your App must grant it" : ""}. Without it the agent skips board updates silently and does the rest of its work normally.${pluginSection}${agentSection}
+When an issue it works on is on a GitHub project board, the agent keeps the board's Status in sync (In Progress on start, QA right after the PR is opened - never set 'Done'), best-effort. Board writes require a token with **Projects** permission: the default \`GITHUB_TOKEN\` cannot access Projects v2, so enable the GitHub App option (with Projects: read and write) for this to take effect${bot.enabled ? " - your App must grant it" : ""}. Without it the agent skips board updates silently and does the rest of its work normally.${pluginSection}${agentSection}
 `;
 }
