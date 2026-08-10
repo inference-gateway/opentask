@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "OpenTask for GitHub",
   "description": "Repo-skill tab-completion and quick-prompts in GitHub issue/PR comments.",
-  "version": "1.8.2",
+  "version": "1.9.0",
   "permissions": [
     "storage",
     "activeTab"

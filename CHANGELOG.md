@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0](https://github.com/inference-gateway/opentask/compare/v1.8.2...v1.9.0) (2026-08-10)
+
+### ✨ Features
+
+* **options:** add per-section restore-defaults buttons for prompts ([#135](https://github.com/inference-gateway/opentask/issues/135)) ([6d4849d](https://github.com/inference-gateway/opentask/commit/6d4849d5ccf672dce299d23af8b980ab7d981a44))
+
 ## [1.8.2](https://github.com/inference-gateway/opentask/compare/v1.8.1...v1.8.2) (2026-08-10)
 
 ### 🐛 Bug Fixes
