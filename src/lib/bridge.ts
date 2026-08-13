@@ -8,7 +8,7 @@ import { backoffMs, parseFrame, reduceAgui, type Msg, type PanelState } from "..
 export const DEFAULT_PORT = "52789";
 
 let ws: WebSocket | undefined;
-let connected = false; // true only after browser_hello_ack
+let connected = false;
 let attempt = 0;
 let messages: Msg[] = [];
 let controlledTabId: number | undefined;
@@ -25,7 +25,7 @@ function send(frame: Record<string, unknown>) {
 
 async function connect() {
   const token = (await storage.get<string>("bridge-token"))?.trim();
-  if (!token) return; // bridge unconfigured; the alarm retries after the user sets one
+  if (!token) return;
   const port = (await storage.get<string>("bridge-port"))?.trim() || DEFAULT_PORT;
 
   ws?.close();
@@ -49,7 +49,7 @@ async function connect() {
   socket.onmessage = (ev) => void handleFrame(socket, ev.data);
 
   socket.onclose = () => {
-    if (ws !== socket) return; // superseded by a newer dial
+    if (ws !== socket) return;
     ws = undefined;
     connected = false;
     broadcast();
@@ -59,8 +59,6 @@ async function connect() {
 }
 
 function scheduleReconnect() {
-  // ponytail: setTimeout dies with the SW; the 30s "bridge-redial" alarm is the
-  // persistent fallback that redials after a suspension.
   setTimeout(() => { if (!connected) void connect(); }, backoffMs(attempt++));
 }
 
@@ -95,7 +93,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       return;
     }
     default:
-      return; // unknown frame types MUST be ignored
+      return;
   }
 }
 
@@ -197,7 +195,6 @@ function waitForLoad(tabId: number): Promise<void> {
       }
     };
     chrome.tabs.onUpdated.addListener(listener);
-    // ponytail: listener leaks until next "complete" on timeout; the outer race bounds the wait
   });
 }
 
@@ -216,9 +213,6 @@ export function initBridge() {
     port.postMessage({ type: "state", connected, messages } satisfies PanelState);
   });
 
-  // Persistent redial: a suspended SW loses in-flight setTimeouts; the alarm both
-  // wakes the SW and retries while disconnected. While connected the CLI's ~20s
-  // WS pings keep the SW alive (Chrome 116+).
   chrome.alarms.create("bridge-redial", { periodInMinutes: 0.5 });
   chrome.alarms.onAlarm.addListener((a) => {
     if (a.name === "bridge-redial" && !connected) void connect();
