@@ -5,6 +5,7 @@ import { applyTheme, type Theme } from "./shared/theme";
 import type { Msg, PanelState, PanelUserMessage } from "./shared/agui";
 import { Button } from "@/ui/components/button";
 import { Textarea } from "@/ui/components/textarea";
+import { Markdown } from "./lib/markdown";
 
 function SidePanel() {
   const [connected, setConnected] = useState(false);
@@ -56,50 +57,99 @@ function SidePanel() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground text-sm">
+    <div className="flex h-screen flex-col bg-gradient-to-b from-background to-muted/40 text-foreground text-sm">
+      <header className="flex items-center gap-2 border-b border-border/60 bg-background/80 px-3 py-2.5 backdrop-blur-sm">
+        <div className="flex size-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white shadow-sm">
+          ⌘
+        </div>
+        <span className="font-semibold tracking-tight">OpenTask</span>
+        <span
+          className={
+            "ml-auto flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium " +
+            (connected
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-amber-500/10 text-amber-600 dark:text-amber-400")
+          }
+        >
+          <span
+            className={
+              "size-1.5 rounded-full " +
+              (connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")
+            }
+          />
+          {connected ? "Connected" : "Offline"}
+        </span>
+      </header>
+
       {!connected && (
-        <div className="border-b bg-muted px-3 py-2 text-xs text-muted-foreground">
+        <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           Not connected to the infer CLI. Set the bridge port and token in Settings and make sure
           the CLI is running.
         </div>
       )}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
         {messages.length === 0 && (
-          <p className="text-muted-foreground">No conversation yet.</p>
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-600/15 text-2xl">
+              💬
+            </div>
+            <p className="text-sm font-medium text-foreground">No conversation yet</p>
+            <p className="max-w-[220px] text-xs">Send a message below to start talking to the agent.</p>
+          </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
             <div
               className={
                 m.role === "user"
-                  ? "max-w-[85%] rounded-lg bg-primary px-3 py-2 text-primary-foreground whitespace-pre-wrap"
+                  ? "max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
                   : m.role === "tool"
-                    ? "max-w-[85%] rounded-lg border px-3 py-1 text-xs text-muted-foreground"
-                    : "max-w-[85%] rounded-lg bg-muted px-3 py-2 whitespace-pre-wrap"
+                    ? "flex max-w-[85%] items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 font-mono text-xs text-muted-foreground"
+                    : "max-w-[85%] rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
               }
             >
-              {m.role === "tool" ? <>⚙ {m.content}</> : m.content}
+              {m.role === "tool" ? (
+                <>
+                  <span className="text-indigo-500">⚙</span>
+                  <span className="truncate">{m.content}</span>
+                </>
+              ) : m.role === "assistant" ? (
+                <Markdown text={m.content} />
+              ) : (
+                m.content
+              )}
             </div>
           </div>
         ))}
         <div ref={endRef} />
       </div>
-      <div className="border-t p-3 flex flex-col gap-2">
-        <Textarea
-          rows={2}
-          placeholder="Message the agent…"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
-        <Button size="sm" disabled={!connected || !draft.trim()} onClick={sendMessage}>
-          Send
-        </Button>
+
+      <div className="border-t border-border/60 bg-background/80 p-3 backdrop-blur-sm">
+        <div className="flex items-end gap-2 rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20">
+          <Textarea
+            rows={2}
+            placeholder="Message the agent…"
+            value={draft}
+            className="min-h-9 resize-none border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+          />
+          <Button
+            size="icon-sm"
+            disabled={!connected || !draft.trim()}
+            onClick={sendMessage}
+            className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
+            aria-label="Send message"
+          >
+            ↑
+          </Button>
+        </div>
       </div>
     </div>
   );
