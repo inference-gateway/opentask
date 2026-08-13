@@ -163,7 +163,21 @@ function Popup() {
       </div>
       )}
 
-      <div className="border-t px-4 py-2 text-right">
+      <div className="border-t px-4 py-2 flex items-center justify-between">
+        <a
+          className="text-primary hover:underline cursor-pointer"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            void (async () => {
+              const w = await chrome.windows.getCurrent();
+              await chrome.sidePanel.open({ windowId: w.id! });
+              window.close();
+            })();
+          }}
+        >
+          Conversation
+        </a>
         <a
           className="text-primary hover:underline cursor-pointer"
           href="#"

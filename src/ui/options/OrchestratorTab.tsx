@@ -23,9 +23,14 @@ export function OrchestratorTab({
 }) {
   const [runpodKey, setRunpodKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [bridgePort, setBridgePort] = useState("");
+  const [bridgeToken, setBridgeToken] = useState("");
+  const [showBridgeToken, setShowBridgeToken] = useState(false);
 
   useEffect(() => {
     void storage.get<string>("runpod-key").then((k) => setRunpodKey(k ?? ""));
+    void storage.get<string>("bridge-port").then((p) => setBridgePort(p ?? ""));
+    void storage.get<string>("bridge-token").then((t) => setBridgeToken(t ?? ""));
   }, []);
 
   return (
@@ -115,6 +120,47 @@ export function OrchestratorTab({
           />
           <Button variant="outline" onClick={() => setShowKey((v) => !v)}>
             {showKey ? "Hide" : "Show"}
+          </Button>
+        </div>
+      </Section>
+
+      <Section
+        title="CLI Bridge"
+        description={
+          <>
+            Let the infer CLI drive this browser and mirror its conversation into the side panel.
+            The token comes from <code>extension.token</code> in <code>~/.infer/browser_use.yaml</code>{" "}
+            (<code>infer init</code> seeds one).
+          </>
+        }
+      >
+        <Label htmlFor="bridge-port">CLI port</Label>
+        <Input
+          id="bridge-port"
+          className="w-32"
+          placeholder="52789"
+          inputMode="numeric"
+          value={bridgePort}
+          onChange={(e) => {
+            setBridgePort(e.target.value);
+            void storage.set("bridge-port", e.target.value);
+          }}
+        />
+        <Label htmlFor="bridge-token">Shared token</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="bridge-token"
+            type={showBridgeToken ? "text" : "password"}
+            className="flex-1"
+            autoComplete="off"
+            value={bridgeToken}
+            onChange={(e) => {
+              setBridgeToken(e.target.value);
+              void storage.set("bridge-token", e.target.value);
+            }}
+          />
+          <Button variant="outline" onClick={() => setShowBridgeToken((v) => !v)}>
+            {showBridgeToken ? "Hide" : "Show"}
           </Button>
         </div>
       </Section>
