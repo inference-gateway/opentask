@@ -1,6 +1,7 @@
 import type { DependenciesConfig } from "../../shared/models";
 import { DEPENDENCY_DEFS } from "../../shared/models";
 import { Section, ToggleRow } from "./Section";
+import { Input } from "@/ui/components/input";
 import { Textarea } from "@/ui/components/textarea";
 
 export function DependenciesTab({
@@ -19,11 +20,9 @@ export function DependenciesTab({
         title="Auto-detect"
         description={
           <>
-            Install each language runtime only when the repo contains its manifest (
-            <code>go.mod</code>, <code>Cargo.toml</code>, <code>package.json</code>,{" "}
-            <code>pyproject.toml</code>/<code>requirements.txt</code>), via an{" "}
-            <code>if: hashFiles(...)</code> guard. While on, the language toggles below are
-            ignored. <strong>Re-install the workflow</strong> after changing this.
+            Pick language toolchains from the repo's GitHub language breakdown when the
+            workflow is installed. While on, the language toggles below are ignored.{" "}
+            <strong>Re-install the workflow</strong> after changing this.
           </>
         }
       >
@@ -36,8 +35,10 @@ export function DependenciesTab({
         title="Dependencies"
         description={
           <>
-            Tools the installed workflow sets up before the agent runs, between checkout and
-            infer-action. <strong>Re-install the workflow</strong> after changing these.
+            Toolchains available to the agent. Languages are installed by infer-action itself
+            (its <code>languages:</code> input, respecting version files like{" "}
+            <code>go.mod</code>); Task is a setup step before it.{" "}
+            <strong>Re-install the workflow</strong> after changing these.
           </>
         }
       >
@@ -45,12 +46,30 @@ export function DependenciesTab({
           <ToggleRow
             key={def.id}
             checked={deps.items.find((x) => x.id === def.id)?.enabled ?? false}
-            disabled={deps.autoDetect && !!def.detect}
+            disabled={deps.autoDetect && !!def.lang}
             onChange={(v) => setItem(def.id, v)}
           >
             {def.label}
           </ToggleRow>
         ))}
+      </Section>
+
+      <Section
+        title="APT packages"
+        description={
+          <>
+            System packages infer-action installs before the agent runs (its{" "}
+            <code>apt:</code> input), space-separated. Leave empty to omit.{" "}
+            <strong>Re-install the workflow</strong> after changing these.
+          </>
+        }
+      >
+        <Input
+          className="font-mono text-xs"
+          placeholder="libxml2-dev libpq-dev"
+          value={deps.apt}
+          onChange={(e) => setDeps({ ...deps, apt: e.target.value })}
+        />
       </Section>
 
       <Section
@@ -66,7 +85,7 @@ export function DependenciesTab({
       >
         <Textarea
           className="min-h-[120px] font-mono text-xs"
-          placeholder={`- uses: actions/setup-go@v7.0.0\n  with:\n    go-version: stable`}
+          placeholder={`- uses: docker/setup-buildx-action@v3\n  with:\n    version: latest`}
           value={deps.customSteps}
           onChange={(e) => setDeps({ ...deps, customSteps: e.target.value })}
         />

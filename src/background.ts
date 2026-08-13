@@ -1,6 +1,6 @@
 import * as storage from "./shared/storage";
 import { isValidHf, podRequestBody, githubError, type Skill, type SkillsCatalogResponse, type ApplySkillsResponse, type DispatchTaskResponse, type AgentsCatalogResponse, type GpuState } from "./shared/messages";
-import { DEFAULT_MODELS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, workflowYaml, prBody, normalizeTimeout } from "./shared/models";
+import { DEFAULT_MODELS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, workflowYaml, prBody, normalizeTimeout, resolveAutoDetect } from "./shared/models";
 import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesConfig } from "./shared/models";
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
@@ -253,7 +253,8 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
   const defaultBranch = (await repoRes.json()).default_branch;
   const headSha = await headShaFor(owner, repo, defaultBranch);
 
-  const yaml = workflowYaml(models, defaultModel, bot, perms, enabledPlugins(plugins), agents, timeout, instructions, deps, debug, visionModel, imageModel, reviewInline);
+  const resolvedDeps = deps.autoDetect ? resolveAutoDetect(deps, await fetchLanguages(owner, repo)) : deps;
+  const yaml = workflowYaml(models, defaultModel, bot, perms, enabledPlugins(plugins), agents, timeout, instructions, resolvedDeps, debug, visionModel, imageModel, reviewInline);
   const content = btoa(yaml);
 
   const current = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}?ref=${defaultBranch}`);
@@ -380,7 +381,7 @@ async function getCatalog(owner: string, repo: string): Promise<SkillsCatalogRes
   const [catalog, installed, languages] = await Promise.all([
     fetchCatalog(),
     getSkills(owner, repo).then((s) => s.map((x) => x.name)),
-    fetchLanguages(owner, repo),
+    fetchLanguages(owner, repo).then((l) => l.slice(0, 3)),
   ]);
   return { catalog, installed, languages };
 }
@@ -404,7 +405,6 @@ async function fetchLanguages(owner: string, repo: string): Promise<string[]> {
   const data = await res.json();
   return Object.entries(data as Record<string, number>)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
     .map(([lang]) => lang);
 }
 

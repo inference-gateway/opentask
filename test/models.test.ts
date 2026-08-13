@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PROVIDERS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEPENDENCY_DEFS, isModelOption, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl, prBody, workflowYaml, type DependenciesConfig } from "../src/shared/models";
+import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PROVIDERS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEPENDENCY_DEFS, isModelOption, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl, prBody, workflowYaml, resolveAutoDetect, type DependenciesConfig } from "../src/shared/models";
 
 const models = DEFAULT_MODELS;
 const def = "anthropic/claude-sonnet-4-6";
@@ -293,6 +293,7 @@ const yamlWithDeps = (deps: DependenciesConfig) =>
 const setEnabled = (ids: string[], autoDetect = false): DependenciesConfig => ({
   autoDetect,
   customSteps: "",
+  apt: "",
   items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: ids.includes(d.id) })),
 });
 
@@ -301,44 +302,52 @@ test("DEFAULT_DEPENDENCIES enables only task, auto-detect off", () => {
   expect(DEFAULT_DEPENDENCIES.items.filter((d) => d.enabled).map((d) => d.id)).toEqual(["task"]);
 });
 
-test("workflowYaml installs task by default with repo-token and no language runtimes", () => {
+test("workflowYaml installs task by default with repo-token and no languages input", () => {
   const yaml = workflowYaml(models, def, noBot);
   expect(yaml).toContain("uses: arduino/setup-task@v3.0.0");
   expect(yaml).toContain("repo-token: ${{ secrets.GITHUB_TOKEN }}");
+  expect(yaml).not.toContain("languages:");
   expect(yaml).not.toContain("setup-go");
-  expect(yaml).not.toContain("hashFiles");
 });
 
-test("workflowYaml emits enabled language runtimes unconditionally, before infer-action", () => {
+test("workflowYaml passes enabled languages to infer-action instead of setup steps", () => {
   const yaml = yamlWithDeps(setEnabled(["task", "go", "node"]));
-  expect(yaml).toContain("uses: actions/setup-go@v7.0.0");
-  expect(yaml).toContain("uses: actions/setup-node@v7.0.0");
-  expect(yaml).not.toContain("uses: actions/setup-python");
-  expect(yaml).not.toContain("if: hashFiles");
-  expect(yaml.indexOf("setup-go")).toBeLessThan(yaml.indexOf("infer-action"));
-  expect(yaml.indexOf("actions/checkout")).toBeLessThan(yaml.indexOf("setup-go"));
+  expect(yaml).toContain("languages: go node");
+  expect(yaml).not.toContain("setup-go");
+  expect(yaml).not.toContain("setup-node");
+  expect(yaml.indexOf("infer-action")).toBeLessThan(yaml.indexOf("languages: go node"));
 });
 
-test("workflowYaml omits all dependency steps when none enabled", () => {
+test("workflowYaml omits dependency steps and languages when none enabled", () => {
   const yaml = yamlWithDeps(setEnabled([]));
   expect(yaml).not.toContain("setup-task");
   expect(yaml).not.toContain("setup-go");
   expect(yaml).toContain("uses: inference-gateway/infer-action@v0.48.1");
 });
 
-test("auto-detect guards every language runtime with hashFiles and keeps task by its toggle", () => {
-  const yaml = yamlWithDeps(setEnabled(["task"], true));
-  expect(yaml).toContain("uses: arduino/setup-task@v3.0.0");
-  expect(yaml).toContain("uses: actions/setup-go@v7.0.0\n        with:\n          go-version: stable\n        if: hashFiles('**/go.mod') != ''");
-  expect(yaml).toContain("if: hashFiles('**/Cargo.toml') != ''");
-  expect(yaml).toContain("if: hashFiles('**/package.json') != ''");
-  expect(yaml).toContain("if: hashFiles('**/pyproject.toml', '**/requirements.txt', '**/setup.py') != ''");
+test("workflowYaml passes apt packages to infer-action, omitted when empty", () => {
+  const yaml = yamlWithDeps({ ...setEnabled(["task"]), apt: "libxml2-dev libpq-dev" });
+  expect(yaml).toContain("apt: libxml2-dev libpq-dev");
+  expect(yamlWithDeps(setEnabled(["task"]))).not.toContain("apt:");
 });
 
-test("auto-detect ignores the per-language toggles (rust off still emitted with guard)", () => {
-  const yaml = yamlWithDeps(setEnabled([], true));
-  expect(yaml).toContain("uses: dtolnay/rust-toolchain@stable\n        if: hashFiles('**/Cargo.toml') != ''");
-  expect(yaml).not.toContain("uses: arduino/setup-task");
+test("customSteps land after the toggled deps, before infer-action", () => {
+  const custom = "      - run: echo hi";
+  const yaml = yamlWithDeps({ ...setEnabled(["task"]), customSteps: custom });
+  expect(yaml).toContain(custom);
+  expect(yaml.indexOf("setup-task")).toBeLessThan(yaml.indexOf(custom));
+  expect(yaml.indexOf(custom)).toBeLessThan(yaml.indexOf("infer-action"));
+});
+
+test("resolveAutoDetect maps repo languages onto the language toggles, keeps task", () => {
+  const resolved = resolveAutoDetect(setEnabled(["task"], true), ["TypeScript", "Rust", "HTML"]);
+  expect(resolved.items.filter((d) => d.enabled).map((d) => d.id)).toEqual(["task", "rust", "node"]);
+  expect(resolveAutoDetect(setEnabled(["task", "go"]), ["Rust"])).toEqual(setEnabled(["task", "go"]));
+});
+
+test("resolveAutoDetect overrides manual language toggles when on", () => {
+  const resolved = resolveAutoDetect(setEnabled(["go"], true), ["Python"]);
+  expect(resolved.items.filter((d) => d.enabled).map((d) => d.id)).toEqual(["python"]);
 });
 
 test("enabled language deps grant matching bash-allow-append entries; task adds none", () => {
@@ -348,14 +357,6 @@ test("enabled language deps grant matching bash-allow-append entries; task adds 
   expect(yaml).not.toContain("cargo( .*)?");
   const none = yamlWithDeps(setEnabled(["task"]));
   expect(none).not.toContain("gofmt");
-});
-
-test("auto-detect grants allow entries for every language runtime", () => {
-  const yaml = yamlWithDeps(setEnabled([], true));
-  expect(yaml).toContain("gofmt( .*)?");
-  expect(yaml).toContain("cargo( .*)?");
-  expect(yaml).toContain("npm( .*)?");
-  expect(yaml).toContain("pytest( .*)?");
 });
 
 test("Rust allow regexes match cargo miri, cargo clippy, cargo, and rustup component add miri", () => {
@@ -373,6 +374,7 @@ test("Rust allow regexes match cargo miri, cargo clippy, cargo, and rustup compo
 test("isDependenciesConfig accepts a valid config and rejects bad shapes", () => {
   expect(isDependenciesConfig(DEFAULT_DEPENDENCIES)).toBe(true);
   expect(isDependenciesConfig({ autoDetect: true, customSteps: "", items: [] })).toBe(true);
+  expect(isDependenciesConfig({ autoDetect: true, customSteps: "", apt: 7, items: [] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: "yes", customSteps: "", items: [] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true, customSteps: 7 as unknown as string, items: [] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true, items: [{ id: "go" }] })).toBe(false);

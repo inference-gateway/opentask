@@ -85,6 +85,7 @@ function Options() {
       setDeps({
         autoDetect: dpc.autoDetect,
         customSteps: dpc.customSteps ?? "",
+        apt: dpc.apt ?? "",
         items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: dpc.items.find((s) => s.id === d.id)?.enabled ?? d.enabled })),
       });
       const t = (await storage.get<string>("theme")) as Theme | undefined;

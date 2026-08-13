@@ -127,17 +127,18 @@ export function isPluginOption(p: unknown): p is PluginOption {
 export const enabledPlugins = (plugins: PluginOption[]): string[] =>
   plugins.filter((p) => p.enabled).map((p) => p.id);
 
-// Common CI dependencies baked into the generated workflow as setup steps between
-// checkout and infer-action. `autoDetect` (default off) ignores the language toggles
-// and instead emits every language runtime guarded by an `if: hashFiles(...)` on its
-// manifest, so a runtime installs only when the repo actually contains that language.
-// `task` has no manifest guard - it is controlled purely by its toggle. Stored under
-// "dependencies", reusing PluginOption's {id, enabled} shape for the toggle list.
-export type DependenciesConfig = { autoDetect: boolean; items: PluginOption[]; customSteps: string };
+// Common CI dependencies for the generated workflow. Language toolchains are installed
+// by infer-action itself via its `languages:` input; only `task` remains a real setup
+// step (not covered by `languages`). `autoDetect` (default off) ignores the language
+// toggles and instead resolves the list at install time from the repo's GitHub
+// languages API. `apt` is a space-separated package list for infer-action's `apt:`
+// input. Stored under "dependencies", reusing PluginOption's {id, enabled} shape.
+export type DependenciesConfig = { autoDetect: boolean; items: PluginOption[]; customSteps: string; apt: string };
 
 export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
   autoDetect: false,
   customSteps: "",
+  apt: "",
   items: [
     { id: "task", enabled: true },
     { id: "go", enabled: false },
@@ -147,19 +148,20 @@ export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
   ],
 };
 
-// Registry mapping each dependency id to its rendered workflow step (6-space indent for
-// `- uses:`, matching checkoutStep) and, for language runtimes, the hashFiles guard used
-// in auto-detect mode. Order here is the render order in the generated workflow.
+// Registry of dependency toggles. Language runtimes carry a `lang` id passed to
+// infer-action's `languages:` input (the action installs the toolchain, respecting
+// version files like go.mod/.nvmrc); `task` keeps a rendered setup step (6-space indent
+// for `- uses:`, matching checkoutStep) since `languages` does not cover go-task.
 // `allow` lists the bash-allow-append entries (Go regexes, anchored by the CLI matcher)
-// granted alongside the toolchain - installing a toolchain the agent is not permitted to
-// run leaves it hand-simulating the tool instead of invoking it. `task` needs none: it is
-// already in the Infer CLI's read-only bash baseline.
-export const DEPENDENCY_DEFS: { id: string; label: string; step: string; detect?: string; allow?: string[] }[] = [
+// granted alongside the toolchain - infer-action does NOT auto-append these, and an
+// installed toolchain the agent cannot invoke leaves it hand-simulating the tool.
+// `task` needs none: it is already in the Infer CLI's read-only bash baseline.
+export const DEPENDENCY_DEFS: { id: string; label: string; step?: string; lang?: string; allow?: string[] }[] = [
   { id: "task", label: "Task (go-task)", step: `      - uses: arduino/setup-task@v3.0.0\n        with:\n          version: 3.x\n          repo-token: \${{ secrets.GITHUB_TOKEN }}` },
-  { id: "go", label: "Go", step: `      - uses: actions/setup-go@v7.0.0\n        with:\n          go-version: stable`, detect: "hashFiles('**/go.mod') != ''", allow: ["gofmt( .*)?", "go (fmt|vet|test|build|run|mod|generate|tool)( .*)?"] },
-  { id: "rust", label: "Rust", step: `      - uses: dtolnay/rust-toolchain@stable`, detect: "hashFiles('**/Cargo.toml') != ''", allow: ["cargo( .*)?", "rustfmt( .*)?", "rustc( .*)?", "rustup( .*)?"] },
-  { id: "node", label: "Node.js / TypeScript", step: `      - uses: actions/setup-node@v7.0.0\n        with:\n          node-version: lts/*`, detect: "hashFiles('**/package.json') != ''", allow: ["npm( .*)?", "npx( .*)?", "yarn( .*)?", "pnpm( .*)?", "bun( .*)?", "bunx( .*)?"] },
-  { id: "python", label: "Python", step: `      - uses: actions/setup-python@v7.0.0\n        with:\n          python-version: '3.x'`, detect: "hashFiles('**/pyproject.toml', '**/requirements.txt', '**/setup.py') != ''", allow: ["python3?( .*)?", "pip3?( .*)?", "pytest( .*)?", "ruff( .*)?", "uv( .*)?"] },
+  { id: "go", label: "Go", lang: "go", allow: ["gofmt( .*)?", "go (fmt|vet|test|build|run|mod|generate|tool)( .*)?"] },
+  { id: "rust", label: "Rust", lang: "rust", allow: ["cargo( .*)?", "rustfmt( .*)?", "rustc( .*)?", "rustup( .*)?"] },
+  { id: "node", label: "Node.js / TypeScript", lang: "node", allow: ["npm( .*)?", "npx( .*)?", "yarn( .*)?", "pnpm( .*)?", "bun( .*)?", "bunx( .*)?"] },
+  { id: "python", label: "Python", lang: "python", allow: ["python3?( .*)?", "pip3?( .*)?", "pytest( .*)?", "ruff( .*)?", "uv( .*)?"] },
 ];
 
 export function isDependenciesConfig(x: unknown): x is DependenciesConfig {
@@ -168,34 +170,55 @@ export function isDependenciesConfig(x: unknown): x is DependenciesConfig {
     typeof x === "object" &&
     typeof (x as Record<string, unknown>).autoDetect === "boolean" &&
     typeof (x as Record<string, unknown>).customSteps === "string" &&
+    ["string", "undefined"].includes(typeof (x as Record<string, unknown>).apt) &&
     Array.isArray((x as Record<string, unknown>).items) &&
     ((x as { items: unknown[] }).items).every(isPluginOption)
   );
 }
 
-// The setup-step YAML block to insert between checkout and infer-action. In auto-detect
-// mode every language runtime (those with a `detect` guard) is emitted with its
-// `if: hashFiles(...)`; task follows its toggle either way. Otherwise only toggled-on
-// deps are emitted, unconditionally.
+// Maps GitHub /languages API names (from the repo's language breakdown) to dependency
+// ids, for auto-detect at workflow-install time.
+const GITHUB_LANG_TO_ID: Record<string, string> = {
+  Go: "go",
+  Rust: "rust",
+  JavaScript: "node",
+  TypeScript: "node",
+  Python: "python",
+};
+
+// Auto-detect resolution: returns a copy of `deps` with each language toggle set from
+// the repo's GitHub languages. A no-op unless autoDetect is on. Feeding the resolved
+// config to workflowYaml keeps YAML generation a single code path.
+export function resolveAutoDetect(deps: DependenciesConfig, repoLanguages: string[]): DependenciesConfig {
+  if (!deps.autoDetect) return deps;
+  const detected = new Set(repoLanguages.map((l) => GITHUB_LANG_TO_ID[l]).filter(Boolean));
+  return {
+    ...deps,
+    items: deps.items.map((d) =>
+      DEPENDENCY_DEFS.find((def) => def.id === d.id)?.lang ? { ...d, enabled: detected.has(d.id) } : d,
+    ),
+  };
+}
+
+// The setup-step YAML block to insert between checkout and infer-action: only deps
+// with a rendered `step` (task), plus any raw custom steps.
 export function dependencySteps(deps: DependenciesConfig): string {
   const on = new Set(deps.items.filter((d) => d.enabled).map((d) => d.id));
-  const steps = DEPENDENCY_DEFS.flatMap((def) => {
-    if (deps.autoDetect && def.detect) return [`${def.step}\n        if: ${def.detect}`];
-    if (on.has(def.id)) return [def.step];
-    return [];
-  });
+  const steps = DEPENDENCY_DEFS.flatMap((def) => (def.step && on.has(def.id) ? [def.step] : []));
   if (deps.customSteps) steps.push(deps.customSteps);
   return steps.join("\n\n");
 }
 
-// The bash-allow-append entries for every dependency whose setup step is emitted, in
-// render order. Auto-detect emits every language runtime, so their allow entries come
-// along too (harmless when the toolchain is absent - the command just is not there).
+// The `languages:` input value for infer-action: enabled language runtimes, space-separated.
+export function dependencyLanguages(deps: DependenciesConfig): string {
+  const on = new Set(deps.items.filter((d) => d.enabled).map((d) => d.id));
+  return DEPENDENCY_DEFS.flatMap((def) => (def.lang && on.has(def.id) ? [def.lang] : [])).join(" ");
+}
+
+// The bash-allow-append entries for every enabled dependency, in render order.
 export function dependencyAllowEntries(deps: DependenciesConfig): string[] {
   const on = new Set(deps.items.filter((d) => d.enabled).map((d) => d.id));
-  return DEPENDENCY_DEFS.flatMap((def) =>
-    def.allow && ((deps.autoDetect && def.detect) || on.has(def.id)) ? def.allow : [],
-  );
+  return DEPENDENCY_DEFS.flatMap((def) => (def.allow && on.has(def.id) ? def.allow : []));
 }
 
 export function isRefineConfig(r: unknown): r is RefineConfig {
@@ -311,6 +334,10 @@ export function workflowYaml(models: ModelOption[], defaultModel: string, bot: B
     : `      - uses: actions/checkout@v7.0.1`;
   const depBlock = dependencySteps(deps);
   const depSteps = depBlock ? `\n\n${depBlock}` : "";
+  const langs = dependencyLanguages(deps);
+  const langLines =
+    (langs ? `\n          languages: ${langs}` : "") +
+    (deps.apt?.trim() ? `\n          apt: ${deps.apt.trim()}` : "");
   const githubToken = bot.enabled ? "${{ steps.app-token.outputs.token }}" : "${{ secrets.GITHUB_TOKEN }}";
   const botSlugLine = bot.enabled ? "\n          github-app-slug: ${{ steps.app-token.outputs.app-slug }}" : "";
 
@@ -377,7 +404,7 @@ ${appTokenStep}${checkoutStep}${depSteps}
           trigger-phrase: "@opentask"
           model: \${{ inputs.model || vars.DEFAULT_MODEL || '${def}' }}
           direct-prompt: \${{ inputs.prompt }}
-          system-prompt-direct: \${{ inputs.system_prompt }}
+          system-prompt-direct: \${{ inputs.system_prompt }}${langLines}
 ${permLines}${pluginLines}${agentLines}
 ${keyLines}
 `;
