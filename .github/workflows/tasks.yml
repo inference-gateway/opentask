@@ -69,7 +69,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: inference-gateway/infer-action@v0.46.4
+      - uses: inference-gateway/infer-action@v0.47.0
         with:
           debug: true
           github-token: ${{ steps.app-token.outputs.token }}
