@@ -66,7 +66,7 @@ export function DependenciesTab({
       >
         <Textarea
           className="min-h-[120px] font-mono text-xs"
-          placeholder={`- uses: actions/setup-java@v4\n  with:\n    java-version: '21'`}
+          placeholder={`- uses: actions/setup-go@v7.0.0\n  with:\n    go-version: stable`}
           value={deps.customSteps}
           onChange={(e) => setDeps({ ...deps, customSteps: e.target.value })}
         />
