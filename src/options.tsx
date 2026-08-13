@@ -84,6 +84,7 @@ function Options() {
       const dpc = isDependenciesConfig(dp) ? dp : DEFAULT_DEPENDENCIES;
       setDeps({
         autoDetect: dpc.autoDetect,
+        customSteps: dpc.customSteps ?? "",
         items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: dpc.items.find((s) => s.id === d.id)?.enabled ?? d.enabled })),
       });
       const t = (await storage.get<string>("theme")) as Theme | undefined;

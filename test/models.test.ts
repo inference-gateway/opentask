@@ -292,6 +292,7 @@ const yamlWithDeps = (deps: DependenciesConfig) =>
 
 const setEnabled = (ids: string[], autoDetect = false): DependenciesConfig => ({
   autoDetect,
+  customSteps: "",
   items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: ids.includes(d.id) })),
 });
 
@@ -371,8 +372,9 @@ test("Rust allow regexes match cargo miri, cargo clippy, cargo, and rustup compo
 
 test("isDependenciesConfig accepts a valid config and rejects bad shapes", () => {
   expect(isDependenciesConfig(DEFAULT_DEPENDENCIES)).toBe(true);
-  expect(isDependenciesConfig({ autoDetect: true, items: [] })).toBe(true);
-  expect(isDependenciesConfig({ autoDetect: "yes", items: [] })).toBe(false);
+  expect(isDependenciesConfig({ autoDetect: true, customSteps: "", items: [] })).toBe(true);
+  expect(isDependenciesConfig({ autoDetect: "yes", customSteps: "", items: [] })).toBe(false);
+  expect(isDependenciesConfig({ autoDetect: true, customSteps: 7 as unknown as string, items: [] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true, items: [{ id: "go" }] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true })).toBe(false);
   expect(isDependenciesConfig(null)).toBe(false);

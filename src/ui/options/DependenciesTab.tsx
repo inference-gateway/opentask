@@ -1,6 +1,7 @@
 import type { DependenciesConfig } from "../../shared/models";
 import { DEPENDENCY_DEFS } from "../../shared/models";
 import { Section, ToggleRow } from "./Section";
+import { Textarea } from "@/ui/components/textarea";
 
 export function DependenciesTab({
   deps,
@@ -50,6 +51,25 @@ export function DependenciesTab({
             {def.label}
           </ToggleRow>
         ))}
+      </Section>
+
+      <Section
+        title="Custom steps"
+        description={
+          <>
+            Raw YAML steps to inject between checkout and infer-action, after the toggled deps
+            above. Paste complete <code>- uses:</code>/<code>- run:</code> blocks at the
+            workflow indentation (6 spaces). Leave empty to omit.{" "}
+            <strong>Re-install the workflow</strong> after changing these.
+          </>
+        }
+      >
+        <Textarea
+          className="min-h-[120px] font-mono text-xs"
+          placeholder={`- uses: actions/setup-java@v4\n  with:\n    java-version: '21'`}
+          value={deps.customSteps}
+          onChange={(e) => setDeps({ ...deps, customSteps: e.target.value })}
+        />
       </Section>
     </>
   );
