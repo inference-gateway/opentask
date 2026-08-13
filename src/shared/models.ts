@@ -133,10 +133,11 @@ export const enabledPlugins = (plugins: PluginOption[]): string[] =>
 // manifest, so a runtime installs only when the repo actually contains that language.
 // `task` has no manifest guard - it is controlled purely by its toggle. Stored under
 // "dependencies", reusing PluginOption's {id, enabled} shape for the toggle list.
-export type DependenciesConfig = { autoDetect: boolean; items: PluginOption[] };
+export type DependenciesConfig = { autoDetect: boolean; items: PluginOption[]; customSteps: string };
 
 export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
   autoDetect: false,
+  customSteps: "",
   items: [
     { id: "task", enabled: true },
     { id: "go", enabled: false },
@@ -166,6 +167,7 @@ export function isDependenciesConfig(x: unknown): x is DependenciesConfig {
     !!x &&
     typeof x === "object" &&
     typeof (x as Record<string, unknown>).autoDetect === "boolean" &&
+    typeof (x as Record<string, unknown>).customSteps === "string" &&
     Array.isArray((x as Record<string, unknown>).items) &&
     ((x as { items: unknown[] }).items).every(isPluginOption)
   );
@@ -177,11 +179,13 @@ export function isDependenciesConfig(x: unknown): x is DependenciesConfig {
 // deps are emitted, unconditionally.
 export function dependencySteps(deps: DependenciesConfig): string {
   const on = new Set(deps.items.filter((d) => d.enabled).map((d) => d.id));
-  return DEPENDENCY_DEFS.flatMap((def) => {
+  const steps = DEPENDENCY_DEFS.flatMap((def) => {
     if (deps.autoDetect && def.detect) return [`${def.step}\n        if: ${def.detect}`];
     if (on.has(def.id)) return [def.step];
     return [];
-  }).join("\n\n");
+  });
+  if (deps.customSteps) steps.push(deps.customSteps);
+  return steps.join("\n\n");
 }
 
 // The bash-allow-append entries for every dependency whose setup step is emitted, in
@@ -366,7 +370,7 @@ jobs:
     steps:
 ${appTokenStep}${checkoutStep}${depSteps}
 
-      - uses: inference-gateway/infer-action@v0.47.0
+      - uses: inference-gateway/infer-action@v0.48.0
         with:
           debug: ${debug}${reviewInline ? `\n          review-inline: "true"` : ""}
           github-token: ${githubToken}${botSlugLine}

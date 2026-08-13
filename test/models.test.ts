@@ -40,7 +40,7 @@ test("workflowYaml exposes an agents workflow_dispatch input", () => {
 test("workflowYaml pins the checkout and infer-action refs", () => {
   const yaml = workflowYaml(models, def, noBot);
   expect(yaml).toContain("uses: actions/checkout@v7.0.1");
-  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.47.0");
+  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.48.0");
 });
 
 test("workflowYaml sets the @opentask trigger-phrase", () => {
@@ -292,6 +292,7 @@ const yamlWithDeps = (deps: DependenciesConfig) =>
 
 const setEnabled = (ids: string[], autoDetect = false): DependenciesConfig => ({
   autoDetect,
+  customSteps: "",
   items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: ids.includes(d.id) })),
 });
 
@@ -322,7 +323,7 @@ test("workflowYaml omits all dependency steps when none enabled", () => {
   const yaml = yamlWithDeps(setEnabled([]));
   expect(yaml).not.toContain("setup-task");
   expect(yaml).not.toContain("setup-go");
-  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.47.0");
+  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.48.0");
 });
 
 test("auto-detect guards every language runtime with hashFiles and keeps task by its toggle", () => {
@@ -371,8 +372,9 @@ test("Rust allow regexes match cargo miri, cargo clippy, cargo, and rustup compo
 
 test("isDependenciesConfig accepts a valid config and rejects bad shapes", () => {
   expect(isDependenciesConfig(DEFAULT_DEPENDENCIES)).toBe(true);
-  expect(isDependenciesConfig({ autoDetect: true, items: [] })).toBe(true);
-  expect(isDependenciesConfig({ autoDetect: "yes", items: [] })).toBe(false);
+  expect(isDependenciesConfig({ autoDetect: true, customSteps: "", items: [] })).toBe(true);
+  expect(isDependenciesConfig({ autoDetect: "yes", customSteps: "", items: [] })).toBe(false);
+  expect(isDependenciesConfig({ autoDetect: true, customSteps: 7 as unknown as string, items: [] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true, items: [{ id: "go" }] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true })).toBe(false);
   expect(isDependenciesConfig(null)).toBe(false);
