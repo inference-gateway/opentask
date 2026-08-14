@@ -80,9 +80,12 @@ export function approvalFromFrame(frame: Record<string, unknown>): PendingApprov
 export type PanelState = {
   type: "state";
   connected: boolean;
+  connecting: boolean;
   messages: Msg[];
   pendingApproval?: PendingApproval;
 };
+export type PanelConnect = { type: "connect" };
+export type PanelDisconnect = { type: "disconnect" };
 export type PanelUserMessage = { type: "user_message"; content: string };
 export type PanelApproval = {
   type: "approval_response";

@@ -2,7 +2,15 @@ import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
 import { applyTheme, type Theme } from "./shared/theme";
-import type { Msg, PanelApproval, PanelState, PanelUserMessage, PendingApproval } from "./shared/agui";
+import type {
+  Msg,
+  PanelApproval,
+  PanelConnect,
+  PanelDisconnect,
+  PanelState,
+  PanelUserMessage,
+  PendingApproval,
+} from "./shared/agui";
 import { Button } from "@/ui/components/button";
 import { Textarea } from "@/ui/components/textarea";
 import { toolLabel } from "./shared/agui";
@@ -10,6 +18,7 @@ import { Markdown } from "./lib/markdown";
 
 function SidePanel() {
   const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
@@ -32,6 +41,7 @@ function SidePanel() {
       port.onMessage.addListener((msg: PanelState) => {
         if (msg?.type !== "state") return;
         setConnected(msg.connected);
+        setConnecting(msg.connecting);
         setMessages(msg.messages);
         setPendingApproval(msg.pendingApproval);
       });
@@ -50,6 +60,14 @@ function SidePanel() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
+
+  function connect() {
+    portRef.current?.postMessage({ type: "connect" } satisfies PanelConnect);
+  }
+
+  function disconnect() {
+    portRef.current?.postMessage({ type: "disconnect" } satisfies PanelDisconnect);
+  }
 
   function sendMessage() {
     const content = draft.trim();
@@ -86,17 +104,27 @@ function SidePanel() {
           <span
             className={
               "size-1.5 rounded-full " +
-              (connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")
+              (connected ? "bg-emerald-500 animate-pulse" : connecting ? "bg-amber-500 animate-pulse" : "bg-amber-500")
             }
           />
-          {connected ? "Connected" : "Offline"}
+          {connected ? "Connected" : connecting ? "Connecting…" : "Offline"}
         </span>
+        {connected && (
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={disconnect}>
+            Disconnect
+          </Button>
+        )}
       </header>
 
       {!connected && (
-        <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          Not connected to the infer CLI. Set the bridge port and token in Settings and make sure
-          the CLI is running.
+        <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          <span className="flex-1">
+            Not connected to the infer CLI. Set the bridge port and token in Settings, make sure the
+            CLI is running, then connect.
+          </span>
+          <Button size="sm" className="h-7 shrink-0 px-3 text-xs" disabled={connecting} onClick={connect}>
+            {connecting ? "Connecting…" : "Connect"}
+          </Button>
         </div>
       )}
 

@@ -9,14 +9,19 @@ export const DEFAULT_PORT = "52789";
 
 let ws: WebSocket | undefined;
 let connected = false;
+let wantConnected = false;
 let attempt = 0;
 let messages: Msg[] = [];
 let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
 const panels = new Set<chrome.runtime.Port>();
 
+function panelState(): PanelState {
+  return { type: "state", connected, connecting: wantConnected && !connected, messages, pendingApproval };
+}
+
 function broadcast() {
-  const state: PanelState = { type: "state", connected, messages, pendingApproval };
+  const state = panelState();
   for (const p of panels) p.postMessage(state);
 }
 
@@ -26,7 +31,11 @@ function send(frame: Record<string, unknown>) {
 
 async function connect() {
   const token = (await storage.get<string>("bridge-token"))?.trim();
-  if (!token) return;
+  if (!token) {
+    wantConnected = false;
+    broadcast();
+    return;
+  }
   const port = (await storage.get<string>("bridge-port"))?.trim() || DEFAULT_PORT;
 
   ws?.close();
@@ -61,7 +70,7 @@ async function connect() {
 }
 
 function scheduleReconnect() {
-  setTimeout(() => { if (!connected) void connect(); }, backoffMs(attempt++));
+  setTimeout(() => { if (wantConnected && !connected) void connect(); }, backoffMs(attempt++));
 }
 
 async function handleFrame(socket: WebSocket, data: unknown) {
@@ -222,6 +231,16 @@ export function initBridge() {
     panels.add(port);
     port.onDisconnect.addListener(() => panels.delete(port));
     port.onMessage.addListener((msg) => {
+      if (msg?.type === "connect") {
+        wantConnected = true;
+        attempt = 0;
+        void connect();
+        broadcast();
+      }
+      if (msg?.type === "disconnect") {
+        wantConnected = false;
+        ws?.close(); // onclose broadcasts; reconnect is gated off
+      }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         messages = [...messages, { role: "user", content: msg.content }];
         send({ type: "user_message", content: msg.content });
@@ -233,21 +252,19 @@ export function initBridge() {
         broadcast();
       }
     });
-    port.postMessage({ type: "state", connected, messages } satisfies PanelState);
+    port.postMessage(panelState());
   });
 
   chrome.alarms.create("bridge-redial", { periodInMinutes: 0.5 });
   chrome.alarms.onAlarm.addListener((a) => {
-    if (a.name === "bridge-redial" && !connected) void connect();
+    if (a.name === "bridge-redial" && wantConnected && !connected) void connect();
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && ("bridge-port" in changes || "bridge-token" in changes)) {
+    if (area === "local" && ("bridge-port" in changes || "bridge-token" in changes) && wantConnected) {
       connected = false;
       attempt = 0;
       void connect();
     }
   });
-
-  void connect();
 }
