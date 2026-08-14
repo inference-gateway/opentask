@@ -14,7 +14,6 @@ const INLINE = [
 const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
 
 function inline(text: string, keyBase = 0): ReactNode[] {
-  // Links first — they wrap arbitrary inner text.
   const linkMatch = LINK.exec(text);
   if (linkMatch) {
     const [full, label, href] = linkMatch;
@@ -48,12 +47,11 @@ export function Markdown({ text }: { text: string }): ReactNode {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Fenced code block
     if (line.startsWith("```")) {
       const body: string[] = [];
       i++;
       while (i < lines.length && !lines[i].startsWith("```")) body.push(lines[i++]);
-      i++; // closing fence
+      i++;
       blocks.push(
         <pre key={key++} className="overflow-x-auto rounded-lg bg-muted/70 p-2.5 font-mono text-[0.85em] leading-relaxed">
           <code>{body.join("\n")}</code>
@@ -62,7 +60,6 @@ export function Markdown({ text }: { text: string }): ReactNode {
       continue;
     }
 
-    // Heading
     const h = /^(#{1,6})\s+(.*)$/.exec(line);
     if (h) {
       const size = h[1].length <= 2 ? "text-base" : "text-sm";
@@ -71,7 +68,6 @@ export function Markdown({ text }: { text: string }): ReactNode {
       continue;
     }
 
-    // List (consecutive - / * / 1. items)
     if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
       const items: ReactNode[] = [];
       const ordered = /^\s*\d+\.\s+/.test(line);
@@ -88,13 +84,11 @@ export function Markdown({ text }: { text: string }): ReactNode {
       continue;
     }
 
-    // Blank line
     if (line.trim() === "") {
       i++;
       continue;
     }
 
-    // Paragraph — gather until blank line or a block starter
     const para: string[] = [];
     while (
       i < lines.length &&

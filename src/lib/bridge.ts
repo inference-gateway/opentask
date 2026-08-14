@@ -53,7 +53,7 @@ async function connect() {
     if (ws !== socket) return;
     ws = undefined;
     connected = false;
-    pendingApproval = undefined; // a dead CLI can no longer take the decision
+    pendingApproval = undefined;
     broadcast();
     scheduleReconnect();
   };

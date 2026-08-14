@@ -36,7 +36,6 @@ function SidePanel() {
         setPendingApproval(msg.pendingApproval);
       });
       port.onDisconnect.addListener(() => {
-        // reconnecting revives a suspended service worker
         if (!closed) timer = setTimeout(dial, 1000);
       });
     }
@@ -66,7 +65,7 @@ function SidePanel() {
       requestId: pendingApproval.requestId,
       action,
     } satisfies PanelApproval);
-    setPendingApproval(undefined); // optimistic; the bridge confirms with approval_resolved
+    setPendingApproval(undefined);
   }
 
   return (
