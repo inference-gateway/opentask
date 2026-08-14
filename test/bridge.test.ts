@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, parseFrame, reduceAgui, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, isVisibleMessage, parseFrame, reduceAgui, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -58,6 +58,21 @@ describe("toolLabel", () => {
 
   test("falls back to raw args when not valid JSON", () => {
     expect(toolLabel("Write", '{"file_path":')).toBe('Write({"file_path":)');
+  });
+});
+
+describe("isVisibleMessage", () => {
+  test("drops empty content, system role, and system-reminders", () => {
+    expect(isVisibleMessage({ role: "assistant", content: "" })).toBe(false);
+    expect(isVisibleMessage({ role: "assistant", content: "   " })).toBe(false);
+    expect(isVisibleMessage({ role: "system", content: "you are an agent" })).toBe(false);
+    expect(isVisibleMessage({ role: "user", content: "<system-reminder>\nctx\n</system-reminder>" })).toBe(false);
+  });
+
+  test("keeps normal user, assistant, and tool rows", () => {
+    expect(isVisibleMessage({ role: "user", content: "hi" })).toBe(true);
+    expect(isVisibleMessage({ role: "assistant", content: "hello" })).toBe(true);
+    expect(isVisibleMessage({ role: "tool", content: "BrowserNavigate" })).toBe(true);
   });
 });
 

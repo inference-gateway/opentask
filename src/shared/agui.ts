@@ -47,6 +47,16 @@ export function toolLabel(name: string, args?: string): string {
   }
 }
 
+// Hides messages the panel shouldn't render: empty content, the system prompt,
+// and injected <system-reminder> context. Filters the outbound view only.
+export function isVisibleMessage(m: Msg): boolean {
+  const c = m.content.trim();
+  if (!c) return false;
+  if (m.role === "system") return false;
+  if (c.startsWith("<system-reminder>")) return false;
+  return true;
+}
+
 // Reconnect backoff: 1s, 2s, 4s ... capped at 30s.
 export function backoffMs(attempt: number): number {
   return Math.min(30_000, 1000 * 2 ** attempt);

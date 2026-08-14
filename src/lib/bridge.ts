@@ -3,7 +3,7 @@
 // browser_command frames on a single controlled tab, and mirror the conversation
 // to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, parseFrame, reduceAgui, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isVisibleMessage, parseFrame, reduceAgui, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -17,7 +17,7 @@ let controlledTabId: number | undefined;
 const panels = new Set<chrome.runtime.Port>();
 
 function panelState(): PanelState {
-  return { type: "state", connected, connecting: wantConnected && !connected, messages, pendingApproval };
+  return { type: "state", connected, connecting: wantConnected && !connected, messages: messages.filter(isVisibleMessage), pendingApproval };
 }
 
 function broadcast() {
