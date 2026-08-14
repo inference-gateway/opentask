@@ -110,9 +110,16 @@ type BrowserCommand = {
 
 async function runCommand(cmd: BrowserCommand) {
   const result = { type: "browser_result", id: cmd.id, url: "", title: "", content: "", events: [], error: "" };
+  const DEFAULT_TIMEOUT_MS = 30_000;
+  const MIN_TIMEOUT_MS = 1_000;
+  const MAX_TIMEOUT_MS = 30_000;
+  const rawTimeout = typeof cmd.timeout_ms === "number" && Number.isFinite(cmd.timeout_ms)
+    ? cmd.timeout_ms
+    : DEFAULT_TIMEOUT_MS;
+  const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Math.trunc(rawTimeout)));
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`timeout after ${cmd.timeout_ms ?? 30_000}ms`)), cmd.timeout_ms ?? 30_000);
+    timer = setTimeout(() => reject(new Error(`timeout after ${timeoutMs}ms`)), timeoutMs);
   });
   try {
     result.content = (await Promise.race([exec(cmd), timeout])) ?? "";
