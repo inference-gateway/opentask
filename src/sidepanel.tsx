@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
 import { applyTheme, type Theme } from "./shared/theme";
-import type { Msg, PanelState, PanelUserMessage } from "./shared/agui";
+import type { Msg, PanelApproval, PanelState, PanelUserMessage, PendingApproval } from "./shared/agui";
 import { Button } from "@/ui/components/button";
 import { Textarea } from "@/ui/components/textarea";
 import { Markdown } from "./lib/markdown";
@@ -10,6 +10,7 @@ import { Markdown } from "./lib/markdown";
 function SidePanel() {
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
@@ -31,6 +32,7 @@ function SidePanel() {
         if (msg?.type !== "state") return;
         setConnected(msg.connected);
         setMessages(msg.messages);
+        setPendingApproval(msg.pendingApproval);
       });
       port.onDisconnect.addListener(() => {
         // reconnecting revives a suspended service worker
@@ -54,6 +56,16 @@ function SidePanel() {
     if (!content) return;
     portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage);
     setDraft("");
+  }
+
+  function respondApproval(action: "approve" | "reject") {
+    if (!pendingApproval) return;
+    portRef.current?.postMessage({
+      type: "approval_response",
+      requestId: pendingApproval.requestId,
+      action,
+    } satisfies PanelApproval);
+    setPendingApproval(undefined); // optimistic; the bridge confirms with approval_resolved
   }
 
   return (
@@ -124,6 +136,32 @@ function SidePanel() {
         ))}
         <div ref={endRef} />
       </div>
+
+      {pendingApproval && (
+        <div className="border-t border-amber-500/30 bg-amber-500/5 p-3">
+          <div className="rounded-xl border border-amber-500/40 bg-card p-3 shadow-sm">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="flex size-5 items-center justify-center rounded-md bg-amber-500/15 text-xs">⚠</span>
+              <span className="text-sm font-semibold">
+                Approve <span className="font-mono text-amber-600 dark:text-amber-400">{pendingApproval.toolName}</span>?
+              </span>
+            </div>
+            {pendingApproval.toolArgs && (
+              <pre className="mb-3 max-h-40 overflow-auto rounded-lg bg-muted/70 p-2 font-mono text-[0.8em] leading-relaxed">
+                {pendingApproval.toolArgs}
+              </pre>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1" onClick={() => respondApproval("approve")}>
+                Approve
+              </Button>
+              <Button size="sm" variant="destructive" className="flex-1" onClick={() => respondApproval("reject")}>
+                Deny
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="border-t border-border/60 bg-background/80 p-3 backdrop-blur-sm">
         <div className="flex items-end gap-2 rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20">

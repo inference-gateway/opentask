@@ -3,7 +3,7 @@
 // browser_command frames on a single controlled tab, and mirror the conversation
 // to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { backoffMs, parseFrame, reduceAgui, type Msg, type PanelState } from "../shared/agui";
+import { approvalFromFrame, backoffMs, parseFrame, reduceAgui, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -11,11 +11,12 @@ let ws: WebSocket | undefined;
 let connected = false;
 let attempt = 0;
 let messages: Msg[] = [];
+let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
 const panels = new Set<chrome.runtime.Port>();
 
 function broadcast() {
-  const state: PanelState = { type: "state", connected, messages };
+  const state: PanelState = { type: "state", connected, messages, pendingApproval };
   for (const p of panels) p.postMessage(state);
 }
 
@@ -52,6 +53,7 @@ async function connect() {
     if (ws !== socket) return;
     ws = undefined;
     connected = false;
+    pendingApproval = undefined; // a dead CLI can no longer take the decision
     broadcast();
     scheduleReconnect();
   };
@@ -88,6 +90,20 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       const next = reduceAgui(messages, frame.event);
       if (next !== messages) {
         messages = next;
+        broadcast();
+      }
+      return;
+    }
+    case "approval_request": {
+      const req = approvalFromFrame(frame);
+      if (!req) return;
+      pendingApproval = req;
+      broadcast();
+      return;
+    }
+    case "approval_resolved": {
+      if (pendingApproval && pendingApproval.requestId === frame.request_id) {
+        pendingApproval = undefined;
         broadcast();
       }
       return;
@@ -214,6 +230,11 @@ export function initBridge() {
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         messages = [...messages, { role: "user", content: msg.content }];
         send({ type: "user_message", content: msg.content });
+        broadcast();
+      }
+      if (msg?.type === "approval_response" && typeof msg.requestId === "string") {
+        send({ type: "approval_response", request_id: msg.requestId, action: msg.action });
+        if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined; // optimistic
         broadcast();
       }
     });

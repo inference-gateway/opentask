@@ -42,5 +42,28 @@ export function parseFrame(data: unknown): Record<string, unknown> | undefined {
 }
 
 // SW <-> side-panel Port protocol ("bridge-panel").
-export type PanelState = { type: "state"; connected: boolean; messages: Msg[] };
+export type PendingApproval = { requestId: string; toolName: string; toolArgs: string };
+
+// Parses an approval_request wire frame into a PendingApproval, or undefined
+// when it lacks a usable request id (nothing to answer).
+export function approvalFromFrame(frame: Record<string, unknown>): PendingApproval | undefined {
+  if (typeof frame.request_id !== "string" || frame.request_id === "") return undefined;
+  return {
+    requestId: frame.request_id,
+    toolName: typeof frame.tool_name === "string" ? frame.tool_name : "",
+    toolArgs: typeof frame.tool_args === "string" ? frame.tool_args : "",
+  };
+}
+
+export type PanelState = {
+  type: "state";
+  connected: boolean;
+  messages: Msg[];
+  pendingApproval?: PendingApproval;
+};
 export type PanelUserMessage = { type: "user_message"; content: string };
+export type PanelApproval = {
+  type: "approval_response";
+  requestId: string;
+  action: "approve" | "reject";
+};

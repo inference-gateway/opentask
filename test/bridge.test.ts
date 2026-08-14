@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { backoffMs, parseFrame, reduceAgui, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, parseFrame, reduceAgui, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -63,5 +63,23 @@ describe("parseFrame", () => {
     expect(parseFrame('"str"')).toBeUndefined();
     expect(parseFrame("[1,2]")).toBeUndefined();
     expect(parseFrame("null")).toBeUndefined();
+  });
+});
+
+describe("approvalFromFrame", () => {
+  test("maps a full approval_request frame", () => {
+    expect(
+      approvalFromFrame({ type: "approval_request", request_id: "r1", tool_name: "Bash", tool_args: '{"command":"ls"}' }),
+    ).toEqual({ requestId: "r1", toolName: "Bash", toolArgs: '{"command":"ls"}' });
+  });
+
+  test("defaults missing name/args to empty strings", () => {
+    expect(approvalFromFrame({ request_id: "r2" })).toEqual({ requestId: "r2", toolName: "", toolArgs: "" });
+  });
+
+  test("returns undefined without a usable request id", () => {
+    expect(approvalFromFrame({ tool_name: "Bash" })).toBeUndefined();
+    expect(approvalFromFrame({ request_id: "" })).toBeUndefined();
+    expect(approvalFromFrame({ request_id: 5 })).toBeUndefined();
   });
 });
