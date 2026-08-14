@@ -5,6 +5,7 @@ import { applyTheme, type Theme } from "./shared/theme";
 import type { Msg, PanelApproval, PanelState, PanelUserMessage, PendingApproval } from "./shared/agui";
 import { Button } from "@/ui/components/button";
 import { Textarea } from "@/ui/components/textarea";
+import { toolLabel } from "./shared/agui";
 import { Markdown } from "./lib/markdown";
 
 function SidePanel() {
@@ -124,7 +125,7 @@ function SidePanel() {
               {m.role === "tool" ? (
                 <>
                   <span className="text-indigo-500">⚙</span>
-                  <span className="truncate">{m.content}</span>
+                  <span className="truncate">{toolLabel(m.content, m.args)}</span>
                 </>
               ) : m.role === "assistant" ? (
                 <Markdown text={m.content} />

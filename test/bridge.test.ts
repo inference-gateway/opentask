@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, parseFrame, reduceAgui, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, parseFrame, reduceAgui, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -27,8 +27,15 @@ describe("reduceAgui", () => {
 
   test("tool call start renders a tool row", () => {
     expect(reduceAgui([], { type: "TOOL_CALL_START", toolCallName: "BrowserNavigate" })).toEqual([
-      { role: "tool", content: "BrowserNavigate" },
+      { role: "tool", content: "BrowserNavigate", args: "" },
     ]);
+  });
+
+  test("tool call args accumulate onto the tool row", () => {
+    let m = reduceAgui([], { type: "TOOL_CALL_START", toolCallName: "Write" });
+    m = reduceAgui(m, { type: "TOOL_CALL_ARGS", delta: '{"file_path":' });
+    m = reduceAgui(m, { type: "TOOL_CALL_ARGS", delta: '"dummy.txt"}' });
+    expect(m).toEqual([{ role: "tool", content: "Write", args: '{"file_path":"dummy.txt"}' }]);
   });
 
   test("unknown events leave messages unchanged (same reference)", () => {
@@ -36,6 +43,21 @@ describe("reduceAgui", () => {
     expect(reduceAgui(m, { type: "RUN_STARTED" })).toBe(m);
     expect(reduceAgui(m, null)).toBe(m);
     expect(reduceAgui(m, { delta: "no type" })).toBe(m);
+  });
+});
+
+describe("toolLabel", () => {
+  test("bare name when no args", () => {
+    expect(toolLabel("Write")).toBe("Write");
+    expect(toolLabel("Write", "")).toBe("Write");
+  });
+
+  test("folds parsed args into Name(key=value)", () => {
+    expect(toolLabel("Write", '{"file_path":"dummy.txt"}')).toBe("Write(file_path=dummy.txt)");
+  });
+
+  test("falls back to raw args when not valid JSON", () => {
+    expect(toolLabel("Write", '{"file_path":')).toBe('Write({"file_path":)');
   });
 });
 

@@ -2,10 +2,12 @@
 // inference-gateway/cli docs/browser-extension-protocol.md; unknown frame/event
 // types must be ignored.
 
-export type Msg = { role: string; content: string };
+// `args` accumulates the tool call's TOOL_CALL_ARGS deltas (raw JSON) for the
+// tool role; other roles leave it unset.
+export type Msg = { role: string; content: string; args?: string };
 
-// Folds one AG-UI chat_event into the rendered message list. Only text streaming
-// and tool-call starts are rendered; everything else is a no-op by contract.
+// Folds one AG-UI chat_event into the rendered message list. Text streaming and
+// tool calls (name + args) are rendered; everything else is a no-op by contract.
 export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   const e = event as { type?: unknown; role?: string; delta?: string; toolCallName?: string } | null;
   if (!e || typeof e.type !== "string") return messages;
@@ -18,10 +20,30 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
         return [...messages, { role: "assistant", content: e.delta ?? "" }];
       return [...messages.slice(0, -1), { ...last, content: last.content + (e.delta ?? "") }];
     }
+    case "TOOL_CALL_START":
+      return [...messages, { role: "tool", content: e.toolCallName ?? "tool", args: "" }];
+    case "TOOL_CALL_ARGS": {
+      // START→ARGS→END stream contiguously, so the last message is this tool call.
+      const last = messages[messages.length - 1];
+      if (last?.role !== "tool") return messages;
+      return [...messages.slice(0, -1), { ...last, args: (last.args ?? "") + (e.delta ?? "") }];
+    }
     default:
-      if (e.type.startsWith("TOOL_CALL_START"))
-        return [...messages, { role: "tool", content: e.toolCallName ?? e.type }];
       return messages;
+  }
+}
+
+// toolLabel renders a tool pill as "Name(key=value, …)", falling back to the
+// bare name when there are no args and to the raw args string when they are not
+// valid JSON (e.g. a mid-stream partial). The caller truncates for display.
+export function toolLabel(name: string, args?: string): string {
+  if (!args) return name;
+  try {
+    const o = JSON.parse(args) as Record<string, unknown>;
+    const inner = Object.entries(o).map(([k, v]) => `${k}=${String(v)}`).join(", ");
+    return `${name}(${inner})`;
+  } catch {
+    return `${name}(${args})`;
   }
 }
 
