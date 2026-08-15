@@ -126,7 +126,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
 type BrowserCommand = {
   type: "browser_command";
   id: string;
-  action: "navigate" | "click" | "type" | "read" | string;
+  action: "navigate" | "click" | "type" | "read" | "screenshot" | "tabs" | string;
   url?: string;
   selector?: string;
   text?: string;
@@ -135,7 +135,7 @@ type BrowserCommand = {
 };
 
 async function runCommand(cmd: BrowserCommand) {
-  const result = { type: "browser_result", id: cmd.id, url: "", title: "", content: "", events: [], error: "" };
+  const result: Record<string, unknown> = { type: "browser_result", id: cmd.id, url: "", title: "", content: "", events: [], error: "" };
   const DEFAULT_TIMEOUT_MS = 30_000;
   const timeoutMs = DEFAULT_TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -143,7 +143,7 @@ async function runCommand(cmd: BrowserCommand) {
     timer = setTimeout(() => reject(new Error(`timeout after ${timeoutMs}ms`)), timeoutMs);
   });
   try {
-    result.content = (await Promise.race([exec(cmd), timeout])) ?? "";
+    Object.assign(result, (await Promise.race([exec(cmd), timeout])) ?? {});
     const tab = controlledTabId === undefined ? undefined : await chrome.tabs.get(controlledTabId).catch(() => undefined);
     result.url = tab?.url ?? "";
     result.title = tab?.title ?? "";
@@ -155,8 +155,9 @@ async function runCommand(cmd: BrowserCommand) {
   return result;
 }
 
-// Runs one action and returns the content for "read" (undefined otherwise).
-async function exec(cmd: BrowserCommand): Promise<string | undefined> {
+// Runs one action and returns the result fields to merge (content for "read",
+// image for "screenshot", tabs for "tabs", empty otherwise).
+async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   if (cmd.action === "navigate") {
     if (!cmd.url) throw new Error("navigate requires url");
     const existing = controlledTabId === undefined ? undefined : await chrome.tabs.get(controlledTabId).catch(() => undefined);
@@ -166,7 +167,14 @@ async function exec(cmd: BrowserCommand): Promise<string | undefined> {
     if (tab?.id === undefined) throw new Error("failed to open controlled tab");
     controlledTabId = tab.id;
     await waitForLoad(tab.id);
-    return undefined;
+    return {};
+  }
+
+  if (cmd.action === "tabs") {
+    const tabs = await chrome.tabs.query({});
+    return {
+      tabs: tabs.map((t, i) => ({ index: i, url: t.url ?? "", title: t.title ?? "", active: t.id === controlledTabId })),
+    };
   }
 
   const tabId = controlledTabId;
@@ -180,7 +188,7 @@ async function exec(cmd: BrowserCommand): Promise<string | undefined> {
       if (!el) throw new Error("selector not found: " + s);
       el.click();
     }, [sel]);
-    return undefined;
+    return {};
   }
   if (cmd.action === "type") {
     await run(tabId, (s: string, text: string, enter: boolean) => {
@@ -197,14 +205,30 @@ async function exec(cmd: BrowserCommand): Promise<string | undefined> {
         (el.closest("form") as HTMLFormElement | null)?.requestSubmit?.();
       }
     }, [sel, cmd.text ?? "", cmd.press_enter === true]);
-    return undefined;
+    return {};
   }
   if (cmd.action === "read") {
-    return run(tabId, (s: string) => {
+    const content = await run(tabId, (s: string) => {
       const el = (s ? document.querySelector(s) : document.body) as HTMLElement | null;
       if (!el) throw new Error("selector not found: " + s);
+      const tag = el.tagName.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") {
+        const type = (el.getAttribute("type") || "").toLowerCase();
+        const ac = (el.getAttribute("autocomplete") || "").toLowerCase();
+        const hay = ((el.getAttribute("name") || "") + " " + (el.id || "") + " " + (el.getAttribute("aria-label") || "")).toLowerCase();
+        const sensitive = type === "password" || ac === "current-password" || ac === "new-password" || ac === "one-time-code" || /pass|secret|token|otp|cvc|card/.test(hay);
+        return sensitive ? "[redacted]" : ((el as HTMLInputElement).value || "");
+      }
       return el.innerText;
     }, [sel]);
+    return { content };
+  }
+  if (cmd.action === "screenshot") {
+    await chrome.tabs.update(tabId, { active: true });
+    const tab = await chrome.tabs.get(tabId);
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+    const comma = dataUrl.indexOf(",");
+    return { image: comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl, image_mime_type: "image/png" };
   }
   throw new Error(`unknown action: ${cmd.action}`);
 }

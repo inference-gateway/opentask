@@ -15,7 +15,8 @@
     "https://api.github.com/*",
     "https://rest.runpod.io/*",
     "http://*/*",
-    "https://*/*"
+    "https://*/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
