@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0](https://github.com/inference-gateway/opentask/compare/v1.9.2...v1.10.0) (2026-08-15)
+
+### ✨ Features
+
+* add CLI browser bridge with live conversation sidepanel ([#142](https://github.com/inference-gateway/opentask/issues/142)) ([569068e](https://github.com/inference-gateway/opentask/commit/569068ec1b818b0ae31d8b39880c8cb0ccff3808))
+
+### ♻️ Improvements
+
+* offload language toolchains to infer-action ([a0d97ce](https://github.com/inference-gateway/opentask/commit/a0d97cebf8c59e49421e93851c8e644db3a35015))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer-action to v0.47.0 ([#138](https://github.com/inference-gateway/opentask/issues/138)) ([f5a3fed](https://github.com/inference-gateway/opentask/commit/f5a3fede5c045346f0057c783533508e5c17180b))
+* **deps:** bump infer-action to v0.48.0 ([#139](https://github.com/inference-gateway/opentask/issues/139)) ([9493c99](https://github.com/inference-gateway/opentask/commit/9493c99bfee6f9ebf5362ba887a6698ed7642662))
+* **deps:** bump infer-action to v0.48.1 ([#140](https://github.com/inference-gateway/opentask/issues/140)) ([488c766](https://github.com/inference-gateway/opentask/commit/488c766dfc9756705d8de4c057230adabacb93be))
+* **deps:** update lucide-react requirement from ^1.28.0 to ^1.31.0 in the npm group ([#143](https://github.com/inference-gateway/opentask/issues/143)) ([bfb484a](https://github.com/inference-gateway/opentask/commit/bfb484adf5ae911d89d1c11580bb478b130b7177))
+
 ## [1.9.2](https://github.com/inference-gateway/opentask/compare/v1.9.1...v1.9.2) (2026-08-11)
 
 ### 🔧 Miscellaneous

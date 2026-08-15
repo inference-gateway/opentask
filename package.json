@@ -1,6 +1,6 @@
 {
   "name": "opentask",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "private": true,
   "type": "module",
   "description": "MV3 browser extension: repo-skill tab-completion and quick-prompts in GitHub comments",
