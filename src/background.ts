@@ -5,6 +5,9 @@ import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesCon
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
+import { initBridge } from "./lib/bridge";
+
+initBridge();
 
 const TTL = 10 * 60 * 1000;
 

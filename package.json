@@ -1,5 +1,5 @@
 {
-  "name": "browser-extension",
+  "name": "opentask",
   "version": "1.9.2",
   "private": true,
   "type": "module",

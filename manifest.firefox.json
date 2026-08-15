@@ -1,11 +1,20 @@
 {
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "background.js"
+    ]
   },
   "browser_specific_settings": {
     "gecko": {
       "id": "opentask@inference-gateway.github.io",
       "strict_min_version": "109.0"
     }
-  }
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "scripting",
+    "alarms"
+  ]
 }

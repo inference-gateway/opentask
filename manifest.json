@@ -5,11 +5,17 @@
   "version": "1.9.2",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs",
+    "scripting",
+    "sidePanel",
+    "alarms"
   ],
   "host_permissions": [
     "https://api.github.com/*",
-    "https://rest.runpod.io/*"
+    "https://rest.runpod.io/*",
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -42,5 +48,8 @@
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   }
 }
