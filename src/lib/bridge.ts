@@ -239,7 +239,7 @@ export function initBridge() {
       }
       if (msg?.type === "disconnect") {
         wantConnected = false;
-        ws?.close(); // onclose broadcasts; reconnect is gated off
+        ws?.close();
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         messages = [...messages, { role: "user", content: msg.content }];

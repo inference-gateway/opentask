@@ -26,7 +26,6 @@ test("renders lists and headings", () => {
 
 test("links are safe and only http(s) passes through", () => {
   expect(html("[ok](https://x.com)")).toContain('href="https://x.com"');
-  // javascript: scheme is neutralized
   expect(html("[x](javascript:alert(1))")).toContain('href="#"');
 });
 
