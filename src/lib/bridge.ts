@@ -37,6 +37,7 @@ async function connect() {
     return;
   }
   const port = (await storage.get<string>("bridge-port"))?.trim() || DEFAULT_PORT;
+  if (!wantConnected) return;
 
   ws?.close();
   let socket: WebSocket;
@@ -239,7 +240,12 @@ export function initBridge() {
       }
       if (msg?.type === "disconnect") {
         wantConnected = false;
-        ws?.close();
+        connected = false;
+        pendingApproval = undefined;
+        const sock = ws;
+        ws = undefined;
+        sock?.close();
+        broadcast();
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         messages = [...messages, { role: "user", content: msg.content }];

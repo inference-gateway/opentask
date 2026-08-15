@@ -11,6 +11,7 @@ import type {
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
+import { X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Textarea } from "@/ui/components/textarea";
 import { toolLabel } from "./shared/agui";
@@ -112,6 +113,17 @@ function SidePanel() {
         {connected && (
           <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={disconnect}>
             Disconnect
+          </Button>
+        )}
+        {connecting && (
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            className="text-amber-600 dark:text-amber-400"
+            onClick={disconnect}
+            aria-label="Stop connecting"
+          >
+            <X />
           </Button>
         )}
       </header>
