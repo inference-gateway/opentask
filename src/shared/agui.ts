@@ -33,6 +33,15 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   }
 }
 
+// Run lifecycle → busy flag. The CLI emits one RUN_STARTED then one terminal
+// RUN_FINISHED/RUN_ERROR per turn; everything else leaves the flag as-is.
+export function runningFromEvent(current: boolean, event: unknown): boolean {
+  const t = (event as { type?: unknown } | null)?.type;
+  if (t === "RUN_STARTED") return true;
+  if (t === "RUN_FINISHED" || t === "RUN_ERROR") return false;
+  return current;
+}
+
 // toolLabel renders a tool pill as "Name(key=value, …)", falling back to the
 // bare name when there are no args and to the raw args string when they are not
 // valid JSON (e.g. a mid-stream partial). The caller truncates for display.
@@ -103,6 +112,9 @@ export type PanelState = {
   type: "state";
   connected: boolean;
   connecting: boolean;
+  running: boolean;
+  // http://127.0.0.1:<port> — base for loading CLI-served artifacts (images).
+  artifactBase: string;
   messages: Msg[];
   pendingApproval?: PendingApproval;
 };

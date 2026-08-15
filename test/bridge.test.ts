@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -43,6 +43,20 @@ describe("reduceAgui", () => {
     expect(reduceAgui(m, { type: "RUN_STARTED" })).toBe(m);
     expect(reduceAgui(m, null)).toBe(m);
     expect(reduceAgui(m, { delta: "no type" })).toBe(m);
+  });
+});
+
+describe("runningFromEvent", () => {
+  test("RUN_STARTED starts, RUN_FINISHED/RUN_ERROR end the run", () => {
+    expect(runningFromEvent(false, { type: "RUN_STARTED" })).toBe(true);
+    expect(runningFromEvent(true, { type: "RUN_FINISHED" })).toBe(false);
+    expect(runningFromEvent(true, { type: "RUN_ERROR" })).toBe(false);
+  });
+
+  test("unrelated/malformed events preserve the current flag", () => {
+    expect(runningFromEvent(true, { type: "TEXT_MESSAGE_CONTENT", delta: "x" })).toBe(true);
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START" })).toBe(false);
+    expect(runningFromEvent(true, null)).toBe(true);
   });
 });
 

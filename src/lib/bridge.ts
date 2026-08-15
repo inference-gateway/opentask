@@ -3,13 +3,15 @@
 // browser_command frames on a single controlled tab, and mirror the conversation
 // to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, stripAnsi, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, runningFromEvent, stripAnsi, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
 let ws: WebSocket | undefined;
 let connected = false;
 let wantConnected = false;
+let running = false;
+let httpPort = DEFAULT_PORT;
 let attempt = 0;
 let messages: Msg[] = [];
 let pendingApproval: PendingApproval | undefined;
@@ -27,7 +29,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, messages: clean.filter(isVisibleMessage), pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), pendingApproval: approval };
 }
 
 function broadcast() {
@@ -47,6 +49,7 @@ async function connect() {
     return;
   }
   const port = (await storage.get<string>("bridge-port"))?.trim() || DEFAULT_PORT;
+  httpPort = port;
   if (!wantConnected) return;
 
   ws?.close();
@@ -73,6 +76,7 @@ async function connect() {
     if (ws !== socket) return;
     ws = undefined;
     connected = false;
+    running = false;
     pendingApproval = undefined;
     broadcast();
     scheduleReconnect();
@@ -103,13 +107,16 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       messages = list
         .filter((m) => m && typeof m.role === "string")
         .map((m) => ({ role: m.role, content: typeof m.content === "string" ? m.content : "" }));
+      running = false;
       broadcast();
       return;
     }
     case "chat_event": {
       const next = reduceAgui(messages, frame.event);
-      if (next !== messages) {
+      const nextRunning = runningFromEvent(running, frame.event);
+      if (next !== messages || nextRunning !== running) {
         messages = next;
+        running = nextRunning;
         broadcast();
       }
       return;
@@ -288,6 +295,7 @@ export function initBridge() {
       if (msg?.type === "disconnect") {
         wantConnected = false;
         connected = false;
+        running = false;
         pendingApproval = undefined;
         const sock = ws;
         ws = undefined;
@@ -299,9 +307,11 @@ export function initBridge() {
         send({ type: "user_message", content });
         if (isClearCommand(content)) {
           messages = [];
+          running = false;
           pendingApproval = undefined;
         } else {
           messages = [...messages, { role: "user", content }];
+          running = true;
         }
         broadcast();
       }

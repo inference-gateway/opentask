@@ -12,8 +12,32 @@ const INLINE = [
 ] as const;
 
 const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
+const IMAGE = /!\[([^\]]*)\]\(([^)\s]+)\)/;
+
+// The CLI saves generated images to ~/.infer/artifacts/<...> and only sends the
+// local path. An MV3 extension can't load a file path, so rewrite it onto the
+// bridge's HTTP artifact route; otherwise only http(s)/data:image URLs are allowed.
+let artifactBase = "";
+function resolveImg(url: string): string | undefined {
+  const art = /\/\.infer\/artifacts\/(.+)$/.exec(url);
+  const src = art && artifactBase ? `${artifactBase}/artifacts/${art[1]}` : url;
+  return /^https?:\/\//i.test(src) || /^data:image\//i.test(src) ? src : undefined;
+}
 
 function inline(text: string, keyBase = 0): ReactNode[] {
+  const imgMatch = IMAGE.exec(text);
+  if (imgMatch) {
+    const [full, alt, url] = imgMatch;
+    const start = imgMatch.index;
+    const src = resolveImg(url);
+    return [
+      ...inline(text.slice(0, start), keyBase),
+      src
+        ? <img key={`i${keyBase}`} src={src} alt={alt} loading="lazy" className="max-w-full rounded-lg" />
+        : alt,
+      ...inline(text.slice(start + full.length), keyBase + 1000),
+    ];
+  }
   const linkMatch = LINK.exec(text);
   if (linkMatch) {
     const [full, label, href] = linkMatch;
@@ -38,7 +62,8 @@ function inline(text: string, keyBase = 0): ReactNode[] {
   return text ? [text] : [];
 }
 
-export function Markdown({ text }: { text: string }): ReactNode {
+export function Markdown({ text, artifactBase: base = "" }: { text: string; artifactBase?: string }): ReactNode {
+  artifactBase = base;
   const blocks: ReactNode[] = [];
   const lines = text.split("\n");
   let i = 0;
