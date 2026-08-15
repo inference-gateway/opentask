@@ -171,15 +171,22 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   }
 
   if (cmd.action === "tabs") {
+    const focusedId = await activeTabId();
     const tabs = await chrome.tabs.query({});
     return {
-      tabs: tabs.map((t, i) => ({ index: i, url: t.url ?? "", title: t.title ?? "", active: t.id === controlledTabId })),
+      tabs: tabs.map((t, i) => ({ index: i, url: t.url ?? "", title: t.title ?? "", active: t.id === focusedId })),
     };
   }
 
-  const tabId = controlledTabId;
+  // navigate owns controlledTabId; before any navigate we operate on the tab the
+  // user is actually focused on so read/screenshot/tabs describe the current tab.
+  // ponytail: read/screenshot bind to the live focused tab until navigate takes
+  // control; a tab switch between a read and a follow-up click retargets — fine
+  // for inspection, revisit if click/type sequences need stickiness.
+  let tabId = controlledTabId;
   if (tabId === undefined || !(await chrome.tabs.get(tabId).catch(() => undefined)))
-    throw new Error("no controlled tab; navigate first");
+    tabId = await activeTabId();
+  if (tabId === undefined) throw new Error("no active tab");
 
   const sel = cmd.selector ?? "";
   if (cmd.action === "click") {
@@ -231,6 +238,12 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
     return { image: comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl, image_mime_type: "image/png" };
   }
   throw new Error(`unknown action: ${cmd.action}`);
+}
+
+// The tab the user is actually looking at (last focused window), or undefined.
+async function activeTabId(): Promise<number | undefined> {
+  const [t] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return t?.id;
 }
 
 async function run<A extends unknown[], R>(tabId: number, func: (...args: A) => R, args: A): Promise<R> {
