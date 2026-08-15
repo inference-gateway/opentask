@@ -11,7 +11,7 @@ import type {
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
-import { X } from "lucide-react";
+import { SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Textarea } from "@/ui/components/textarea";
 import { toolLabel } from "./shared/agui";
@@ -70,6 +70,11 @@ function SidePanel() {
     portRef.current?.postMessage({ type: "disconnect" } satisfies PanelDisconnect);
   }
 
+  function newSession() {
+    portRef.current?.postMessage({ type: "user_message", content: "/clear" } satisfies PanelUserMessage);
+    setDraft("");
+  }
+
   function sendMessage() {
     const content = draft.trim();
     if (!content) return;
@@ -110,6 +115,11 @@ function SidePanel() {
           />
           {connected ? "Connected" : connecting ? "Connecting…" : "Offline"}
         </span>
+        {connected && (
+          <Button size="icon-xs" variant="ghost" onClick={newSession} aria-label="New chat">
+            <SquarePen />
+          </Button>
+        )}
         {connected && (
           <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={disconnect}>
             Disconnect

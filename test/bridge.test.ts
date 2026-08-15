@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, isVisibleMessage, parseFrame, reduceAgui, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -83,6 +83,21 @@ describe("backoffMs", () => {
     expect(backoffMs(4)).toBe(16000);
     expect(backoffMs(5)).toBe(30000);
     expect(backoffMs(50)).toBe(30000);
+  });
+});
+
+describe("isClearCommand", () => {
+  test("matches /clear and /cls regardless of case and surrounding space", () => {
+    expect(isClearCommand("/clear")).toBe(true);
+    expect(isClearCommand("  /CLEAR  ")).toBe(true);
+    expect(isClearCommand("/cls")).toBe(true);
+  });
+
+  test("does not match normal messages or lookalikes", () => {
+    expect(isClearCommand("hello")).toBe(false);
+    expect(isClearCommand("/clearcache")).toBe(false);
+    expect(isClearCommand("please /clear")).toBe(false);
+    expect(isClearCommand("")).toBe(false);
   });
 });
 

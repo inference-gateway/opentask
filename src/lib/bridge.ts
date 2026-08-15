@@ -3,7 +3,7 @@
 // browser_command frames on a single controlled tab, and mirror the conversation
 // to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isVisibleMessage, parseFrame, reduceAgui, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -248,8 +248,14 @@ export function initBridge() {
         broadcast();
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
-        messages = [...messages, { role: "user", content: msg.content }];
-        send({ type: "user_message", content: msg.content });
+        const content = msg.content.trim();
+        send({ type: "user_message", content });
+        if (isClearCommand(content)) {
+          messages = [];
+          pendingApproval = undefined;
+        } else {
+          messages = [...messages, { role: "user", content }];
+        }
         broadcast();
       }
       if (msg?.type === "approval_response" && typeof msg.requestId === "string") {

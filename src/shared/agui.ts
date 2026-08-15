@@ -62,6 +62,11 @@ export function backoffMs(attempt: number): number {
   return Math.min(30_000, 1000 * 2 ** attempt);
 }
 
+export function isClearCommand(content: string): boolean {
+  const c = content.trim().toLowerCase();
+  return c === "/clear" || c === "/cls";
+}
+
 // One wire frame per WS text message; garbage is ignored, not thrown.
 export function parseFrame(data: unknown): Record<string, unknown> | undefined {
   if (typeof data !== "string") return undefined;
