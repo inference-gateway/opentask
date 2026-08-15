@@ -57,6 +57,13 @@ export function isVisibleMessage(m: Msg): boolean {
   return true;
 }
 
+// Strips ANSI escape sequences (SGR colors, cursor/clear controls) from CLI text
+// so status/spinner lines render clean. Pattern from the ansi-regex package.
+const ANSI = /[\x1b\x9b][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+export function stripAnsi(text: string): string {
+  return text.replace(ANSI, "");
+}
+
 // Reconnect backoff: 1s, 2s, 4s ... capped at 30s.
 export function backoffMs(attempt: number): number {
   return Math.min(30_000, 1000 * 2 ** attempt);

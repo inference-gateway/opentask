@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -133,5 +133,21 @@ describe("approvalFromFrame", () => {
     expect(approvalFromFrame({ tool_name: "Bash" })).toBeUndefined();
     expect(approvalFromFrame({ request_id: "" })).toBeUndefined();
     expect(approvalFromFrame({ request_id: 5 })).toBeUndefined();
+  });
+});
+
+describe("stripAnsi", () => {
+  test("removes truecolor SGR codes from a status line", () => {
+    expect(stripAnsi("\x1b[1;38;2;158;206;106m✓ \x1b[m Generating snippet with AI...")).toBe(
+      "✓  Generating snippet with AI...",
+    );
+  });
+
+  test("removes non-SGR sequences (clear-line, hide-cursor)", () => {
+    expect(stripAnsi("\x1b[2K\x1b[?25lhi\x1b[?25h")).toBe("hi");
+  });
+
+  test("leaves plain text untouched", () => {
+    expect(stripAnsi("no codes here")).toBe("no codes here");
   });
 });
