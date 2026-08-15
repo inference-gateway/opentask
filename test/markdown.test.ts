@@ -40,6 +40,18 @@ test("renders http(s)/data images, rewrites artifact paths, drops unsafe src", (
   expect(html("![x](/Users/e/.infer/artifacts/u1/i.png)")).not.toContain("<img");
 });
 
+test("auto-embeds a bare artifact image path in inline code", () => {
+  const withBase = html("Saved to: `/Users/e/.infer/artifacts/u1/image-9.png`", "http://127.0.0.1:52789");
+  expect(withBase).toContain("<img");
+  expect(withBase).toContain('src="http://127.0.0.1:52789/artifacts/u1/image-9.png"');
+
+  const noBase = html("Saved to: `/Users/e/.infer/artifacts/u1/image-9.png`");
+  expect(noBase).not.toContain("<img");
+  expect(noBase).toContain("<code");
+
+  expect(html("run `npm run build` now", "http://127.0.0.1:52789")).not.toContain("<img");
+});
+
 test("no raw HTML injection", () => {
   const out = html("<img src=x onerror=alert(1)>");
   expect(out).not.toContain("<img");

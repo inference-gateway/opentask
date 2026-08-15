@@ -33,12 +33,15 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   }
 }
 
-// Run lifecycle → busy flag. The CLI emits one RUN_STARTED then one terminal
-// RUN_FINISHED/RUN_ERROR per turn; everything else leaves the flag as-is.
+// Per-turn busy flag from the AG-UI stream. Over the bridge, RUN_STARTED/
+// RUN_FINISHED bracket the whole connection (not a turn), so they can't drive
+// the loader. Key off turn-level events instead: a tool call means work is
+// running (stays true through a long tool execution that emits nothing), and an
+// assistant message ending winds the turn down — a following tool call re-arms it.
 export function runningFromEvent(current: boolean, event: unknown): boolean {
   const t = (event as { type?: unknown } | null)?.type;
-  if (t === "RUN_STARTED") return true;
-  if (t === "RUN_FINISHED" || t === "RUN_ERROR") return false;
+  if (t === "TOOL_CALL_START") return true;
+  if (t === "TEXT_MESSAGE_END") return false;
   return current;
 }
 

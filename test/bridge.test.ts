@@ -47,15 +47,20 @@ describe("reduceAgui", () => {
 });
 
 describe("runningFromEvent", () => {
-  test("RUN_STARTED starts, RUN_FINISHED/RUN_ERROR end the run", () => {
-    expect(runningFromEvent(false, { type: "RUN_STARTED" })).toBe(true);
-    expect(runningFromEvent(true, { type: "RUN_FINISHED" })).toBe(false);
-    expect(runningFromEvent(true, { type: "RUN_ERROR" })).toBe(false);
+  test("a tool call marks busy, an assistant message ending winds down", () => {
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START" })).toBe(true);
+    expect(runningFromEvent(true, { type: "TEXT_MESSAGE_END" })).toBe(false);
   });
 
-  test("unrelated/malformed events preserve the current flag", () => {
+  test("connection-level RUN events never touch the flag", () => {
+    expect(runningFromEvent(false, { type: "RUN_STARTED" })).toBe(false);
+    expect(runningFromEvent(true, { type: "RUN_FINISHED" })).toBe(true);
+    expect(runningFromEvent(true, { type: "RUN_ERROR" })).toBe(true);
+  });
+
+  test("streaming and malformed events preserve the current flag", () => {
     expect(runningFromEvent(true, { type: "TEXT_MESSAGE_CONTENT", delta: "x" })).toBe(true);
-    expect(runningFromEvent(false, { type: "TOOL_CALL_START" })).toBe(false);
+    expect(runningFromEvent(true, { type: "TOOL_CALL_ARGS", delta: "{" })).toBe(true);
     expect(runningFromEvent(true, null)).toBe(true);
   });
 });

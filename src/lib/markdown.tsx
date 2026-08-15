@@ -4,16 +4,6 @@ import type { ReactNode } from "react";
 // builds React elements, never innerHTML. Swap for `marked`+sanitizer if we ever
 // need tables/nested lists/HTML passthrough.
 
-// Inline: `code`, **bold**, *italic* / _italic_, [text](url). Ordered by precedence.
-const INLINE = [
-  { re: /`([^`]+)`/, render: (m: string, k: number) => <code key={k} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">{m}</code> },
-  { re: /\*\*([^*]+)\*\*/, render: (m: string, k: number) => <strong key={k}>{m}</strong> },
-  { re: /(?:\*([^*]+)\*|_([^_]+)_)/, render: (m: string, k: number) => <em key={k}>{m}</em> },
-] as const;
-
-const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
-const IMAGE = /!\[([^\]]*)\]\(([^)\s]+)\)/;
-
 // The CLI saves generated images to ~/.infer/artifacts/<...> and only sends the
 // local path. An MV3 extension can't load a file path, so rewrite it onto the
 // bridge's HTTP artifact route; otherwise only http(s)/data:image URLs are allowed.
@@ -24,6 +14,34 @@ function resolveImg(url: string): string | undefined {
   return /^https?:\/\//i.test(src) || /^data:image\//i.test(src) ? src : undefined;
 }
 
+function imgEl(src: string, alt: string, key: number | string): ReactNode {
+  return <img key={key} src={src} alt={alt} loading="lazy" className="max-w-full rounded-lg" />;
+}
+
+// A bare artifact image path (what ImageGeneration prints) auto-previews as an
+// image, so the panel shows the result without the model wrapping it in ![](…).
+const ARTIFACT_IMG = /\/\.infer\/artifacts\/.+\.(?:png|jpe?g|gif|webp)$/i;
+function artifactImg(raw: string): string | undefined {
+  const t = raw.trim();
+  return ARTIFACT_IMG.test(t) ? resolveImg(t) : undefined;
+}
+
+// Inline: `code`, **bold**, *italic* / _italic_, [text](url). Ordered by precedence.
+const INLINE = [
+  {
+    re: /`([^`]+)`/,
+    render: (m: string, k: number) => {
+      const src = artifactImg(m);
+      return src ? imgEl(src, m, k) : <code key={k} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">{m}</code>;
+    },
+  },
+  { re: /\*\*([^*]+)\*\*/, render: (m: string, k: number) => <strong key={k}>{m}</strong> },
+  { re: /(?:\*([^*]+)\*|_([^_]+)_)/, render: (m: string, k: number) => <em key={k}>{m}</em> },
+] as const;
+
+const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
+const IMAGE = /!\[([^\]]*)\]\(([^)\s]+)\)/;
+
 function inline(text: string, keyBase = 0): ReactNode[] {
   const imgMatch = IMAGE.exec(text);
   if (imgMatch) {
@@ -32,9 +50,7 @@ function inline(text: string, keyBase = 0): ReactNode[] {
     const src = resolveImg(url);
     return [
       ...inline(text.slice(0, start), keyBase),
-      src
-        ? <img key={`i${keyBase}`} src={src} alt={alt} loading="lazy" className="max-w-full rounded-lg" />
-        : alt,
+      src ? imgEl(src, alt, `i${keyBase}`) : alt,
       ...inline(text.slice(start + full.length), keyBase + 1000),
     ];
   }
