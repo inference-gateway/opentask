@@ -33,6 +33,18 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   }
 }
 
+// Per-turn busy flag from the AG-UI stream. Over the bridge, RUN_STARTED/
+// RUN_FINISHED bracket the whole connection (not a turn), so they can't drive
+// the loader. Key off turn-level events instead: a tool call means work is
+// running (stays true through a long tool execution that emits nothing), and an
+// assistant message ending winds the turn down — a following tool call re-arms it.
+export function runningFromEvent(current: boolean, event: unknown): boolean {
+  const t = (event as { type?: unknown } | null)?.type;
+  if (t === "TOOL_CALL_START") return true;
+  if (t === "TEXT_MESSAGE_END") return false;
+  return current;
+}
+
 // toolLabel renders a tool pill as "Name(key=value, …)", falling back to the
 // bare name when there are no args and to the raw args string when they are not
 // valid JSON (e.g. a mid-stream partial). The caller truncates for display.
@@ -103,6 +115,9 @@ export type PanelState = {
   type: "state";
   connected: boolean;
   connecting: boolean;
+  running: boolean;
+  // http://127.0.0.1:<port> — base for loading CLI-served artifacts (images).
+  artifactBase: string;
   messages: Msg[];
   pendingApproval?: PendingApproval;
 };

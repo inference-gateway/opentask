@@ -20,6 +20,8 @@ import { Markdown } from "./lib/markdown";
 function SidePanel() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [artifactBase, setArtifactBase] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
@@ -43,6 +45,8 @@ function SidePanel() {
         if (msg?.type !== "state") return;
         setConnected(msg.connected);
         setConnecting(msg.connecting);
+        setRunning(msg.running);
+        setArtifactBase(msg.artifactBase);
         setMessages(msg.messages);
         setPendingApproval(msg.pendingApproval);
       });
@@ -177,7 +181,7 @@ function SidePanel() {
                   <span className="truncate">{toolLabel(m.content, m.args)}</span>
                 </>
               ) : m.role === "assistant" ? (
-                <Markdown text={m.content} />
+                <Markdown text={m.content} artifactBase={artifactBase} />
               ) : (
                 m.content
               )}
@@ -210,6 +214,17 @@ function SidePanel() {
               </Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {connected && running && !pendingApproval && (
+        <div className="flex items-center gap-2 border-t border-border/60 bg-background/60 px-4 py-2 text-xs text-muted-foreground">
+          <span className="flex gap-1">
+            <span className="size-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="size-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="size-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+          </span>
+          <span>Working…</span>
         </div>
       )}
 

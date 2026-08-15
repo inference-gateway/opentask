@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -43,6 +43,25 @@ describe("reduceAgui", () => {
     expect(reduceAgui(m, { type: "RUN_STARTED" })).toBe(m);
     expect(reduceAgui(m, null)).toBe(m);
     expect(reduceAgui(m, { delta: "no type" })).toBe(m);
+  });
+});
+
+describe("runningFromEvent", () => {
+  test("a tool call marks busy, an assistant message ending winds down", () => {
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START" })).toBe(true);
+    expect(runningFromEvent(true, { type: "TEXT_MESSAGE_END" })).toBe(false);
+  });
+
+  test("connection-level RUN events never touch the flag", () => {
+    expect(runningFromEvent(false, { type: "RUN_STARTED" })).toBe(false);
+    expect(runningFromEvent(true, { type: "RUN_FINISHED" })).toBe(true);
+    expect(runningFromEvent(true, { type: "RUN_ERROR" })).toBe(true);
+  });
+
+  test("streaming and malformed events preserve the current flag", () => {
+    expect(runningFromEvent(true, { type: "TEXT_MESSAGE_CONTENT", delta: "x" })).toBe(true);
+    expect(runningFromEvent(true, { type: "TOOL_CALL_ARGS", delta: "{" })).toBe(true);
+    expect(runningFromEvent(true, null)).toBe(true);
   });
 });
 
