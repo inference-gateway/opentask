@@ -1,4 +1,4 @@
-<h1 align="center">OpenTask for GitHub</h1>
+<h1 align="center">OpenTask</h1>
 
 <p align="center">
   <!-- License Badge -->
@@ -17,9 +17,11 @@
   </a>
 </p>
 
-A Manifest V3 browser extension that makes the org's **repo skills** and common
-**bot directives** discoverable right inside GitHub's issue/PR comment box. It is
-built Chrome-first but deliberately portable to Edge, Firefox, and Safari.
+A Manifest V3 browser extension for AI coding agents. It makes the org's **repo
+skills** and common **bot directives** discoverable right inside GitHub's issue/PR
+comment box, and pairs with the `infer` CLI to drive **browser-use** automation in
+any tab from a side panel. Built Chrome-first but deliberately portable to Edge,
+Firefox, and Safari.
 
 > **Chrome Web Store listing is under review.** In the meantime, install directly
 > from the [latest release ZIP](https://github.com/inference-gateway/opentask/releases).

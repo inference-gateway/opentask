@@ -89,8 +89,9 @@ function Popup() {
     <div className="w-72 bg-background text-foreground text-sm">
       <div className="p-4">
         <p className="text-muted-foreground leading-relaxed">
-          Open a repository on GitHub and use the <strong className="text-foreground">Tasks</strong> tab
-          in the repo navigation to install the OpenTask Agent.
+          Install the agent from a repository's <strong className="text-foreground">Tasks</strong> tab,
+          or open the <strong className="text-foreground">Conversation</strong> panel to drive any tab
+          with the infer CLI.
         </p>
       </div>
 

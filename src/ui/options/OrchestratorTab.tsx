@@ -70,7 +70,7 @@ export function OrchestratorTab({
           Show a Refine button on issue pages
         </ToggleRow>
         <ToggleRow checked={refine.auto} onChange={(v) => setRefine({ ...refine, auto: v })}>
-          Auto-refine issues you create on GitHub
+          Auto-refine issues you create
         </ToggleRow>
       </Section>
 
