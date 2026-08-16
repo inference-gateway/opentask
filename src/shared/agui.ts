@@ -97,6 +97,26 @@ export function parseFrame(data: unknown): Record<string, unknown> | undefined {
   }
 }
 
+// A stored CLI conversation the panel can resume (protocol v4 `conversations`).
+export type ConversationMeta = { id: string; title: string; updatedAt: string; messageCount: number };
+
+// Parses a `conversations` wire frame into ConversationMeta[], mapping snake_case
+// wire fields and dropping entries without a usable string id.
+export function parseConversations(frame: Record<string, unknown>): ConversationMeta[] {
+  const list = frame.conversations;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((c) => {
+    const o = c as { id?: unknown; title?: unknown; updated_at?: unknown; message_count?: unknown };
+    if (typeof o.id !== "string" || o.id === "") return [];
+    return [{
+      id: o.id,
+      title: typeof o.title === "string" ? o.title : "",
+      updatedAt: typeof o.updated_at === "string" ? o.updated_at : "",
+      messageCount: typeof o.message_count === "number" ? o.message_count : 0,
+    }];
+  });
+}
+
 // SW <-> side-panel Port protocol ("bridge-panel").
 export type PendingApproval = { requestId: string; toolName: string; toolArgs: string };
 
@@ -119,11 +139,15 @@ export type PanelState = {
   // http://127.0.0.1:<port> — base for loading CLI-served artifacts (images).
   artifactBase: string;
   messages: Msg[];
+  conversations: ConversationMeta[];
+  activeConversationId?: string;
   pendingApproval?: PendingApproval;
 };
 export type PanelConnect = { type: "connect" };
 export type PanelDisconnect = { type: "disconnect" };
 export type PanelUserMessage = { type: "user_message"; content: string };
+export type PanelListConversations = { type: "list_conversations" };
+export type PanelResumeConversation = { type: "resume_conversation"; id: string };
 export type PanelApproval = {
   type: "approval_response";
   requestId: string;

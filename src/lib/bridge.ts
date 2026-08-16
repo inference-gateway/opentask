@@ -3,7 +3,7 @@
 // browser_command frames on a single controlled tab, and mirror the conversation
 // to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, runningFromEvent, stripAnsi, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -14,6 +14,8 @@ let running = false;
 let httpPort = DEFAULT_PORT;
 let attempt = 0;
 let messages: Msg[] = [];
+let conversations: ConversationMeta[] = [];
+let activeConversationId: string | undefined;
 let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
 const panels = new Set<chrome.runtime.Port>();
@@ -29,7 +31,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, activeConversationId, pendingApproval: approval };
 }
 
 function broadcast() {
@@ -95,6 +97,12 @@ async function handleFrame(socket: WebSocket, data: unknown) {
     case "browser_hello_ack":
       connected = true;
       attempt = 0;
+      send({ type: "list_conversations" });
+      if (activeConversationId) send({ type: "resume_conversation", id: activeConversationId });
+      broadcast();
+      return;
+    case "conversations":
+      conversations = parseConversations(frame);
       broadcast();
       return;
     case "browser_command": {
@@ -302,6 +310,14 @@ export function initBridge() {
         sock?.close();
         broadcast();
       }
+      if (msg?.type === "list_conversations") {
+        send({ type: "list_conversations" });
+      }
+      if (msg?.type === "resume_conversation" && typeof msg.id === "string") {
+        activeConversationId = msg.id;
+        send({ type: "resume_conversation", id: msg.id });
+        broadcast();
+      }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         const content = msg.content.trim();
         send({ type: "user_message", content });
@@ -309,6 +325,7 @@ export function initBridge() {
           messages = [];
           running = false;
           pendingApproval = undefined;
+          activeConversationId = undefined; // New chat detaches from the resumed conversation.
         } else {
           messages = [...messages, { role: "user", content }];
           running = true;
