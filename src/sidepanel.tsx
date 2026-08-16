@@ -10,6 +10,7 @@ import type {
   PanelDisconnect,
   PanelListConversations,
   PanelResumeConversation,
+  PanelSkill,
   PanelState,
   PanelUserMessage,
   PendingApproval,
@@ -20,6 +21,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/ui/components/textarea";
 import { toolLabel } from "./shared/agui";
 import { Markdown } from "./lib/markdown";
+import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
+import { caretPosition, type CaretPos } from "./lib/caret";
+import { getTrigger } from "./lib/dom";
+import { replaceRange } from "./lib/insert";
+import { SkillMenu } from "@/ui/SkillMenu";
 
 function SidePanel() {
   const [connected, setConnected] = useState(false);
@@ -31,8 +37,11 @@ function SidePanel() {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
+  const [skills, setSkills] = useState<PanelSkill[]>([]);
+  const [menu, setMenu] = useState<{ results: FuzzyResult<PanelSkill>[]; active: number; triggerIndex: number; pos: CaretPos } | null>(null);
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     void (async () => {
@@ -55,6 +64,7 @@ function SidePanel() {
         setArtifactBase(msg.artifactBase);
         setMessages(msg.messages);
         setConversations(msg.conversations);
+        setSkills(msg.skills);
         setActiveConversationId(msg.activeConversationId);
         setPendingApproval(msg.pendingApproval);
       });
@@ -100,6 +110,30 @@ function SidePanel() {
     if (!content) return;
     portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage);
     setDraft("");
+  }
+
+  function updateSkillMenu() {
+    const el = taRef.current;
+    const trig = el ? getTrigger(el, "/") : null;
+    if (!el || !trig) {
+      setMenu(null);
+      return;
+    }
+    setMenu({
+      results: fuzzyFilter(skills, trig.query, (s) => s.name),
+      active: 0,
+      triggerIndex: trig.index,
+      pos: caretPosition(el, trig.index),
+    });
+  }
+
+  function commitSkill(i: number) {
+    const el = taRef.current;
+    const chosen = menu?.results[i];
+    if (el && menu && chosen) {
+      replaceRange(el, menu.triggerIndex, el.selectionStart ?? menu.triggerIndex, `/${chosen.item.name} `);
+    }
+    setMenu(null);
   }
 
   function respondApproval(action: "approve" | "reject") {
@@ -275,12 +309,39 @@ function SidePanel() {
       <div className="border-t border-border/60 bg-background/80 p-3 backdrop-blur-sm">
         <div className="flex items-end gap-2 rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20">
           <Textarea
+            ref={taRef}
             rows={2}
             placeholder="Message the agent…"
             value={draft}
             className="min-h-9 resize-none border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              updateSkillMenu();
+            }}
+            onBlur={() => setMenu(null)}
             onKeyDown={(e) => {
+              if (menu && e.key === "Escape") {
+                e.preventDefault();
+                setMenu(null);
+                return;
+              }
+              if (menu && menu.results.length) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setMenu({ ...menu, active: (menu.active + 1) % menu.results.length });
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setMenu({ ...menu, active: (menu.active - 1 + menu.results.length) % menu.results.length });
+                  return;
+                }
+                if (e.key === "Enter" || e.key === "Tab") {
+                  e.preventDefault();
+                  commitSkill(menu.active);
+                  return;
+                }
+              }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
@@ -297,6 +358,15 @@ function SidePanel() {
             ↑
           </Button>
         </div>
+        {menu && (
+          <SkillMenu
+            results={menu.results}
+            activeIndex={menu.active}
+            pos={menu.pos}
+            onHover={(i) => setMenu({ ...menu, active: i })}
+            onSelect={commitSkill}
+          />
+        )}
       </div>
     </div>
   );

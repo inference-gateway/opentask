@@ -19,12 +19,13 @@ function nearMarkdownToolbar(el: HTMLTextAreaElement): boolean {
   return !!el.closest('.js-previewable-comment-form, [class*="MarkdownEditor"], [class*="CommentBox"]');
 }
 
-// Open the skill menu only at a word boundary: '!' at input start or after
-// whitespace, followed by the (non-space) query typed so far.
-export function getTrigger(box: HTMLTextAreaElement): { index: number; query: string } | null {
+// Open the skill menu only at a word boundary: the trigger char at input start or
+// after whitespace, followed by the (non-space) query typed so far. Defaults to
+// '!' (GitHub comment boxes); the sidepanel passes '/'.
+export function getTrigger(box: HTMLTextAreaElement, trigger = "!"): { index: number; query: string } | null {
   const pos = box.selectionStart ?? 0;
   const before = box.value.slice(0, pos);
-  const m = before.match(/(^|\s)!(\S*)$/);
+  const m = before.match(new RegExp(`(^|\\s)\\${trigger}(\\S*)$`));
   if (!m) return null;
   return { index: m.index! + m[1].length, query: m[2] };
 }

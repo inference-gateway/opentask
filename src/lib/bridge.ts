@@ -3,7 +3,7 @@
 // browser_command frames on a single controlled tab, and mirror the conversation
 // to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelState, type PendingApproval } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -15,6 +15,7 @@ let httpPort = DEFAULT_PORT;
 let attempt = 0;
 let messages: Msg[] = [];
 let conversations: ConversationMeta[] = [];
+let skills: PanelSkill[] = [];
 let activeConversationId: string | undefined;
 let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
@@ -31,7 +32,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, activeConversationId, pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, activeConversationId, pendingApproval: approval };
 }
 
 function broadcast() {
@@ -98,11 +99,16 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       connected = true;
       attempt = 0;
       send({ type: "list_conversations" });
+      send({ type: "list_skills" });
       if (activeConversationId) send({ type: "resume_conversation", id: activeConversationId });
       broadcast();
       return;
     case "conversations":
       conversations = parseConversations(frame);
+      broadcast();
+      return;
+    case "skills":
+      skills = parseSkills(frame);
       broadcast();
       return;
     case "browser_command": {
