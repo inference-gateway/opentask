@@ -3,7 +3,7 @@
   "version": "1.11.0",
   "private": true,
   "type": "module",
-  "description": "MV3 browser extension: repo-skill tab-completion and quick-prompts in GitHub comments",
+  "description": "MV3 browser extension: repo-skill tab-completion, quick-prompts, and browser-use automation for AI coding agents",
   "scripts": {
     "build": "bun run build.ts",
     "test": "bun test",

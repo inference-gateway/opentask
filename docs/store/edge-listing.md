@@ -7,11 +7,11 @@ with no source fork. The same `dist/` ZIP is uploaded to both stores.
 
 ### Short description (132 chars max)
 
-Repo-skill tab-completion and quick-prompts in GitHub issue and pull-request comments.
+Repo-skill tab-completion, quick-prompts, and browser-use automation for AI coding agents.
 
 ### Full description
 
-OpenTask for GitHub adds two productivity tools to GitHub's classic textarea comment composer:
+OpenTask adds two productivity tools to GitHub's classic textarea comment composer:
 
 **Skill tab-completion.** Type `!` in a comment box to open a keyboard-navigable dropdown of the current repository's skills (fetched from `.agents/skills/` via the GitHub Contents API). Filter as you type with fuzzy matching. Press Tab or Enter to insert `/skill-name` at the caret.
 
