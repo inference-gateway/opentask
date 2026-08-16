@@ -14,6 +14,17 @@ This is a Chrome-first Manifest V3 extension built with Bun, TypeScript, and Rea
 
 For manual testing, rebuild, reload the unpacked `dist/` directory in `chrome://extensions`, then exercise an issue or pull-request comment box on GitHub. Run `task check` before submitting changes.
 
+## Manual Verification
+
+To sanity-check a UI change live, `task build`, reload the unpacked `dist/` in `chrome://extensions`, and exercise the surface you touched: the content script on a GitHub issue/PR comment box, or the side panel (`sidepanel.html`, which needs a running `infer` CLI bridge — configure it under Options → Orchestrator → *CLI Bridge*).
+
+To iterate on side-panel layout/styling without standing up the CLI bridge, preview the component in isolation against the real compiled styles and screenshot it:
+
+1. `task build` to regenerate `dist/options.css` (the side panel's stylesheet).
+2. Write a small static `preview.html` that reproduces the component markup with the same Tailwind classes, and `<link>`s the compiled CSS. Copy `dist/options.css` next to the HTML and reference it relatively; add `class="dark"` on `<html>` to preview dark mode.
+3. Serve the folder over HTTP — Chrome blocks `file://` for extension-style pages, so `python3 -m http.server` (or any static server) and open `http://localhost:<port>/preview.html`.
+4. Screenshot in Chrome (a narrow ~400px window matches the panel) to confirm the rendering, then stop the server.
+
 ## Coding Style & Naming Conventions
 
 Use TypeScript/TSX with ES modules, two-space indentation, double quotes, and semicolons, matching existing files. Keep strict types; avoid `any` when a message, view, or storage shape can be expressed explicitly. Use `camelCase` for functions and variables, `PascalCase` for React components and types, and descriptive lowercase filenames for utilities (for example, `src/lib/fuzzy.ts`). Keep browser-privileged API and cross-origin fetch logic in the background worker, not UI components. There is no separate formatter or linter, so preserve the established style and rely on `tsc` for static validation.

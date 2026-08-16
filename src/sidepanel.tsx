@@ -3,16 +3,20 @@ import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
 import { applyTheme, type Theme } from "./shared/theme";
 import type {
+  ConversationMeta,
   Msg,
   PanelApproval,
   PanelConnect,
   PanelDisconnect,
+  PanelListConversations,
+  PanelResumeConversation,
   PanelState,
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
 import { SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
 import { toolLabel } from "./shared/agui";
 import { Markdown } from "./lib/markdown";
@@ -23,6 +27,8 @@ function SidePanel() {
   const [running, setRunning] = useState(false);
   const [artifactBase, setArtifactBase] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [conversations, setConversations] = useState<ConversationMeta[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
@@ -48,6 +54,8 @@ function SidePanel() {
         setRunning(msg.running);
         setArtifactBase(msg.artifactBase);
         setMessages(msg.messages);
+        setConversations(msg.conversations);
+        setActiveConversationId(msg.activeConversationId);
         setPendingApproval(msg.pendingApproval);
       });
       port.onDisconnect.addListener(() => {
@@ -77,6 +85,14 @@ function SidePanel() {
   function newSession() {
     portRef.current?.postMessage({ type: "user_message", content: "/clear" } satisfies PanelUserMessage);
     setDraft("");
+  }
+
+  function refreshConversations() {
+    portRef.current?.postMessage({ type: "list_conversations" } satisfies PanelListConversations);
+  }
+
+  function resumeConversation(id: string) {
+    portRef.current?.postMessage({ type: "resume_conversation", id } satisfies PanelResumeConversation);
   }
 
   function sendMessage() {
@@ -120,11 +136,6 @@ function SidePanel() {
           {connected ? "Connected" : connecting ? "Connecting…" : "Offline"}
         </span>
         {connected && (
-          <Button size="icon-xs" variant="ghost" onClick={newSession} aria-label="New chat">
-            <SquarePen />
-          </Button>
-        )}
-        {connected && (
           <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={disconnect}>
             Disconnect
           </Button>
@@ -141,6 +152,39 @@ function SidePanel() {
           </Button>
         )}
       </header>
+
+      {connected && (
+        <div className="flex items-center gap-2 border-b border-border/60 bg-background/60 px-3 py-2">
+          <Select
+            value={activeConversationId ?? ""}
+            onValueChange={resumeConversation}
+            onOpenChange={(open) => open && refreshConversations()}
+          >
+            <SelectTrigger size="sm" className="h-7 min-w-0 flex-1 text-xs">
+              <SelectValue placeholder="Conversations" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="max-h-[50vh] w-(--radix-select-trigger-width)">
+              {conversations.length === 0 ? (
+                <SelectItem value="__none" disabled>
+                  No conversations yet
+                </SelectItem>
+              ) : (
+                conversations.map((c) => (
+                  <SelectItem key={c.id} value={c.id} className="[&>span:last-child]:w-full">
+                    <span className="min-w-0 flex-1 truncate text-left">{c.title || "Untitled"}</span>
+                    <span className="shrink-0 tabular-nums whitespace-nowrap text-xs text-muted-foreground">
+                      {c.messageCount} msgs
+                    </span>
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <Button size="icon-xs" variant="ghost" onClick={newSession} aria-label="New chat">
+            <SquarePen />
+          </Button>
+        </div>
+      )}
 
       {!connected && (
         <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
@@ -161,7 +205,7 @@ function SidePanel() {
               💬
             </div>
             <p className="text-sm font-medium text-foreground">No conversation yet</p>
-            <p className="max-w-[220px] text-xs">Send a message below to start talking to the agent.</p>
+            <p className="max-w-[220px] text-xs">Pick a conversation above to resume, or send a message to start a new one.</p>
           </div>
         )}
         {messages.map((m, i) => (

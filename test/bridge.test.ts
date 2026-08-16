@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -152,6 +152,28 @@ describe("approvalFromFrame", () => {
     expect(approvalFromFrame({ tool_name: "Bash" })).toBeUndefined();
     expect(approvalFromFrame({ request_id: "" })).toBeUndefined();
     expect(approvalFromFrame({ request_id: 5 })).toBeUndefined();
+  });
+});
+
+describe("parseConversations", () => {
+  test("maps snake_case wire fields to camelCase ConversationMeta", () => {
+    expect(
+      parseConversations({
+        type: "conversations",
+        conversations: [{ id: "a1", title: "Fix login bug", updated_at: "2026-08-16T12:00:00Z", message_count: 12 }],
+      }),
+    ).toEqual([{ id: "a1", title: "Fix login bug", updatedAt: "2026-08-16T12:00:00Z", messageCount: 12 }]);
+  });
+
+  test("drops entries without a usable string id and defaults missing fields", () => {
+    expect(
+      parseConversations({ conversations: [{ title: "no id" }, { id: "" }, { id: 5 }, { id: "ok" }] }),
+    ).toEqual([{ id: "ok", title: "", updatedAt: "", messageCount: 0 }]);
+  });
+
+  test("returns [] for a missing or non-array conversations field", () => {
+    expect(parseConversations({ type: "conversations" })).toEqual([]);
+    expect(parseConversations({ conversations: "nope" })).toEqual([]);
   });
 });
 
