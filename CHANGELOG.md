@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.11.0](https://github.com/inference-gateway/opentask/compare/v1.10.0...v1.11.0) (2026-08-16)
+
+### ✨ Features
+
+* **bridge:** add screenshot and tabs browser commands ([#144](https://github.com/inference-gateway/opentask/issues/144)) ([43589ef](https://github.com/inference-gateway/opentask/commit/43589efc6247d64b1b5c0839232b70787487a301))
+* **sidepanel:** add conversation picker to resume CLI conversations ([#146](https://github.com/inference-gateway/opentask/issues/146)) ([#147](https://github.com/inference-gateway/opentask/issues/147)) ([f1050a4](https://github.com/inference-gateway/opentask/commit/f1050a4b77137083929fe1f7d1e510aacabc5966))
+* **sidepanel:** add working loader and render generated images ([#145](https://github.com/inference-gateway/opentask/issues/145)) ([c3cb4dd](https://github.com/inference-gateway/opentask/commit/c3cb4dd8046a37a154d20192f3918ac8fd99eb9f)), references [inference-gateway/cli#1066](https://github.com/inference-gateway/cli/issues/1066)
+* strip ANSI codes from panel messages ([14585f2](https://github.com/inference-gateway/opentask/commit/14585f2fd0b8087286fe4d4adbc9fb9e9e6996ad))
+* use active tab when no controlled tab ([8c43f63](https://github.com/inference-gateway/opentask/commit/8c43f6359bd726b718a439842e5e27a118f8faf3))
+
+### 🔧 Miscellaneous
+
+* **deps:** update infer to v0.173.0 ([e78c929](https://github.com/inference-gateway/opentask/commit/e78c929ae927211113e0065d176ecd47e8b08e93))
+
 ## [1.10.0](https://github.com/inference-gateway/opentask/compare/v1.9.2...v1.10.0) (2026-08-15)
 
 ### ✨ Features
