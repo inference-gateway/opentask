@@ -24,3 +24,23 @@ test("bare '!' opens with empty query", () => {
 test("closes once a space follows the token", () => {
   expect(getTrigger(box("!go "))).toBeNull();
 });
+
+test("fires on '/' at input start (sidepanel)", () => {
+  expect(getTrigger(box("/tm"), "/")).toEqual({ index: 0, query: "tm" });
+});
+
+test("fires on '/' after whitespace", () => {
+  expect(getTrigger(box("run /dep"), "/")).toEqual({ index: 4, query: "dep" });
+});
+
+test("'/' does not fire mid-word (avoids a path like src/lib)", () => {
+  expect(getTrigger(box("src/lib"), "/")).toBeNull();
+});
+
+test("bare '/' opens with empty query", () => {
+  expect(getTrigger(box("/"), "/")).toEqual({ index: 0, query: "" });
+});
+
+test("'/' closes once a space follows the token", () => {
+  expect(getTrigger(box("/deploy "), "/")).toBeNull();
+});

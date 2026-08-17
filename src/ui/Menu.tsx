@@ -28,7 +28,7 @@ export function Menu({ results, activeIndex, pos, onHover, onSelect }: SkillView
   );
 }
 
-function highlight(text: string, positions: number[]): ReactNode {
+export function highlight(text: string, positions: number[]): ReactNode {
   if (positions.length === 0) return text;
   const hit = new Set(positions);
   return [...text].map((ch, i) => (hit.has(i) ? <b key={i}>{ch}</b> : <span key={i}>{ch}</span>));

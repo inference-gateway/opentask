@@ -117,6 +117,26 @@ export function parseConversations(frame: Record<string, unknown>): Conversation
   });
 }
 
+// A skill the panel offers in the "/" menu (protocol `skills` frame). `scope` is
+// the CLI SkillScope: project | agents | user | plugin | catalog.
+export type PanelSkill = { name: string; description: string; scope: string };
+
+// Parses a `skills` wire frame into PanelSkill[], dropping entries without a
+// usable string name.
+export function parseSkills(frame: Record<string, unknown>): PanelSkill[] {
+  const list = frame.skills;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((s) => {
+    const o = s as { name?: unknown; description?: unknown; scope?: unknown };
+    if (typeof o.name !== "string" || o.name === "") return [];
+    return [{
+      name: o.name,
+      description: typeof o.description === "string" ? o.description : "",
+      scope: typeof o.scope === "string" ? o.scope : "",
+    }];
+  });
+}
+
 // SW <-> side-panel Port protocol ("bridge-panel").
 export type PendingApproval = { requestId: string; toolName: string; toolArgs: string };
 
@@ -140,6 +160,7 @@ export type PanelState = {
   artifactBase: string;
   messages: Msg[];
   conversations: ConversationMeta[];
+  skills: PanelSkill[];
   activeConversationId?: string;
   pendingApproval?: PendingApproval;
 };
