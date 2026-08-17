@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.0](https://github.com/inference-gateway/opentask/compare/v1.11.0...v1.12.0) (2026-08-17)
+
+### ✨ Features
+
+* **sidepanel:** skills dropdown with per-source colors ([#151](https://github.com/inference-gateway/opentask/issues/151)) ([b764b94](https://github.com/inference-gateway/opentask/commit/b764b94045b6a439512eab764cafe32d4e654054))
+
+### 🔧 Miscellaneous
+
+* drop "for GitHub" branding, broaden to browser-use ([#149](https://github.com/inference-gateway/opentask/issues/149)) ([885ec3d](https://github.com/inference-gateway/opentask/commit/885ec3d3fc7f749ec488d24aab20858f9fe8e908))
+
 ## [1.11.0](https://github.com/inference-gateway/opentask/compare/v1.10.0...v1.11.0) (2026-08-16)
 
 ### ✨ Features

@@ -1,6 +1,6 @@
 {
   "name": "opentask",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "private": true,
   "type": "module",
   "description": "MV3 browser extension: repo-skill tab-completion, quick-prompts, and browser-use automation for AI coding agents",
