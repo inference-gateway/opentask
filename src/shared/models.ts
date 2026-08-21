@@ -397,7 +397,7 @@ jobs:
     steps:
 ${appTokenStep}${checkoutStep}${depSteps}
 
-      - uses: inference-gateway/infer-action@v0.48.1
+      - uses: inference-gateway/infer-action@v0.49.2
         with:
           debug: ${debug}${reviewInline ? `\n          review-inline: "true"` : ""}
           github-token: ${githubToken}${botSlugLine}

@@ -40,7 +40,7 @@ test("workflowYaml exposes an agents workflow_dispatch input", () => {
 test("workflowYaml pins the checkout and infer-action refs", () => {
   const yaml = workflowYaml(models, def, noBot);
   expect(yaml).toContain("uses: actions/checkout@v7.0.1");
-  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.48.1");
+  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.49.2");
 });
 
 test("workflowYaml sets the @opentask trigger-phrase", () => {
@@ -322,7 +322,7 @@ test("workflowYaml omits dependency steps and languages when none enabled", () =
   const yaml = yamlWithDeps(setEnabled([]));
   expect(yaml).not.toContain("setup-task");
   expect(yaml).not.toContain("setup-go");
-  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.48.1");
+  expect(yaml).toContain("uses: inference-gateway/infer-action@v0.49.2");
 });
 
 test("workflowYaml passes apt packages to infer-action, omitted when empty", () => {
