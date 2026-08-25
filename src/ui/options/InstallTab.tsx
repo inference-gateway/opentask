@@ -12,8 +12,9 @@ type InstallState =
 
 // One-click (re)install of the OpenTask workflow. Re-install is an idempotent
 // reconcile of the marker-delimited managed section, so clicking twice is safe.
-// `repos` are "owner/name" full names from the CLI's gh auth.
-export function InstallTab({ repos, models }: { repos: string[]; models: string[] }) {
+// `repos` are "owner/name" full names from the CLI's gh auth; connecting is
+// user-initiated from the side panel, so until then we just point at Connect.
+export function InstallTab({ connected, repos, models }: { connected: boolean; repos: string[]; models: string[] }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [model, setModel] = useState(models[0] ?? "");
@@ -42,10 +43,16 @@ export function InstallTab({ repos, models }: { repos: string[]; models: string[
         </>
       }
     >
+      {!connected && (
+        <p className="text-sm text-muted-foreground">
+          Not connected to the infer CLI. Open the OpenTask side panel and click{" "}
+          <strong>Connect</strong> to load your repositories.
+        </p>
+      )}
       <Label htmlFor="igw-install-owner">Owner</Label>
       <Select value={owner || undefined} onValueChange={(o) => { setOwner(o); setRepo(""); }} disabled={!owners.length}>
         <SelectTrigger id="igw-install-owner">
-          <SelectValue placeholder={owners.length ? "Select an owner…" : "Connect the infer CLI to load owners"} />
+          <SelectValue placeholder={connected ? "Select an owner…" : "Connect the infer CLI first"} />
         </SelectTrigger>
         <SelectContent>
           {owners.map((o) => (

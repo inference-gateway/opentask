@@ -394,13 +394,6 @@ export function initBridge() {
     port.postMessage(panelState());
   });
 
-  void storage.get<string>("bridge-token").then((t) => {
-    if (t?.trim()) {
-      wantConnected = true;
-      void connect();
-    }
-  });
-
   chrome.alarms.create("bridge-redial", { periodInMinutes: 1 });
   chrome.alarms.onAlarm.addListener((a) => {
     if (a.name === "bridge-redial" && wantConnected && !connected) void connect();

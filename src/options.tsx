@@ -32,6 +32,7 @@ function Options() {
   const [deps, setDeps] = useState<DependenciesConfig>(DEFAULT_DEPENDENCIES);
   const [theme, setTheme] = useState<Theme>("system");
   const [repos, setRepos] = useState<string[]>([]);
+  const [bridgeConnected, setBridgeConnected] = useState(false);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -71,12 +72,13 @@ function Options() {
   }, []);
 
   // The Install tab's owner + repository dropdowns come from the CLI's gh auth (via
-  // the bridge). Watch the bridge state over the panel port and fetch once connected,
-  // so we never fire gh calls at a disconnected CLI and pick up a late connect.
+  // the bridge). Connecting is user-initiated (the side panel's Connect button); watch
+  // the bridge state over the panel port and fetch repos once it reports connected.
   useEffect(() => {
     let fetched = false;
     const port = chrome.runtime.connect({ name: "bridge-panel" });
     port.onMessage.addListener((state: { connected?: boolean }) => {
+      setBridgeConnected(state?.connected === true);
       if (!state?.connected || fetched) return;
       fetched = true;
       void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
@@ -156,7 +158,7 @@ function Options() {
         </TabsList>
 
         <TabsContent value="install" className="flex flex-col gap-4">
-          <InstallTab repos={repos} models={modelNames} />
+          <InstallTab connected={bridgeConnected} repos={repos} models={modelNames} />
         </TabsContent>
 
         <TabsContent value="orchestrator" className="flex flex-col gap-4">
