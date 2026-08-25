@@ -49,8 +49,6 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
   }, [owner, repo]);
 
   function insertTemplate(raw: string) {
-    // The composer never wants the "@opentask" trigger phrase - the issue path adds it, and the
-    // dispatch path uses direct-prompt. (The comment-box palette keeps it, in content.ts.)
     const text = raw.replace(/^@opentask\b[ \t]*/i, "");
     const ta = taRef.current;
     if (!ta) return setTask((t) => t + text);

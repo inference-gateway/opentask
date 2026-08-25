@@ -8,7 +8,6 @@ import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/age
 import { initBridge, callTool } from "./lib/bridge";
 
 initBridge();
-void chrome.storage.local.remove(["pats", "pat"]); // stored PATs are gone for good - GitHub goes through the CLI bridge
 
 const TTL = 10 * 60 * 1000;
 
@@ -182,8 +181,6 @@ async function ghFetch(owner: string, repo: string, path: string, init?: Request
   if (init?.method && init.method !== "GET") cmd += ` -X ${init.method}`;
   if (typeof init?.body === "string") cmd = `printf %s ${shq(init.body)} | ${cmd} --input -`;
   const r = await callTool("Bash", { command: cmd });
-  // gh api exits non-zero on any non-2xx but still prints headers+body with
-  // --include, so ignore r.success and let callers branch on the status.
   const { status, body } = parseGhHttp(r.output, r.error);
   return { status, ok: status >= 200 && status < 300, json: async () => JSON.parse(body), text: async () => body };
 }
@@ -445,8 +442,6 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
     body: JSON.stringify({ message: `chore: update OpenTask skills (${parts})`, tree: newTree.sha, parents: [baseSha] }),
   }).then((r) => r.json());
 
-  // Fresh, unique branch per apply - a reused branch's PR history can poison GitHub's
-  // PR-create (500s), so never reuse one. See doInstall for the same reasoning.
   const skillsBranch = `${SKILLS_BRANCH}-${Date.now().toString(36)}`;
   const mk = await ghFetch(owner, repo, "git/refs", {
     method: "POST",
@@ -482,7 +477,6 @@ async function createInitialCommit(owner: string, repo: string): Promise<string>
 
 // GitHub's POST /pulls transiently 500s in the moment right after a branch ref is
 // updated + committed (its diff isn't computed yet), so retry a few times on 5xx.
-// ponytail: fixed 3-try / 1.5s backoff; enough for GitHub's post-push replication lag.
 async function openPull(owner: string, repo: string, payload: Record<string, unknown>): Promise<GhResponse> {
   let res!: GhResponse;
   for (let i = 0; i < 3; i++) {
