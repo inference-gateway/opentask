@@ -119,6 +119,9 @@ async function connect() {
 }
 
 function scheduleReconnect() {
+  // A dead CLI would otherwise spam ERR_CONNECTION_REFUSED (Chrome logs every
+  // refused dial): after a few quick retries, leave it to the redial alarm.
+  if (attempt >= 5) return;
   setTimeout(() => { if (wantConnected && !connected) void connect(); }, backoffMs(attempt++));
 }
 
@@ -398,7 +401,7 @@ export function initBridge() {
     }
   });
 
-  chrome.alarms.create("bridge-redial", { periodInMinutes: 0.5 });
+  chrome.alarms.create("bridge-redial", { periodInMinutes: 1 });
   chrome.alarms.onAlarm.addListener((a) => {
     if (a.name === "bridge-redial" && wantConnected && !connected) void connect();
   });
