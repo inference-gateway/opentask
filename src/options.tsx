@@ -70,14 +70,20 @@ function Options() {
     })();
   }, []);
 
-  // The Install tab's owner + repository dropdowns come from the CLI's gh auth (via the bridge).
+  // The Install tab's owner + repository dropdowns come from the CLI's gh auth (via
+  // the bridge). Watch the bridge state over the panel port and fetch once connected,
+  // so we never fire gh calls at a disconnected CLI and pick up a late connect.
   useEffect(() => {
-    let cancelled = false;
-    void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
-      if (cancelled || !r || !Array.isArray(r.repos)) return;
-      setRepos(r.repos);
+    let fetched = false;
+    const port = chrome.runtime.connect({ name: "bridge-panel" });
+    port.onMessage.addListener((state: { connected?: boolean }) => {
+      if (!state?.connected || fetched) return;
+      fetched = true;
+      void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
+        if (r && Array.isArray(r.repos)) setRepos(r.repos);
+      });
     });
-    return () => { cancelled = true; };
+    return () => port.disconnect();
   }, []);
 
   async function save() {
