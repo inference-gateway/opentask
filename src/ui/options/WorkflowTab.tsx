@@ -1,8 +1,10 @@
-import type { PluginOption } from "../../shared/models";
-import { DEFAULT_TIMEOUT } from "../../shared/models";
+import type { BotConfig, PluginOption } from "../../shared/models";
+import { DEFAULT_TIMEOUT, githubAppUrl } from "../../shared/models";
 import { Section, ToggleRow } from "./Section";
+import { Button } from "@/ui/components/button";
 import { Input } from "@/ui/components/input";
 import { Label } from "@/ui/components/label";
+import { Switch } from "@/ui/components/switch";
 
 export function WorkflowTab({
   timeout,
@@ -17,6 +19,8 @@ export function WorkflowTab({
   setVisionModel,
   imageModel,
   setImageModel,
+  bot,
+  setBot,
 }: {
   timeout: number;
   setTimeoutMin: (n: number) => void;
@@ -30,6 +34,8 @@ export function WorkflowTab({
   setVisionModel: (v: string) => void;
   imageModel: string;
   setImageModel: (v: string) => void;
+  bot: BotConfig;
+  setBot: (b: BotConfig) => void;
 }) {
   return (
     <>
@@ -119,6 +125,65 @@ export function WorkflowTab({
             CLI default (<code>openai/gpt-image-2</code>, needs <code>OPENAI_API_KEY</code>).
           </p>
         </div>
+      </Section>
+
+      <Section
+        title="Custom bot"
+        description={
+          <>
+            Run the agent as a GitHub App instead of <code>github-actions[bot]</code>. When enabled,
+            the generated workflow mints a token with <code>actions/create-github-app-token@v3</code>{" "}
+            and checks out + comments as your App, so its comments and commits are attributed to (and
+            verified for) the App. <strong>Re-install the workflow</strong> after changing this.
+          </>
+        }
+      >
+        <div>
+          <Button asChild>
+            <a href={githubAppUrl("", false)} target="_blank" rel="noreferrer">
+              Create GitHub App
+            </a>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="igw-bot-enabled"
+            checked={bot.enabled}
+            onCheckedChange={(v) => setBot({ ...bot, enabled: v })}
+          />
+          <Label htmlFor="igw-bot-enabled">Use a custom bot (GitHub App)</Label>
+        </div>
+        {bot.enabled && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="igw-bot-client-id">App Client ID</Label>
+            <Input
+              id="igw-bot-client-id"
+              placeholder="Iv23li..."
+              autoComplete="off"
+              value={bot.clientId}
+              onChange={(e) => setBot({ ...bot, clientId: e.target.value })}
+            />
+            <p className="text-sm text-muted-foreground">
+              On your App's settings page (<strong>General</strong>) under <strong>Client ID</strong> - it
+              starts with <code>Iv23li…</code>. This is <strong>not</strong> the numeric <em>App ID</em>{" "}
+              (e.g. <code>4394298</code>) shown at the top of the same page. You can also enter the
+              name of a repo secret holding it (e.g. <code>APP_CLIENT_ID</code>) and the workflow
+              will read it from <code>secrets</code>.
+            </p>
+            <Label htmlFor="igw-bot-secret">Private-key secret name</Label>
+            <Input
+              id="igw-bot-secret"
+              placeholder="OPENTASK_APP_PRIVATE_KEY"
+              autoComplete="off"
+              value={bot.privateKeySecret}
+              onChange={(e) => setBot({ ...bot, privateKeySecret: e.target.value })}
+            />
+            <p className="text-sm text-muted-foreground">
+              Add this repo secret with your App's private key. The Client ID is also wrapped in
+              a secrets reference so it can be stored as a repo secret too.
+            </p>
+          </div>
+        )}
       </Section>
 
       <Section

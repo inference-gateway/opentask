@@ -1,6 +1,6 @@
 import * as storage from "./shared/storage";
 import { isValidHf, podRequestBody, githubError, parseGhHttp, type Skill, type SkillsCatalogResponse, type ApplySkillsResponse, type DispatchTaskResponse, type AgentsCatalogResponse, type GpuState } from "./shared/messages";
-import { DEFAULT_MODELS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, workflowYaml, reconcileWorkflow, prBody, normalizeTimeout, resolveAutoDetect } from "./shared/models";
+import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isBotConfig, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, workflowYaml, reconcileWorkflow, prBody, normalizeTimeout, resolveAutoDetect } from "./shared/models";
 import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesConfig } from "./shared/models";
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
@@ -146,9 +146,10 @@ async function fetchPluginSkills(): Promise<Skill[]> {
   });
 }
 
-// Resolves the GitHub App config for a repo owner (owner-specific, else the default).
-async function botFor(owner: string): Promise<BotConfig> {
-  return storage.botFor(owner, await storage.loadBots());
+// The single GitHub App config from the Workflow tab, else DEFAULT_BOT.
+async function loadBot(): Promise<BotConfig> {
+  const stored = await storage.get<unknown>("bot");
+  return isBotConfig(stored) ? stored : DEFAULT_BOT;
 }
 
 // The owners the user's gh auth can act as: the authenticated user plus their orgs.
@@ -221,7 +222,7 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
   const models: ModelOption[] = Array.isArray(storedModels) && storedModels.length && storedModels.every(isModelOption)
     ? (storedModels as ModelOption[])
     : DEFAULT_MODELS;
-  const bot: BotConfig = await botFor(owner);
+  const bot: BotConfig = await loadBot();
   const storedPerms = await storage.get<unknown>("permissions");
   const perms: Permissions = isPermissions(storedPerms) ? storedPerms : DEFAULT_PERMISSIONS;
   const plugins = await loadPlugins();
