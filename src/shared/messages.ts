@@ -77,6 +77,20 @@ export function githubError(status: number, body: string): string {
   return detail ? `GitHub ${status}: ${detail.slice(0, 300)}` : `GitHub ${status}`;
 }
 
+// Parses `gh api --include` output (status line + headers + body) into the HTTP
+// status and body. gh follows redirects and can print one header block per hop,
+// so the LAST status line wins. Throws when no status line is found (gh missing
+// or not authenticated on the CLI host).
+export function parseGhHttp(output: string, toolError?: string): { status: number; body: string } {
+  const matches = [...output.matchAll(/^HTTP\/[\d.]+ (\d{3})[^\n]*$/gm)];
+  const last = matches[matches.length - 1];
+  if (!last) throw new Error(toolError || "gh api returned no response - is gh installed and authenticated on the CLI host?");
+  const rest = output.slice(last.index! + last[0].length);
+  const blank = rest.search(/\r?\n\r?\n/);
+  const body = blank < 0 ? "" : rest.slice(blank).replace(/^\r?\n\r?\n/, "");
+  return { status: Number(last[1]), body };
+}
+
 // RunPod's REST API has no GPU-types list endpoint; the ids below are the enum
 // values it accepts for gpuTypeIds. Enough spread to fit a 7-14B GGUF at Q4.
 // ponytail: static list, revisit if RunPod ships a catalog endpoint.

@@ -1,13 +1,14 @@
 import * as storage from "./shared/storage";
-import { isValidHf, podRequestBody, githubError, type Skill, type SkillsCatalogResponse, type ApplySkillsResponse, type DispatchTaskResponse, type AgentsCatalogResponse, type GpuState } from "./shared/messages";
-import { DEFAULT_MODELS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, workflowYaml, prBody, normalizeTimeout, resolveAutoDetect } from "./shared/models";
+import { isValidHf, podRequestBody, githubError, parseGhHttp, type Skill, type SkillsCatalogResponse, type ApplySkillsResponse, type DispatchTaskResponse, type AgentsCatalogResponse, type GpuState } from "./shared/messages";
+import { DEFAULT_MODELS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, workflowYaml, reconcileWorkflow, prBody, normalizeTimeout, resolveAutoDetect } from "./shared/models";
 import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesConfig } from "./shared/models";
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
-import { initBridge } from "./lib/bridge";
+import { initBridge, callTool } from "./lib/bridge";
 
 initBridge();
+void chrome.storage.local.remove(["pats", "pat"]); // stored PATs are gone for good - GitHub goes through the CLI bridge
 
 const TTL = 10 * 60 * 1000;
 
@@ -66,7 +67,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "list-owners") {
-    listOwners(msg.token)
+    listOwners()
       .then((r) => sendResponse(r))
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
@@ -145,39 +146,24 @@ async function fetchPluginSkills(): Promise<Skill[]> {
   });
 }
 
-// Resolves the token for a repo owner (owner-specific, else the blank-owner default).
-async function patFor(owner: string): Promise<string | undefined> {
-  return storage.tokenFor(owner, await storage.loadTokens());
-}
-
 // Resolves the GitHub App config for a repo owner (owner-specific, else the default).
 async function botFor(owner: string): Promise<BotConfig> {
   return storage.botFor(owner, await storage.loadBots());
 }
 
-// The owners a token can act as: the authenticated user plus their orgs. Powers the
-// options-page account dropdown so owners are picked from GitHub, never hand-typed.
-async function listOwners(token: string): Promise<{ owners: string[]; orgs: string[] } | { error: string }> {
-  if (!token) return { owners: [], orgs: [] };
-  const headers = { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}` };
-  const [user, orgs] = await Promise.all([
-    fetch("https://api.github.com/user", { headers }),
-    fetch("https://api.github.com/user/orgs?per_page=100", { headers }),
-  ]);
-  if (!user.ok) return { error: `GitHub ${user.status}` };
-  const login = (await user.json()).login as string;
-  const orgList = orgs.ok ? ((await orgs.json()) as { login: string }[]).map((o) => o.login) : [];
+// The owners the user's gh auth can act as: the authenticated user plus their orgs.
+// Powers the options-page account dropdown so owners are picked from GitHub, never hand-typed.
+async function listOwners(): Promise<{ owners: string[]; orgs: string[] } | { error: string }> {
+  const user = await callTool("Bash", { command: "gh api user" });
+  if (!user.success) return { error: user.error || user.output || "gh api user failed" };
+  const login = (JSON.parse(user.output) as { login: string }).login;
+  const orgs = await callTool("Bash", { command: "gh api 'user/orgs?per_page=100'" });
+  const orgList = orgs.success ? ((JSON.parse(orgs.output)) as { login: string }[]).map((o) => o.login) : [];
   return { owners: [...new Set([login, ...orgList].filter(Boolean))], orgs: orgList };
 }
 
 async function fetchFromGitHub(owner: string, repo: string): Promise<Skill[]> {
-  const pat = await patFor(owner);
-  const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
-  if (pat) headers.Authorization = `Bearer ${pat}`;
-  const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/contents/.agents/skills`,
-    { headers },
-  );
+  const res = await ghFetch(owner, repo, "contents/.agents/skills");
   if (res.status === 404) return []; // repo has no skills - degrade gracefully
   if (!res.ok) throw await ghFail(res);
   const data = await res.json();
@@ -185,20 +171,28 @@ async function fetchFromGitHub(owner: string, repo: string): Promise<Skill[]> {
   return data.filter((e) => e?.type === "dir").map((e) => ({ name: String(e.name) }));
 }
 
-async function ghFetch(owner: string, repo: string, path: string, init?: RequestInit): Promise<Response> {
-  const pat = await patFor(owner);
-  const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
-  if (pat) headers.Authorization = `Bearer ${pat}`;
-  if (init?.headers) Object.assign(headers, init.headers);
-  const url = path
-    ? `https://api.github.com/repos/${owner}/${repo}/${path}`
-    : `https://api.github.com/repos/${owner}/${repo}`;
-  return fetch(url, { ...init, headers });
+// Response-shaped subset the ~20 call sites actually use; backed by `gh api` on
+// the CLI host instead of a direct fetch, so the extension never holds a credential.
+type GhResponse = { status: number; ok: boolean; json(): Promise<any>; text(): Promise<string> };
+
+// Single-quote for bash: close, escaped quote, reopen.
+const shq = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+
+async function ghFetch(owner: string, repo: string, path: string, init?: RequestInit): Promise<GhResponse> {
+  const api = path ? `repos/${owner}/${repo}/${path}` : `repos/${owner}/${repo}`;
+  let cmd = `gh api ${shq(api)} --include`;
+  if (init?.method && init.method !== "GET") cmd += ` -X ${init.method}`;
+  if (typeof init?.body === "string") cmd = `printf %s ${shq(init.body)} | ${cmd} --input -`;
+  const r = await callTool("Bash", { command: cmd });
+  // gh api exits non-zero on any non-2xx but still prints headers+body with
+  // --include, so ignore r.success and let callers branch on the status.
+  const { status, body } = parseGhHttp(r.output, r.error);
+  return { status, ok: status >= 200 && status < 300, json: async () => JSON.parse(body), text: async () => body };
 }
 
 // The Error to throw for a failed GitHub call: carries GitHub's own explanation
 // ("Invalid tree info") instead of a bare status code. Use as `throw await ghFail(res)`.
-async function ghFail(res: Response): Promise<Error> {
+async function ghFail(res: GhResponse): Promise<Error> {
   return new Error(githubError(res.status, await res.text().catch(() => "")));
 }
 
@@ -213,16 +207,12 @@ async function headShaFor(owner: string, repo: string, branch: string): Promise<
 }
 
 async function checkInstall(owner: string, repo: string): Promise<{ installed: boolean; url?: string } | { error: string }> {
-  const pat = await patFor(owner);
-  if (!pat) return { error: "No PAT configured. Add a fine-grained token with Contents: write, Pull requests: write, and Workflows: write in the extension options." };
-
   const res = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}`);
   if (res.status === 200) {
     const data = await res.json();
     return { installed: true, url: data.html_url };
   }
   if (res.status === 404) return { installed: false };
-  if (res.status === 403) return { error: "PAT lacks the required scopes. The token needs Contents: write, Pull requests: write, and Workflows: write." };
   throw await ghFail(res);
 }
 
@@ -245,42 +235,33 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
   const deps = await loadDependencies();
   const defaultModel = models.some((m) => m.model === model) ? model : models[0].model;
 
-  const pat = await patFor(owner);
-  if (!pat) return { error: "No PAT configured. Add a fine-grained token with Contents: write, Pull requests: write, and Workflows: write in the extension options." };
-
   const repoRes = await ghFetch(owner, repo, "");
-  if (!repoRes.ok) {
-    if (repoRes.status === 403) return { error: "PAT lacks the required scopes. The token needs Contents: write, Pull requests: write, and Workflows: write." };
-    throw await ghFail(repoRes);
-  }
+  if (!repoRes.ok) throw await ghFail(repoRes);
   const defaultBranch = (await repoRes.json()).default_branch;
   const headSha = await headShaFor(owner, repo, defaultBranch);
 
   const resolvedDeps = deps.autoDetect ? resolveAutoDetect(deps, await fetchLanguages(owner, repo)) : deps;
   const yaml = workflowYaml(models, defaultModel, bot, perms, enabledPlugins(plugins), agents, timeout, instructions, resolvedDeps, debug, visionModel, imageModel, reviewInline);
-  const content = btoa(yaml);
 
   const current = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}?ref=${defaultBranch}`);
   const currentData = current.status === 200 ? await current.json() : undefined;
-  if (currentData && atob((currentData.content as string).replace(/\s/g, "")) === yaml) {
+  const existing = currentData ? atob((currentData.content as string).replace(/\s/g, "")) : undefined;
+  const desired = existing ? reconcileWorkflow(existing, yaml) : yaml;
+  if (desired === existing) {
     return { error: "The workflow is already up to date - nothing to install." };
   }
+  const content = btoa(desired);
   const title = currentData ? "ci: sync OpenTask Agent workflow" : "feat: add OpenTask Agent workflow";
 
   const branch = `${BRANCH}-${Date.now().toString(36)}`;
   const branchRes = await ghFetch(owner, repo, "git/refs", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: headSha }),
   });
-  if (!branchRes.ok) {
-    if (branchRes.status === 403) return { error: "PAT lacks the required scopes. The token needs Contents: write, Pull requests: write, and Workflows: write." };
-    throw await ghFail(branchRes);
-  }
+  if (!branchRes.ok) throw await ghFail(branchRes);
 
   const putRes = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message: title,
       content,
@@ -288,15 +269,11 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
       ...(currentData ? { sha: currentData.sha } : {}),
     }),
   });
-  if (!putRes.ok) {
-    if (putRes.status === 403) return { error: "PAT lacks the required scopes. The token needs Contents: write, Pull requests: write, and Workflows: write." };
-    throw await ghFail(putRes);
-  }
+  if (!putRes.ok) throw await ghFail(putRes);
 
   const body = prBody(models, defaultModel, bot, enabledPlugins(plugins), agents);
   const prRes = await openPull(owner, repo, { title, head: branch, base: defaultBranch, body });
   if (prRes.ok) return { prUrl: (await prRes.json()).html_url };
-  if (prRes.status === 403) return { error: "PAT lacks the required scopes. The token needs Pull requests: write." };
   if (prRes.status === 422) {
     const detail = githubError(422, await prRes.text().catch(() => ""));
     return { error: /no commits between/i.test(detail) ? "The workflow is already up to date - nothing to re-install." : detail };
@@ -314,16 +291,11 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
 // the installed workflow fires on issues.opened and the agent picks it up.
 async function createTask(owner: string, repo: string, prompt: string): Promise<{ url: string } | { error: string }> {
   if (!prompt || !prompt.trim()) return { error: "Task is empty." };
-  const pat = await patFor(owner);
-  if (!pat) return { error: "No PAT configured. Add a fine-grained token with Issues: write in the extension options." };
-
   const res = await ghFetch(owner, repo, "issues", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title: taskTitle(prompt), body: taskBody(prompt) }),
   });
-  if (res.status === 403) return { error: "PAT lacks Issues: write. Grant it in the extension options." };
-  if (res.status === 404) return { error: "Repo not found, or the PAT can't access it." };
+  if (res.status === 404) return { error: "Repo not found, or your gh account can't access it." };
   if (!res.ok) throw await ghFail(res);
   const data = await res.json();
   return { url: data.html_url };
@@ -333,9 +305,6 @@ async function createTask(owner: string, repo: string, prompt: string): Promise<
 // which infer-action picks up via its direct-prompt input.
 async function dispatchTask(owner: string, repo: string, model: string, prompt: string, extra?: Record<string, string>): Promise<DispatchTaskResponse> {
   if (!prompt || !prompt.trim()) return { error: "Task is empty." };
-  const pat = await patFor(owner);
-  if (!pat) return { error: "No PAT configured. Add a fine-grained token with Actions: write in the extension options." };
-
   const repoRes = await ghFetch(owner, repo, "");
   if (!repoRes.ok) return ghError(repoRes);
   const base = (await repoRes.json()).default_branch;
@@ -343,14 +312,12 @@ async function dispatchTask(owner: string, repo: string, model: string, prompt: 
   const dispatch = (inputs: Record<string, string>) =>
     ghFetch(owner, repo, `actions/workflows/${WORKFLOW_FILE}/dispatches`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ref: base, inputs }),
     });
   let res = await dispatch({ model, prompt, ...extra });
   if (res.status === 422 && extra) res = await dispatch({ model, prompt });
   if (res.status === 204) return { url: `https://github.com/${owner}/${repo}/actions` };
   if (res.status === 404) return { error: "Workflow not found on the default branch. Merge the OpenTask Agent install PR first." };
-  if (res.status === 403) return { error: "PAT lacks Actions: write. Grant it in the extension options." };
   if (res.status === 422) return { error: "Dispatch rejected - the installed workflow may predate the prompt input. Re-install the OpenTask Agent workflow." };
   throw await ghFail(res);
 }
@@ -426,9 +393,6 @@ async function fetchAgentsCatalog(): Promise<AgentsCatalogResponse> {
 
 async function applySkills(owner: string, repo: string, add: string[], remove: string[]): Promise<ApplySkillsResponse> {
   if (!add.length && !remove.length) return { error: "No changes selected." };
-  const pat = await patFor(owner);
-  if (!pat) return { error: "No PAT configured. Add a fine-grained token with Contents: write and Pull requests: write in the extension options." };
-
   const repoRes = await ghFetch(owner, repo, "");
   if (!repoRes.ok) return ghError(repoRes);
   const base = (await repoRes.json()).default_branch;
@@ -452,7 +416,6 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
         const blob = await ghFetch(src.owner, src.repo, `git/blobs/${f.sha}`).then((r) => r.json());
         const made = await ghFetch(owner, repo, "git/blobs", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content: blob.content, encoding: "base64" }),
         }).then((r) => r.json());
         tree.push({ path: `.agents/skills/${name}/${rel}`, mode: f.mode, type: "blob", sha: made.sha });
@@ -474,14 +437,12 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
 
   const newTree = await ghFetch(owner, repo, "git/trees", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ base_tree: baseTree, tree }),
   }).then((r) => r.json());
 
   const parts = [add.length ? `install ${add.join(", ")}` : "", remove.length ? `remove ${remove.join(", ")}` : ""].filter(Boolean).join("; ");
   const commit = await ghFetch(owner, repo, "git/commits", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message: `chore: update OpenTask skills (${parts})`, tree: newTree.sha, parents: [baseSha] }),
   }).then((r) => r.json());
 
@@ -490,7 +451,6 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
   const skillsBranch = `${SKILLS_BRANCH}-${Date.now().toString(36)}`;
   const mk = await ghFetch(owner, repo, "git/refs", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ref: `refs/heads/${skillsBranch}`, sha: commit.sha }),
   });
   if (!mk.ok) return ghError(mk);
@@ -515,7 +475,6 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
 async function createInitialCommit(owner: string, repo: string): Promise<string> {
   const res = await ghFetch(owner, repo, "contents/README.md", {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message: "chore: initial commit", content: btoa(`# ${repo}\n`) }),
   });
   if (!res.ok) throw await ghFail(res);
@@ -525,12 +484,11 @@ async function createInitialCommit(owner: string, repo: string): Promise<string>
 // GitHub's POST /pulls transiently 500s in the moment right after a branch ref is
 // updated + committed (its diff isn't computed yet), so retry a few times on 5xx.
 // ponytail: fixed 3-try / 1.5s backoff; enough for GitHub's post-push replication lag.
-async function openPull(owner: string, repo: string, payload: Record<string, unknown>): Promise<Response> {
-  let res!: Response;
+async function openPull(owner: string, repo: string, payload: Record<string, unknown>): Promise<GhResponse> {
+  let res!: GhResponse;
   for (let i = 0; i < 3; i++) {
     res = await ghFetch(owner, repo, "pulls", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     if (res.ok || res.status < 500) return res;
@@ -571,9 +529,8 @@ function decodeBase64(b64: string): string {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
-async function ghError(res: Response): Promise<{ error: string }> {
-  if (res.status === 403) return { error: "PAT lacks the required scopes. The token needs Contents: write and Pull requests: write." };
-  if (res.status === 404) return { error: "Repo not found, or the PAT can't access it." };
+async function ghError(res: GhResponse): Promise<{ error: string }> {
+  if (res.status === 404) return { error: "Repo not found, or your gh account can't access it." };
   return { error: githubError(res.status, await res.text().catch(() => "")) };
 }
 

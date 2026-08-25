@@ -22,35 +22,7 @@ export function remove(key: string): Promise<void> {
   return area.remove(key);
 }
 
-// A token keyed by repo owner (org or user). owner === "" is the default/fallback
-// used for any repo without an owner-specific token.
-export type PatEntry = { owner: string; token: string };
-
-// Reads the "pats" list. Migrates the legacy single "pat" string on read: an old
-// install with just "pat" set behaves as one default (blank-owner) entry.
-export async function loadTokens(): Promise<PatEntry[]> {
-  const stored = await get<PatEntry[]>("pats");
-  if (Array.isArray(stored) && stored.length) return stored;
-  const legacy = await get<string>("pat");
-  return legacy ? [{ owner: "", token: legacy }] : [];
-}
-
-// Persists the list, dropping rows with a blank token and clearing the legacy
-// "pat" key so it can't drift out of sync with "pats".
-export async function saveTokens(entries: PatEntry[]): Promise<void> {
-  const clean = entries
-    .map((e) => ({ owner: e.owner.trim(), token: e.token.trim() }))
-    .filter((e) => e.owner && e.token);
-  await set("pats", clean);
-  await remove("pat");
-}
-
-// Selects the token for an owner by exact match.
-export function tokenFor(owner: string, entries: PatEntry[]): string | undefined {
-  return entries.find((e) => e.owner === owner)?.token;
-}
-
-// A GitHub App identity keyed by repo owner, mirroring PatEntry. owner === "" is the
+// A GitHub App identity keyed by repo owner. owner === "" is the
 // default/fallback. A GitHub App is owned by one account/org, so this must be per-owner.
 export type BotEntry = { owner: string } & BotConfig;
 

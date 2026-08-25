@@ -2,7 +2,6 @@ import type { DependenciesConfig } from "../../shared/models";
 import { DEPENDENCY_DEFS } from "../../shared/models";
 import { Section, ToggleRow } from "./Section";
 import { Input } from "@/ui/components/input";
-import { Textarea } from "@/ui/components/textarea";
 
 export function DependenciesTab({
   deps,
@@ -69,25 +68,6 @@ export function DependenciesTab({
           placeholder="libxml2-dev libpq-dev"
           value={deps.apt}
           onChange={(e) => setDeps({ ...deps, apt: e.target.value })}
-        />
-      </Section>
-
-      <Section
-        title="Custom steps"
-        description={
-          <>
-            Raw YAML steps to inject between checkout and infer-action, after the toggled deps
-            above. Paste complete <code>- uses:</code>/<code>- run:</code> blocks at the
-            workflow indentation (6 spaces). Leave empty to omit.{" "}
-            <strong>Re-install the workflow</strong> after changing these.
-          </>
-        }
-      >
-        <Textarea
-          className="min-h-[120px] font-mono text-xs"
-          placeholder={`- uses: docker/setup-buildx-action@v3\n  with:\n    version: latest`}
-          value={deps.customSteps}
-          onChange={(e) => setDeps({ ...deps, customSteps: e.target.value })}
         />
       </Section>
     </>

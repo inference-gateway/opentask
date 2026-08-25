@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PROVIDERS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEPENDENCY_DEFS, isModelOption, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl, prBody, workflowYaml, resolveAutoDetect, type DependenciesConfig } from "../src/shared/models";
+import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PROVIDERS, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEPENDENCY_DEFS, isModelOption, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl, prBody, workflowYaml, resolveAutoDetect, reconcileWorkflow, MANAGED_BEGIN, MANAGED_END, type DependenciesConfig } from "../src/shared/models";
 
 const models = DEFAULT_MODELS;
 const def = "anthropic/claude-sonnet-4-6";
@@ -292,7 +292,6 @@ const yamlWithDeps = (deps: DependenciesConfig) =>
 
 const setEnabled = (ids: string[], autoDetect = false): DependenciesConfig => ({
   autoDetect,
-  customSteps: "",
   apt: "",
   items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: ids.includes(d.id) })),
 });
@@ -331,12 +330,30 @@ test("workflowYaml passes apt packages to infer-action, omitted when empty", () 
   expect(yamlWithDeps(setEnabled(["task"]))).not.toContain("apt:");
 });
 
-test("customSteps land after the toggled deps, before infer-action", () => {
-  const custom = "      - run: echo hi";
-  const yaml = yamlWithDeps({ ...setEnabled(["task"]), customSteps: custom });
-  expect(yaml).toContain(custom);
-  expect(yaml.indexOf("setup-task")).toBeLessThan(yaml.indexOf(custom));
-  expect(yaml.indexOf(custom)).toBeLessThan(yaml.indexOf("infer-action"));
+test("workflowYaml wraps the whole document in the managed-section markers", () => {
+  const yaml = workflowYaml(models, def, noBot);
+  expect(yaml.startsWith(MANAGED_BEGIN + "\n")).toBe(true);
+  expect(yaml.endsWith(MANAGED_END + "\n")).toBe(true);
+});
+
+test("reconcileWorkflow returns the generated file verbatim when markers are absent", () => {
+  expect(reconcileWorkflow("name: Legacy\non: push\n", "GEN")).toBe("GEN");
+  expect(reconcileWorkflow(`${MANAGED_END}\n${MANAGED_BEGIN}\n`, "GEN")).toBe("GEN");
+});
+
+test("reconcileWorkflow preserves user content outside the managed section", () => {
+  const existing = `# my comment\n${MANAGED_BEGIN}\nold managed\n${MANAGED_END}\n# my extra job\n`;
+  const generated = `${MANAGED_BEGIN}\nnew managed\n${MANAGED_END}\n`;
+  expect(reconcileWorkflow(existing, generated)).toBe(
+    `# my comment\n${MANAGED_BEGIN}\nnew managed\n${MANAGED_END}\n# my extra job\n`,
+  );
+});
+
+test("reconcileWorkflow is idempotent: same generated section -> unchanged file", () => {
+  const generated = workflowYaml(models, def, noBot);
+  expect(reconcileWorkflow(generated, generated)).toBe(generated);
+  const withUserEdits = `# above\n${generated}# below\n`;
+  expect(reconcileWorkflow(withUserEdits, generated)).toBe(withUserEdits);
 });
 
 test("resolveAutoDetect maps repo languages onto the language toggles, keeps task", () => {
@@ -373,10 +390,9 @@ test("Rust allow regexes match cargo miri, cargo clippy, cargo, and rustup compo
 
 test("isDependenciesConfig accepts a valid config and rejects bad shapes", () => {
   expect(isDependenciesConfig(DEFAULT_DEPENDENCIES)).toBe(true);
-  expect(isDependenciesConfig({ autoDetect: true, customSteps: "", items: [] })).toBe(true);
-  expect(isDependenciesConfig({ autoDetect: true, customSteps: "", apt: 7, items: [] })).toBe(false);
-  expect(isDependenciesConfig({ autoDetect: "yes", customSteps: "", items: [] })).toBe(false);
-  expect(isDependenciesConfig({ autoDetect: true, customSteps: 7 as unknown as string, items: [] })).toBe(false);
+  expect(isDependenciesConfig({ autoDetect: true, items: [] })).toBe(true);
+  expect(isDependenciesConfig({ autoDetect: true, apt: 7, items: [] })).toBe(false);
+  expect(isDependenciesConfig({ autoDetect: "yes", items: [] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true, items: [{ id: "go" }] })).toBe(false);
   expect(isDependenciesConfig({ autoDetect: true })).toBe(false);
   expect(isDependenciesConfig(null)).toBe(false);

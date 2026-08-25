@@ -7,10 +7,7 @@ import { ask } from "./ask";
 
 type State =
   | { kind: "checking" }
-  | { kind: "ready"; installed: boolean; fileUrl?: string; error?: string }
-  | { kind: "installing" }
-  | { kind: "success"; prUrl: string; manual?: boolean }
-  | { kind: "error"; message: string };
+  | { kind: "ready"; installed: boolean; fileUrl?: string; error?: string };
 
 type SendState =
   | { kind: "idle" }
@@ -51,15 +48,6 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
     });
   }, [owner, repo]);
 
-  function doInstall() {
-    setState({ kind: "installing" });
-    ask({ type: "install", owner, repo, model }, (resp) => {
-      if (chrome.runtime?.lastError || !resp) return setState({ kind: "error", message: "Failed to send install request." });
-      if (resp.error) return setState({ kind: "error", message: resp.error });
-      setState({ kind: "success", prUrl: resp.prUrl as string, manual: resp.manual as boolean | undefined });
-    });
-  }
-
   function insertTemplate(raw: string) {
     // The composer never wants the "@opentask" trigger phrase - the issue path adds it, and the
     // dispatch path uses direct-prompt. (The comment-box palette keeps it, in content.ts.)
@@ -94,9 +82,6 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
   return (
     <div className="igw-tasks-panel">
       <div className="igw-tasks-header">
-        {state.kind === "ready" && !state.error && state.installed && (
-          <button className="igw-tasks-btn-secondary" onClick={doInstall}>Re-install workflow</button>
-        )}
         <button className="igw-tasks-close" onClick={onClose} aria-label="Close">×</button>
       </div>
       <div className="igw-tasks-body">
@@ -169,38 +154,11 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
         )}
 
         {state.kind === "ready" && !state.error && !state.installed && (
-          <>
-            <label className="igw-tasks-label" htmlFor="igw-tasks-model">Model</label>
-            <select
-              id="igw-tasks-model"
-              className="igw-tasks-select"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            >
-              {models.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
-            </select>
-            <button className="igw-tasks-btn" onClick={doInstall}>Install OpenTask</button>
-          </>
+          <p className="igw-tasks-muted">
+            The OpenTask workflow is not installed here. Install it from the extension's
+            Options → Install tab.
+          </p>
         )}
-
-        {state.kind === "installing" && <p className="igw-tasks-muted">Creating pull request…</p>}
-
-        {state.kind === "success" && !state.manual && (
-          <>
-            <p className="igw-tasks-success">Pull request created!</p>
-            <a className="igw-tasks-link" href={state.prUrl} target="_blank" rel="noopener noreferrer">View PR</a>
-          </>
-        )}
-
-        {state.kind === "success" && state.manual && (
-          <>
-            <p className="igw-tasks-success">Branch pushed ✓</p>
-            <p className="igw-tasks-muted">GitHub's PR API is erroring right now - open the pull request in one click:</p>
-            <a className="igw-tasks-link" href={state.prUrl} target="_blank" rel="noopener noreferrer">Open pull request →</a>
-          </>
-        )}
-
-        {state.kind === "error" && <p className="igw-tasks-error">{state.message}</p>}
       </div>
     </div>
   );

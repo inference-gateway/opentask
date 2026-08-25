@@ -133,11 +133,10 @@ export const enabledPlugins = (plugins: PluginOption[]): string[] =>
 // toggles and instead resolves the list at install time from the repo's GitHub
 // languages API. `apt` is a space-separated package list for infer-action's `apt:`
 // input. Stored under "dependencies", reusing PluginOption's {id, enabled} shape.
-export type DependenciesConfig = { autoDetect: boolean; items: PluginOption[]; customSteps: string; apt: string };
+export type DependenciesConfig = { autoDetect: boolean; items: PluginOption[]; apt: string };
 
 export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
   autoDetect: false,
-  customSteps: "",
   apt: "",
   items: [
     { id: "task", enabled: true },
@@ -169,7 +168,6 @@ export function isDependenciesConfig(x: unknown): x is DependenciesConfig {
     !!x &&
     typeof x === "object" &&
     typeof (x as Record<string, unknown>).autoDetect === "boolean" &&
-    typeof (x as Record<string, unknown>).customSteps === "string" &&
     ["string", "undefined"].includes(typeof (x as Record<string, unknown>).apt) &&
     Array.isArray((x as Record<string, unknown>).items) &&
     ((x as { items: unknown[] }).items).every(isPluginOption)
@@ -201,12 +199,11 @@ export function resolveAutoDetect(deps: DependenciesConfig, repoLanguages: strin
 }
 
 // The setup-step YAML block to insert between checkout and infer-action: only deps
-// with a rendered `step` (task), plus any raw custom steps.
+// with a rendered `step` (task). Users add their own steps outside the managed
+// opentask:begin/end section of the workflow file.
 export function dependencySteps(deps: DependenciesConfig): string {
   const on = new Set(deps.items.filter((d) => d.enabled).map((d) => d.id));
-  const steps = DEPENDENCY_DEFS.flatMap((def) => (def.step && on.has(def.id) ? [def.step] : []));
-  if (deps.customSteps) steps.push(deps.customSteps);
-  return steps.join("\n\n");
+  return DEPENDENCY_DEFS.flatMap((def) => (def.step && on.has(def.id) ? [def.step] : [])).join("\n\n");
 }
 
 // The `languages:` input value for infer-action: enabled language runtimes, space-separated.
@@ -341,7 +338,8 @@ export function workflowYaml(models: ModelOption[], defaultModel: string, bot: B
   const githubToken = bot.enabled ? "${{ steps.app-token.outputs.token }}" : "${{ secrets.GITHUB_TOKEN }}";
   const botSlugLine = bot.enabled ? "\n          github-app-slug: ${{ steps.app-token.outputs.app-slug }}" : "";
 
-  return `name: Task
+  return `${MANAGED_BEGIN}
+name: Task
 
 on:
   workflow_dispatch:
@@ -407,7 +405,24 @@ ${appTokenStep}${checkoutStep}${depSteps}
           system-prompt-direct: \${{ inputs.system_prompt }}${langLines}
 ${permLines}${pluginLines}${agentLines}
 ${keyLines}
+${MANAGED_END}
 `;
+}
+
+// Managed-section markers wrapping the generated workflow. Re-install replaces only
+// the text between them; anything the user adds above/below survives.
+export const MANAGED_BEGIN = "# opentask:begin (managed by the OpenTask extension - edits inside are overwritten)";
+export const MANAGED_END = "# opentask:end";
+
+// Splices `generated` (which carries its own markers) over the marker-delimited
+// section of `existing`. No/invalid markers -> full overwrite. Idempotent:
+// reconcileWorkflow(x, gen) === x when x was produced from the same gen.
+export function reconcileWorkflow(existing: string, generated: string): string {
+  const begin = existing.indexOf(MANAGED_BEGIN);
+  const endMark = existing.indexOf(MANAGED_END);
+  if (begin < 0 || endMark < begin) return generated;
+  const end = endMark + MANAGED_END.length;
+  return existing.slice(0, begin) + generated.replace(/\n$/, "") + existing.slice(end);
 }
 
 export function prBody(models: ModelOption[], defaultModel: string, bot: BotConfig, plugins: string[] = enabledPlugins(DEFAULT_PLUGINS), agents: string[] = []): string {

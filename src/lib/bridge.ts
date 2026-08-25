@@ -44,6 +44,36 @@ function send(frame: Record<string, unknown>) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
 }
 
+export const CLI_DOWN = "Connect the infer CLI to use GitHub features (Options -> Orchestrator -> CLI Bridge).";
+
+export type ToolResult = { success: boolean; output: string; error: string };
+
+const pendingTools = new Map<string, { resolve: (r: ToolResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+
+// Invoke a CLI tool over the bridge (tool_request/tool_result frames). The CLI
+// runs it through its normal tool pipeline, so an approval prompt may sit in
+// front of the result — hence the generous default timeout.
+export function callTool(toolName: string, args: object, timeoutMs = 120_000): Promise<ToolResult> {
+  if (!connected) return Promise.reject(new Error(CLI_DOWN));
+  const id = crypto.randomUUID();
+  send({ type: "tool_request", id, tool_name: toolName, tool_args: JSON.stringify(args) });
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pendingTools.delete(id);
+      reject(new Error("infer CLI tool call timed out"));
+    }, timeoutMs);
+    pendingTools.set(id, { resolve, reject, timer });
+  });
+}
+
+function failPendingTools() {
+  for (const p of pendingTools.values()) {
+    clearTimeout(p.timer);
+    p.reject(new Error(CLI_DOWN));
+  }
+  pendingTools.clear();
+}
+
 async function connect() {
   const token = (await storage.get<string>("bridge-token"))?.trim();
   if (!token) {
@@ -81,6 +111,7 @@ async function connect() {
     connected = false;
     running = false;
     pendingApproval = undefined;
+    failPendingTools();
     broadcast();
     scheduleReconnect();
   };
@@ -140,6 +171,18 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       if (!req) return;
       pendingApproval = req;
       broadcast();
+      return;
+    }
+    case "tool_result": {
+      const pending = typeof frame.id === "string" ? pendingTools.get(frame.id) : undefined;
+      if (!pending) return;
+      pendingTools.delete(frame.id as string);
+      clearTimeout(pending.timer);
+      pending.resolve({
+        success: frame.success === true,
+        output: typeof frame.output === "string" ? frame.output : "",
+        error: typeof frame.error === "string" ? frame.error : "",
+      });
       return;
     }
     case "approval_resolved": {
@@ -314,6 +357,7 @@ export function initBridge() {
         const sock = ws;
         ws = undefined;
         sock?.close();
+        failPendingTools();
         broadcast();
       }
       if (msg?.type === "list_conversations") {
@@ -331,7 +375,7 @@ export function initBridge() {
           messages = [];
           running = false;
           pendingApproval = undefined;
-          activeConversationId = undefined; // New chat detaches from the resumed conversation.
+          activeConversationId = undefined;
         } else {
           messages = [...messages, { role: "user", content }];
           running = true;
@@ -345,6 +389,13 @@ export function initBridge() {
       }
     });
     port.postMessage(panelState());
+  });
+
+  void storage.get<string>("bridge-token").then((t) => {
+    if (t?.trim()) {
+      wantConnected = true;
+      void connect();
+    }
   });
 
   chrome.alarms.create("bridge-redial", { periodInMinutes: 0.5 });

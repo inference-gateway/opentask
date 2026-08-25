@@ -1,7 +1,7 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
-import type { PatEntry, BotEntry } from "./shared/storage";
+import type { BotEntry } from "./shared/storage";
 import { DEFAULT_PROMPTS, mergePrompts, type Prompt } from "./shared/prompts";
 import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_REFINE, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, normalizeTimeout, isModelOption, isPermissions, isRefineConfig, isPluginOption, isInitConfig, isDependenciesConfig, githubAppUrl, type BotConfig, type Permissions, type RefineConfig, type PluginOption, type InitConfig, type DependenciesConfig } from "./shared/models";
 import { DEFAULT_REFINE_PROMPT } from "./shared/task";
@@ -10,6 +10,7 @@ import type { Account } from "./ui/options/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/components/tabs";
 import { Button } from "@/ui/components/button";
 import { AccountsTab } from "./ui/options/AccountsTab";
+import { InstallTab } from "./ui/options/InstallTab";
 import { OrchestratorTab } from "./ui/options/OrchestratorTab";
 import { AgentsTab } from "./ui/options/AgentsTab";
 import { ModelsTab } from "./ui/options/ModelsTab";
@@ -18,22 +19,16 @@ import { WorkflowTab } from "./ui/options/WorkflowTab";
 import { DependenciesTab } from "./ui/options/DependenciesTab";
 import { AppearanceTab } from "./ui/options/AppearanceTab";
 
-// Merges the two owner-keyed lists into accounts. Empty -> one blank starter row.
-function mergeAccounts(toks: PatEntry[], bots: BotEntry[]): Account[] {
-  const owners = [...new Set([...toks.map((t) => t.owner), ...bots.map((b) => b.owner)])].filter(Boolean);
-  const accounts = owners.map((owner) => {
-    const be = bots.find((b) => b.owner === owner);
-    return {
-      owner,
-      token: toks.find((t) => t.owner === owner)?.token ?? "",
-      bot: be ? { enabled: be.enabled, clientId: be.clientId, privateKeySecret: be.privateKeySecret } : DEFAULT_BOT,
-    };
-  });
-  return accounts.length ? accounts : [{ owner: "", token: "", bot: DEFAULT_BOT }];
+// Owner-keyed bot list -> editable accounts. Empty -> one blank starter row.
+function mergeAccounts(bots: BotEntry[]): Account[] {
+  const accounts = bots
+    .filter((b) => b.owner)
+    .map((b) => ({ owner: b.owner, bot: { enabled: b.enabled, clientId: b.clientId, privateKeySecret: b.privateKeySecret } }));
+  return accounts.length ? accounts : [{ owner: "", bot: DEFAULT_BOT }];
 }
 
 function Options() {
-  const [accounts, setAccounts] = useState<Account[]>([{ owner: "", token: "", bot: DEFAULT_BOT }]);
+  const [accounts, setAccounts] = useState<Account[]>([{ owner: "", bot: DEFAULT_BOT }]);
   const [selected, setSelected] = useState(0);
   const [promptsText, setPromptsText] = useState("");
   const [modelsText, setModelsText] = useState("");
@@ -50,16 +45,14 @@ function Options() {
   const [imageModel, setImageModel] = useState("");
   const [deps, setDeps] = useState<DependenciesConfig>(DEFAULT_DEPENDENCIES);
   const [theme, setTheme] = useState<Theme>("system");
-  const [showToken, setShowToken] = useState(false);
   const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
   const [orgOwners, setOrgOwners] = useState<string[]>([]);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     void (async () => {
-      const toks = await storage.loadTokens();
       const bots = await storage.loadBots();
-      setAccounts(mergeAccounts(toks, bots));
+      setAccounts(mergeAccounts(bots));
       const p = mergePrompts(await storage.get<Prompt[]>("prompts"));
       setPromptsText(JSON.stringify(p, null, 2));
       const m = (await storage.get<unknown[]>("models")) ?? DEFAULT_MODELS;
@@ -84,7 +77,6 @@ function Options() {
       const dpc = isDependenciesConfig(dp) ? dp : DEFAULT_DEPENDENCIES;
       setDeps({
         autoDetect: dpc.autoDetect,
-        customSteps: dpc.customSteps ?? "",
         apt: dpc.apt ?? "",
         items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: dpc.items.find((s) => s.id === d.id)?.enabled ?? d.enabled })),
       });
@@ -95,17 +87,15 @@ function Options() {
     })();
   }, []);
 
-  const activeToken = (accounts[selected] ?? accounts[0]).token.trim();
   useEffect(() => {
-    if (!activeToken) { setOwnerOptions([]); setOrgOwners([]); return; }
     let cancelled = false;
-    void chrome.runtime.sendMessage({ type: "list-owners", token: activeToken }).then((r) => {
+    void chrome.runtime.sendMessage({ type: "list-owners" }).then((r) => {
       if (cancelled || !r || !Array.isArray(r.owners)) return;
       setOwnerOptions(r.owners);
       setOrgOwners(Array.isArray(r.orgs) ? r.orgs : []);
     });
     return () => { cancelled = true; };
-  }, [activeToken]);
+  }, []);
 
   async function save() {
     let parsed: unknown;
@@ -129,7 +119,6 @@ function Options() {
     if (accounts.some((a) => a.bot.enabled && (!a.bot.clientId.trim() || !a.bot.privateKeySecret.trim()))) {
       return setStatus("Custom Bot needs a Client ID and a private-key secret name.");
     }
-    await storage.saveTokens(accounts.map((a) => ({ owner: a.owner, token: a.token })));
     await storage.saveBots(accounts.map((a) => ({ owner: a.owner, ...a.bot })));
     await storage.set("prompts", parsed);
     await storage.set("models", models);
@@ -158,14 +147,14 @@ function Options() {
   }
 
   function addAccount() {
-    setAccounts((prev) => [...prev, { owner: "", token: "", bot: DEFAULT_BOT }]);
+    setAccounts((prev) => [...prev, { owner: "", bot: DEFAULT_BOT }]);
     setSelected(accounts.length);
   }
 
   function removeAccount() {
     setAccounts((prev) => {
       const next = prev.filter((_, j) => j !== selected);
-      return next.length ? next : [{ owner: "", token: "", bot: DEFAULT_BOT }];
+      return next.length ? next : [{ owner: "", bot: DEFAULT_BOT }];
     });
     setSelected(0);
   }
@@ -195,6 +184,13 @@ function Options() {
   const account = accounts[selected] ?? accounts[0];
   const appUrl = githubAppUrl(account.owner, orgOwners.includes(account.owner));
   const ownerChoices = [...new Set([...accounts.map((a) => a.owner), ...ownerOptions])].filter(Boolean);
+  const modelNames = (() => {
+    try {
+      const m = JSON.parse(modelsText);
+      if (Array.isArray(m) && m.length && m.every(isModelOption)) return m.map((x) => x.model);
+    } catch { /* fall through to defaults */ }
+    return DEFAULT_MODELS.map((x) => x.model);
+  })();
 
   return (
     <div className="mx-auto max-w-3xl p-6">
@@ -203,6 +199,7 @@ function Options() {
       <Tabs defaultValue="accounts">
         <TabsList>
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
+          <TabsTrigger value="install">Install</TabsTrigger>
           <TabsTrigger value="models">Models</TabsTrigger>
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
@@ -217,17 +214,18 @@ function Options() {
             account={account}
             accounts={accounts}
             selected={selected}
-            activeToken={activeToken}
             ownerChoices={ownerChoices}
             appUrl={appUrl}
-            showToken={showToken}
-            setShowToken={setShowToken}
             setSelected={setSelected}
             updateAccount={updateAccount}
             updateBot={updateBot}
             addAccount={addAccount}
             removeAccount={removeAccount}
           />
+        </TabsContent>
+
+        <TabsContent value="install" className="flex flex-col gap-4">
+          <InstallTab owners={ownerChoices} models={modelNames} />
         </TabsContent>
 
         <TabsContent value="models" className="flex flex-col gap-4">
