@@ -66,8 +66,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
   }
-  if (msg?.type === "list-owners") {
-    listOwners()
+  if (msg?.type === "list-repos") {
+    listRepos()
       .then((r) => sendResponse(r))
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
@@ -152,15 +152,12 @@ async function loadBot(): Promise<BotConfig> {
   return isBotConfig(stored) ? stored : DEFAULT_BOT;
 }
 
-// The owners the user's gh auth can act as: the authenticated user plus their orgs.
-// Powers the options-page account dropdown so owners are picked from GitHub, never hand-typed.
-async function listOwners(): Promise<{ owners: string[]; orgs: string[] } | { error: string }> {
-  const user = await callTool("Bash", { command: "gh api user" });
-  if (!user.success) return { error: user.error || user.output || "gh api user failed" };
-  const login = (JSON.parse(user.output) as { login: string }).login;
-  const orgs = await callTool("Bash", { command: "gh api 'user/orgs?per_page=100'" });
-  const orgList = orgs.success ? ((JSON.parse(orgs.output)) as { login: string }[]).map((o) => o.login) : [];
-  return { owners: [...new Set([login, ...orgList].filter(Boolean))], orgs: orgList };
+// Every repo the user's gh auth can access (owned, collaborator, org member) as
+// "owner/name". Powers the Install tab's owner + repository dropdowns.
+async function listRepos(): Promise<{ repos: string[] } | { error: string }> {
+  const r = await callTool("Bash", { command: "gh api 'user/repos?per_page=100' --paginate --jq '.[].full_name'" });
+  if (!r.success) return { error: r.error || r.output || "gh api user/repos failed" };
+  return { repos: r.output.split("\n").map((s) => s.trim()).filter(Boolean) };
 }
 
 async function fetchFromGitHub(owner: string, repo: string): Promise<Skill[]> {

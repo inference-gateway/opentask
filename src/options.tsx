@@ -31,7 +31,7 @@ function Options() {
   const [imageModel, setImageModel] = useState("");
   const [deps, setDeps] = useState<DependenciesConfig>(DEFAULT_DEPENDENCIES);
   const [theme, setTheme] = useState<Theme>("system");
-  const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
+  const [repos, setRepos] = useState<string[]>([]);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -70,12 +70,12 @@ function Options() {
     })();
   }, []);
 
-  // Owner dropdown for the Install tab comes from the CLI's gh auth (via the bridge).
+  // The Install tab's owner + repository dropdowns come from the CLI's gh auth (via the bridge).
   useEffect(() => {
     let cancelled = false;
-    void chrome.runtime.sendMessage({ type: "list-owners" }).then((r) => {
-      if (cancelled || !r || !Array.isArray(r.owners)) return;
-      setOwnerOptions(r.owners);
+    void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
+      if (cancelled || !r || !Array.isArray(r.repos)) return;
+      setRepos(r.repos);
     });
     return () => { cancelled = true; };
   }, []);
@@ -150,7 +150,7 @@ function Options() {
         </TabsList>
 
         <TabsContent value="install" className="flex flex-col gap-4">
-          <InstallTab owners={ownerOptions} models={modelNames} />
+          <InstallTab repos={repos} models={modelNames} />
         </TabsContent>
 
         <TabsContent value="orchestrator" className="flex flex-col gap-4">

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Section } from "./Section";
 import { Button } from "@/ui/components/button";
-import { Input } from "@/ui/components/input";
 import { Label } from "@/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 
@@ -13,15 +12,19 @@ type InstallState =
 
 // One-click (re)install of the OpenTask workflow. Re-install is an idempotent
 // reconcile of the marker-delimited managed section, so clicking twice is safe.
-export function InstallTab({ owners, models }: { owners: string[]; models: string[] }) {
+// `repos` are "owner/name" full names from the CLI's gh auth.
+export function InstallTab({ repos, models }: { repos: string[]; models: string[] }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [model, setModel] = useState(models[0] ?? "");
   const [state, setState] = useState<InstallState>({ kind: "idle" });
 
+  const owners = [...new Set(repos.map((r) => r.split("/")[0]))];
+  const repoNames = repos.filter((r) => r.startsWith(`${owner}/`)).map((r) => r.slice(owner.length + 1));
+
   function install() {
     setState({ kind: "installing" });
-    void chrome.runtime.sendMessage({ type: "install", owner: owner.trim(), repo: repo.trim(), model }).then((resp) => {
+    void chrome.runtime.sendMessage({ type: "install", owner, repo, model }).then((resp) => {
       if (!resp) return setState({ kind: "error", message: "Failed to send install request." });
       if (resp.error) return setState({ kind: "error", message: resp.error });
       setState({ kind: "done", prUrl: resp.prUrl as string, manual: resp.manual as boolean | undefined });
@@ -40,7 +43,7 @@ export function InstallTab({ owners, models }: { owners: string[]; models: strin
       }
     >
       <Label htmlFor="igw-install-owner">Owner</Label>
-      <Select value={owner || undefined} onValueChange={setOwner}>
+      <Select value={owner || undefined} onValueChange={(o) => { setOwner(o); setRepo(""); }} disabled={!owners.length}>
         <SelectTrigger id="igw-install-owner">
           <SelectValue placeholder={owners.length ? "Select an owner…" : "Connect the infer CLI to load owners"} />
         </SelectTrigger>
@@ -53,15 +56,20 @@ export function InstallTab({ owners, models }: { owners: string[]; models: strin
         </SelectContent>
       </Select>
       <Label htmlFor="igw-install-repo">Repository</Label>
-      <Input
-        id="igw-install-repo"
-        placeholder="my-repo"
-        autoComplete="off"
-        value={repo}
-        onChange={(e) => setRepo(e.target.value)}
-      />
+      <Select value={repo || undefined} onValueChange={setRepo} disabled={!repoNames.length}>
+        <SelectTrigger id="igw-install-repo">
+          <SelectValue placeholder={owner ? "Select a repository…" : "Select an owner first"} />
+        </SelectTrigger>
+        <SelectContent>
+          {repoNames.map((r) => (
+            <SelectItem key={r} value={r}>
+              {r}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Label htmlFor="igw-install-model">Default model</Label>
-      <Select value={model || undefined} onValueChange={setModel}>
+      <Select value={model || undefined} onValueChange={setModel} disabled={!models.length}>
         <SelectTrigger id="igw-install-model">
           <SelectValue placeholder="Select a model…" />
         </SelectTrigger>
@@ -74,7 +82,7 @@ export function InstallTab({ owners, models }: { owners: string[]; models: strin
         </SelectContent>
       </Select>
       <div>
-        <Button onClick={install} disabled={state.kind === "installing" || !owner.trim() || !repo.trim()}>
+        <Button onClick={install} disabled={state.kind === "installing" || !owner || !repo}>
           {state.kind === "installing" ? "Creating pull request…" : "Install / Re-install"}
         </Button>
       </div>
