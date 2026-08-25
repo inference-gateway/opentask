@@ -231,7 +231,8 @@ async function doInstall(owner: string, repo: string, model: string): Promise<{ 
   const imageModel = (await storage.get<string>("imageModel")) ?? "";
   const reviewInline = (await storage.get<boolean>("reviewInline")) ?? false;
   const deps = await loadDependencies();
-  const defaultModel = models.some((m) => m.model === model) ? model : models[0].model;
+  // The chosen model may come from the CLI's configured list, not DEFAULT_MODELS.
+  const defaultModel = model || models[0].model;
 
   const repoRes = await ghFetch(owner, repo, "");
   if (!repoRes.ok) throw await ghFail(repoRes);

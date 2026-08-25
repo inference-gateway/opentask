@@ -161,6 +161,8 @@ export type PanelState = {
   messages: Msg[];
   conversations: ConversationMeta[];
   skills: PanelSkill[];
+  // provider/model ids the CLI is configured with (first = CLI default), for model pickers.
+  models: string[];
   activeConversationId?: string;
   pendingApproval?: PendingApproval;
 };

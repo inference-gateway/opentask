@@ -279,7 +279,7 @@ misses the issue and does not scale:
 // one picked at install); every provider's key is wired so any dropdown choice
 // authenticates. Missing secrets render blank and are ignored by the action.
 export function workflowYaml(models: ModelOption[], defaultModel: string, bot: BotConfig, perms: Permissions = DEFAULT_PERMISSIONS, plugins: string[] = enabledPlugins(DEFAULT_PLUGINS), agents: string[] = [], timeoutMinutes: number = DEFAULT_TIMEOUT, instructions: string = DEFAULT_INSTRUCTIONS, deps: DependenciesConfig = DEFAULT_DEPENDENCIES, debug: boolean = false, visionModel: string = "", imageModel: string = "", reviewInline: boolean = false): string {
-  const def = models.some((m) => m.model === defaultModel) ? defaultModel : models[0]?.model ?? "";
+  const def = defaultModel || (models[0]?.model ?? "");
 
   const appends: string[] = [
     "gh project list( .*)?", "gh project field-list( .*)?",
@@ -426,7 +426,7 @@ export function reconcileWorkflow(existing: string, generated: string): string {
 }
 
 export function prBody(models: ModelOption[], defaultModel: string, bot: BotConfig, plugins: string[] = enabledPlugins(DEFAULT_PLUGINS), agents: string[] = []): string {
-  const def = models.some((m) => m.model === defaultModel) ? defaultModel : models[0]?.model ?? "";
+  const def = defaultModel || (models[0]?.model ?? "");
   const secretList = [...new Set(models.map((m) => m.secret))].map((s) => `\`${s}\``).join(", ");
   const botStep = bot.enabled
     ? `\n2. Add the \`${bot.privateKeySecret}\` secret with your GitHub App's private key. The workflow authenticates as your App via [actions/create-github-app-token](https://github.com/actions/create-github-app-token), so its comments and commits are attributed to the App.`

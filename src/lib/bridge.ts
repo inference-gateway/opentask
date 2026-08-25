@@ -16,6 +16,7 @@ let attempt = 0;
 let messages: Msg[] = [];
 let conversations: ConversationMeta[] = [];
 let skills: PanelSkill[] = [];
+let cliModels: string[] = [];
 let activeConversationId: string | undefined;
 let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
@@ -32,7 +33,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, activeConversationId, pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, models: cliModels, activeConversationId, pendingApproval: approval };
 }
 
 function broadcast() {
@@ -134,6 +135,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       attempt = 0;
       send({ type: "list_conversations" });
       send({ type: "list_skills" });
+      send({ type: "list_models" });
       if (activeConversationId) send({ type: "resume_conversation", id: activeConversationId });
       broadcast();
       return;
@@ -143,6 +145,10 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       return;
     case "skills":
       skills = parseSkills(frame);
+      broadcast();
+      return;
+    case "models":
+      cliModels = Array.isArray(frame.models) ? (frame.models as unknown[]).filter((m): m is string => typeof m === "string") : [];
       broadcast();
       return;
     case "browser_command": {

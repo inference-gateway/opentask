@@ -33,6 +33,7 @@ function Options() {
   const [theme, setTheme] = useState<Theme>("system");
   const [repos, setRepos] = useState<string[]>([]);
   const [reposError, setReposError] = useState("");
+  const [cliModels, setCliModels] = useState<string[]>([]);
   const [bridgeConnected, setBridgeConnected] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -78,8 +79,9 @@ function Options() {
   useEffect(() => {
     let fetched = false;
     const port = chrome.runtime.connect({ name: "bridge-panel" });
-    port.onMessage.addListener((state: { connected?: boolean }) => {
+    port.onMessage.addListener((state: { connected?: boolean; models?: string[] }) => {
       setBridgeConnected(state?.connected === true);
+      if (Array.isArray(state?.models) && state.models.length) setCliModels(state.models);
       if (!state?.connected || fetched) return;
       fetched = true;
       void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
@@ -142,7 +144,8 @@ function Options() {
     applyTheme(t);
   }
 
-  const modelNames = DEFAULT_MODELS.map((x) => x.model);
+  // The CLI's configured models when connected; hardcoded defaults only as a fallback.
+  const modelNames = cliModels.length ? cliModels : DEFAULT_MODELS.map((x) => x.model);
 
   return (
     <div className="mx-auto max-w-3xl p-6">
