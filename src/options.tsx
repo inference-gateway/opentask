@@ -32,6 +32,7 @@ function Options() {
   const [deps, setDeps] = useState<DependenciesConfig>(DEFAULT_DEPENDENCIES);
   const [theme, setTheme] = useState<Theme>("system");
   const [repos, setRepos] = useState<string[]>([]);
+  const [reposError, setReposError] = useState("");
   const [bridgeConnected, setBridgeConnected] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -83,6 +84,7 @@ function Options() {
       fetched = true;
       void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
         if (r && Array.isArray(r.repos)) setRepos(r.repos);
+        else setReposError(String(r?.error ?? "Failed to load repositories from the CLI."));
       });
     });
     return () => port.disconnect();
@@ -158,7 +160,7 @@ function Options() {
         </TabsList>
 
         <TabsContent value="install" className="flex flex-col gap-4">
-          <InstallTab connected={bridgeConnected} repos={repos} models={modelNames} />
+          <InstallTab connected={bridgeConnected} repos={repos} reposError={reposError} models={modelNames} />
         </TabsContent>
 
         <TabsContent value="orchestrator" className="flex flex-col gap-4">

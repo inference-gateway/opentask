@@ -14,7 +14,7 @@ type InstallState =
 // reconcile of the marker-delimited managed section, so clicking twice is safe.
 // `repos` are "owner/name" full names from the CLI's gh auth; connecting is
 // user-initiated from the side panel, so until then we just point at Connect.
-export function InstallTab({ connected, repos, models }: { connected: boolean; repos: string[]; models: string[] }) {
+export function InstallTab({ connected, repos, reposError, models }: { connected: boolean; repos: string[]; reposError: string; models: string[] }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [model, setModel] = useState(models[0] ?? "");
@@ -49,6 +49,7 @@ export function InstallTab({ connected, repos, models }: { connected: boolean; r
           <strong>Connect</strong> to load your repositories.
         </p>
       )}
+      {connected && reposError && !repos.length && <p className="text-sm text-destructive">{reposError}</p>}
       <Label htmlFor="igw-install-owner">Owner</Label>
       <Select value={owner || undefined} onValueChange={(o) => { setOwner(o); setRepo(""); }} disabled={!owners.length}>
         <SelectTrigger id="igw-install-owner">
