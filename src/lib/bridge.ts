@@ -281,11 +281,6 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
     };
   }
 
-  // navigate owns controlledTabId; before any navigate we operate on the tab the
-  // user is actually focused on so read/screenshot/tabs describe the current tab.
-  // ponytail: read/screenshot bind to the live focused tab until navigate takes
-  // control; a tab switch between a read and a follow-up click retargets — fine
-  // for inspection, revisit if click/type sequences need stickiness.
   let tabId = controlledTabId;
   if (tabId === undefined || !(await chrome.tabs.get(tabId).catch(() => undefined)))
     tabId = await activeTabId();
