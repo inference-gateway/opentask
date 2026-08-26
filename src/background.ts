@@ -266,12 +266,12 @@ async function doInstall(owner: string, repo: string, context?: string): Promise
   const extra = [context?.trim(), await installSettingsContext()].filter(Boolean).join("\n");
   const cur = await currentRepo().catch(() => undefined);
   const inPlace = cur && "repo" in cur && cur.repo === `${owner}/${repo}`;
-  // Leading with /github-workflow activates the catalog skill carrying the
+  // Leading with /opentask activates the catalog skill carrying the
   // infer-action authoring guide and canonical examples - without it the agent
   // reverse-engineers infer-action over the network, one gh api call at a time.
   const prompt = [
-    `/github-workflow`,
-    `Install or update the OpenTask GitHub workflow in ${owner}/${repo}. Read the /github-workflow skill's guide and its bundled example workflows FIRST - they are the canonical infer-action usage patterns. Do not fetch infer-action docs or examples from the network.`,
+    `/opentask`,
+    `Install or update the OpenTask GitHub workflow in ${owner}/${repo}. Read the /opentask skill's guide and its bundled example workflows FIRST - they are the canonical infer-action usage patterns. Do not fetch infer-action docs or examples from the network.`,
     inPlace
       ? `1. The current checkout already is ${owner}/${repo} - no clone. Add a git worktree under /tmp for the install branch so the checked-out branch stays untouched.`
       : `1. Clone ${owner}/${repo} (shallow) into a temp dir under /tmp.`,
