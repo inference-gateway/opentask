@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "OpenTask",
   "description": "Repo-skill tab-completion, quick-prompts, and browser-use automation for your AI coding agent.",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "permissions": [
     "storage",
     "activeTab",

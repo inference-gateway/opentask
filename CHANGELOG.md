@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.0](https://github.com/inference-gateway/opentask/compare/v1.12.1...v1.13.0) (2026-08-26)
+
+### ✨ Features
+
+* route GitHub access through the infer CLI bridge and reconcile installs idempotently ([#156](https://github.com/inference-gateway/opentask/issues/156)) ([3845563](https://github.com/inference-gateway/opentask/commit/384556335996a573858961269361b4e97d848993)), references [inference-gateway/cli#1111](https://github.com/inference-gateway/cli/issues/1111) [inference-gateway/cli#1111](https://github.com/inference-gateway/cli/issues/1111)
+
+### 📚 Documentation
+
+* **skill:** fold infer-action workflow authoring into the opentask skill ([#158](https://github.com/inference-gateway/opentask/issues/158)) ([3f6fdeb](https://github.com/inference-gateway/opentask/commit/3f6fdeb21ae8fd75818d872f3bd682a1fec4d150))
+
 ## [1.12.1](https://github.com/inference-gateway/opentask/compare/v1.12.0...v1.12.1) (2026-08-21)
 
 ### 🔧 Miscellaneous
