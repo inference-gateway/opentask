@@ -38,6 +38,33 @@ describe("reduceAgui", () => {
     expect(m).toEqual([{ role: "tool", content: "Write", args: '{"file_path":"dummy.txt"}' }]);
   });
 
+  test("streams reasoning start/content into one reasoning message", () => {
+    let m: Msg[] = [];
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_START", role: "assistant" });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_CONTENT", delta: "I should run " });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_CONTENT", delta: "the tests." });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_END" });
+    expect(m).toEqual([{ role: "reasoning", content: "I should run the tests." }]);
+  });
+
+  test("reasoning content without a prior start creates a reasoning message", () => {
+    expect(reduceAgui([{ role: "user", content: "q" }], { type: "REASONING_MESSAGE_CONTENT", delta: "hm" })).toEqual([
+      { role: "user", content: "q" },
+      { role: "reasoning", content: "hm" },
+    ]);
+  });
+
+  test("a tool call after reasoning leaves the reasoning message intact", () => {
+    let m: Msg[] = [];
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_START" });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_CONTENT", delta: "run it" });
+    m = reduceAgui(m, { type: "TOOL_CALL_START", toolCallName: "Bash" });
+    expect(m).toEqual([
+      { role: "reasoning", content: "run it" },
+      { role: "tool", content: "Bash", args: "" },
+    ]);
+  });
+
   test("unknown events leave messages unchanged (same reference)", () => {
     const m: Msg[] = [{ role: "user", content: "q" }];
     expect(reduceAgui(m, { type: "RUN_STARTED" })).toBe(m);

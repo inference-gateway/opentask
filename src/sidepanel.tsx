@@ -250,7 +250,9 @@ function SidePanel() {
                   ? "max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
                   : m.role === "tool"
                     ? "flex max-w-[85%] items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 font-mono text-xs text-muted-foreground"
-                    : "max-w-[85%] rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
+                    : m.role === "reasoning"
+                      ? "max-w-[85%] rounded-2xl rounded-bl-md border border-dashed border-border/60 bg-background/40 px-3.5 py-2 text-xs italic text-muted-foreground whitespace-pre-wrap"
+                      : "max-w-[85%] rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
               }
             >
               {m.role === "tool" ? (

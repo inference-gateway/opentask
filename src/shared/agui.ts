@@ -6,8 +6,9 @@
 // tool role; other roles leave it unset.
 export type Msg = { role: string; content: string; args?: string };
 
-// Folds one AG-UI chat_event into the rendered message list. Text streaming and
-// tool calls (name + args) are rendered; everything else is a no-op by contract.
+// Folds one AG-UI chat_event into the rendered message list. Text streaming,
+// reasoning streaming, and tool calls (name + args) are rendered; everything
+// else is a no-op by contract.
 export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   const e = event as { type?: unknown; role?: string; delta?: string; toolCallName?: string } | null;
   if (!e || typeof e.type !== "string") return messages;
@@ -20,10 +21,17 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
         return [...messages, { role: "assistant", content: e.delta ?? "" }];
       return [...messages.slice(0, -1), { ...last, content: last.content + (e.delta ?? "") }];
     }
+    case "REASONING_MESSAGE_START":
+      return [...messages, { role: "reasoning", content: "" }];
+    case "REASONING_MESSAGE_CONTENT": {
+      const last = messages[messages.length - 1];
+      if (last?.role !== "reasoning")
+        return [...messages, { role: "reasoning", content: e.delta ?? "" }];
+      return [...messages.slice(0, -1), { ...last, content: last.content + (e.delta ?? "") }];
+    }
     case "TOOL_CALL_START":
       return [...messages, { role: "tool", content: e.toolCallName ?? "tool", args: "" }];
     case "TOOL_CALL_ARGS": {
-      // START→ARGS→END stream contiguously, so the last message is this tool call.
       const last = messages[messages.length - 1];
       if (last?.role !== "tool") return messages;
       return [...messages.slice(0, -1), { ...last, args: (last.args ?? "") + (e.delta ?? "") }];
