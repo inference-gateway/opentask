@@ -128,6 +128,9 @@ So apply **only** additive, infer-action-related changes:
 Create `.github/workflows/tasks.yml` modeled on the examples, tailored to the
 repository:
 
+- Naming: the examples use the action's own neutral names - for OpenTask,
+  rename to `name: OpenTask Agent` (or `OpenTask Advisor` for the
+  comment-only variant) and job id `opentask:`.
 - Triggers: `issues` (opened, edited), `issue_comment` (created),
   `pull_request_review_comment` (created), plus `workflow_dispatch` with
   `model`, `prompt`, `system_prompt`, `enable_git`, and `agents` inputs.
