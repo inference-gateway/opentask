@@ -110,11 +110,13 @@ function clearApprovalAlert() {
   void chrome.notifications.clear(APPROVAL_NOTIFICATION);
 }
 
-// Detach from the current CLI conversation and start fresh: /clear on the CLI
-// side, empty transcript and no resumed-conversation id on ours.
+// Detach from the current CLI conversation and start fresh. The new_session
+// frame is handled synchronously in the CLI's read loop, so a user_message
+// sent right after is guaranteed to land in the new session (a "/clear" chat
+// message runs async CLI-side and would race it).
 export function startNewSession(): boolean {
   if (!connected) return false;
-  send({ type: "user_message", content: "/clear" });
+  send({ type: "new_session" });
   messages = [];
   running = false;
   pendingApproval = undefined;
@@ -459,17 +461,14 @@ export function initBridge() {
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         const content = msg.content.trim();
-        send({ type: "user_message", content });
-        recordHistory(content);
         if (isClearCommand(content)) {
-          messages = [];
-          running = false;
-          pendingApproval = undefined;
-          activeConversationId = undefined;
+          startNewSession();
         } else {
+          send({ type: "user_message", content });
+          recordHistory(content);
           running = true;
+          broadcast();
         }
-        broadcast();
       }
       if (msg?.type === "select_model" && typeof msg.model === "string" && msg.model) {
         send({ type: "select_model", model: msg.model });
