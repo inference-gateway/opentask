@@ -80,6 +80,49 @@ function recordHistory(content: string) {
   history = [...history, c];
 }
 
+// Grab the user's attention on an approval request: try to open the side panel
+// outright (Chrome only allows that on a user gesture, so it usually throws
+// when triggered by a WebSocket frame), and fall back to an action badge plus
+// a clickable system notification that opens the panel.
+const APPROVAL_NOTIFICATION = "opentask-approval";
+async function alertApproval(req: PendingApproval) {
+  const win = await chrome.windows.getLastFocused().catch(() => undefined);
+  if (win?.id !== undefined) {
+    try {
+      await chrome.sidePanel.open({ windowId: win.id });
+      return;
+    } catch {
+      // No user gesture - fall through to badge + notification.
+    }
+  }
+  void chrome.action.setBadgeText({ text: "!" });
+  void chrome.action.setBadgeBackgroundColor({ color: "#f59e0b" });
+  void chrome.notifications.create(APPROVAL_NOTIFICATION, {
+    type: "basic",
+    iconUrl: "icons/icon-128.png",
+    title: "OpenTask: approval needed",
+    message: `The agent wants to run ${stripAnsi(req.toolName)}. Click to review.`,
+  });
+}
+
+function clearApprovalAlert() {
+  void chrome.action.setBadgeText({ text: "" });
+  void chrome.notifications.clear(APPROVAL_NOTIFICATION);
+}
+
+// Detach from the current CLI conversation and start fresh: /clear on the CLI
+// side, empty transcript and no resumed-conversation id on ours.
+export function startNewSession(): boolean {
+  if (!connected) return false;
+  send({ type: "user_message", content: "/clear" });
+  messages = [];
+  running = false;
+  pendingApproval = undefined;
+  activeConversationId = undefined;
+  broadcast();
+  return true;
+}
+
 // Send a prompt into the connected CLI's chat as a regular user message: the
 // turn streams back over chat_event frames and tool approvals surface in the
 // panel, exactly as if the user had typed it there.
@@ -212,6 +255,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       if (!req) return;
       pendingApproval = req;
       broadcast();
+      void alertApproval(req);
       return;
     }
     case "tool_result": {
@@ -229,6 +273,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
     case "approval_resolved": {
       if (pendingApproval && pendingApproval.requestId === frame.request_id) {
         pendingApproval = undefined;
+        clearApprovalAlert();
         broadcast();
       }
       return;
@@ -373,9 +418,18 @@ function waitForLoad(tabId: number): Promise<void> {
 }
 
 export function initBridge() {
+  chrome.notifications.onClicked.addListener((id) => {
+    if (id !== APPROVAL_NOTIFICATION) return;
+    clearApprovalAlert();
+    void chrome.windows.getLastFocused().then((win) => {
+      if (win?.id !== undefined) return chrome.sidePanel.open({ windowId: win.id });
+    }).catch(() => undefined);
+  });
+
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== "bridge-panel") return;
     panels.add(port);
+    clearApprovalAlert();
     port.onDisconnect.addListener(() => panels.delete(port));
     port.onMessage.addListener((msg) => {
       if (msg?.type === "connect") {
@@ -435,6 +489,7 @@ export function initBridge() {
       if (msg?.type === "approval_response" && typeof msg.requestId === "string") {
         send({ type: "approval_response", request_id: msg.requestId, action: msg.action });
         if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined;
+        clearApprovalAlert();
         broadcast();
       }
     });

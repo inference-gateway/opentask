@@ -5,7 +5,7 @@ import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesCon
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
-import { initBridge, callTool, sendUserMessage, CLI_DOWN } from "./lib/bridge";
+import { initBridge, callTool, sendUserMessage, startNewSession, CLI_DOWN } from "./lib/bridge";
 
 initBridge();
 
@@ -281,6 +281,7 @@ async function doInstall(owner: string, repo: string, context?: string): Promise
     extra ? `\nWorkflow configuration:\n${extra}` : "",
   ].filter(Boolean).join("\n");
 
+  if (!startNewSession()) return { error: CLI_DOWN };
   if (!sendUserMessage(prompt)) return { error: CLI_DOWN };
   return { sent: true };
 }
