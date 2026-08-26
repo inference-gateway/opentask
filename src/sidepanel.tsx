@@ -312,14 +312,6 @@ function SidePanel() {
             <span className="size-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: "300ms" }} />
           </span>
           <span>Working…</span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="ml-auto h-6 px-2 text-xs"
-            onClick={() => portRef.current?.postMessage({ type: "interrupt" } satisfies PanelInterrupt)}
-          >
-            Stop
-          </Button>
         </div>
       )}
 
@@ -365,15 +357,26 @@ function SidePanel() {
               }
             }}
           />
-          <Button
-            size="icon-sm"
-            disabled={!connected || !draft.trim()}
-            onClick={sendMessage}
-            className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
-            aria-label="Send message"
-          >
-            ↑
-          </Button>
+          {connected && running ? (
+            <Button
+              size="icon-sm"
+              onClick={() => portRef.current?.postMessage({ type: "interrupt" } satisfies PanelInterrupt)}
+              className="bg-foreground text-background hover:opacity-90"
+              aria-label="Stop generating"
+            >
+              ■
+            </Button>
+          ) : (
+            <Button
+              size="icon-sm"
+              disabled={!connected || !draft.trim()}
+              onClick={sendMessage}
+              className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
+              aria-label="Send message"
+            >
+              ↑
+            </Button>
+          )}
         </div>
         {menu && (
           <SkillMenu
