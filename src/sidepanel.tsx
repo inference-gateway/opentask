@@ -257,8 +257,14 @@ function SidePanel() {
             >
               {m.role === "tool" ? (
                 <>
-                  <span className="text-indigo-500">⚙</span>
-                  <span className="truncate">{toolLabel(m.content, m.args)}</span>
+                  {m.ok === undefined ? (
+                    <span className="text-indigo-500">⚙</span>
+                  ) : m.ok ? (
+                    <span className="text-emerald-500">✓</span>
+                  ) : (
+                    <span className="text-red-500" title={m.error}>✗</span>
+                  )}
+                  <span className="truncate" title={m.error}>{toolLabel(m.content, m.args)}</span>
                 </>
               ) : m.role === "assistant" ? (
                 <Markdown text={m.content} artifactBase={artifactBase} />

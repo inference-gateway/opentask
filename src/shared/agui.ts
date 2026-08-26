@@ -3,14 +3,18 @@
 // types must be ignored.
 
 // `args` accumulates the tool call's TOOL_CALL_ARGS deltas (raw JSON) for the
-// tool role; other roles leave it unset.
-export type Msg = { role: string; content: string; args?: string };
+// tool role; `id` is its toolCallId and `ok`/`error` arrive with
+// TOOL_CALL_RESULT (unset while the tool is still running). Other roles leave
+// them unset.
+export type Msg = { role: string; content: string; args?: string; id?: string; ok?: boolean; error?: string };
 
 // Folds one AG-UI chat_event into the rendered message list. Text streaming,
 // reasoning streaming, and tool calls (name + args) are rendered; everything
 // else is a no-op by contract.
 export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
-  const e = event as { type?: unknown; role?: string; delta?: string; toolCallName?: string } | null;
+  const e = event as {
+    type?: unknown; role?: string; delta?: string; toolCallName?: string; toolCallId?: string; content?: string;
+  } | null;
   if (!e || typeof e.type !== "string") return messages;
   switch (e.type) {
     case "TEXT_MESSAGE_START":
@@ -30,11 +34,25 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
       return [...messages.slice(0, -1), { ...last, content: last.content + (e.delta ?? "") }];
     }
     case "TOOL_CALL_START":
-      return [...messages, { role: "tool", content: e.toolCallName ?? "tool", args: "" }];
+      return [...messages, { role: "tool", content: e.toolCallName ?? "tool", args: "", id: e.toolCallId }];
     case "TOOL_CALL_ARGS": {
       const last = messages[messages.length - 1];
       if (last?.role !== "tool") return messages;
       return [...messages.slice(0, -1), { ...last, args: (last.args ?? "") + (e.delta ?? "") }];
+    }
+    case "TOOL_CALL_RESULT": {
+      // content is the CLI's ToolExecutionResult JSON ({success, error, ...}).
+      let r: { success?: unknown; error?: unknown };
+      try {
+        r = JSON.parse(e.content ?? "");
+      } catch {
+        return messages;
+      }
+      let i = messages.findIndex((m) => m.role === "tool" && m.id !== undefined && m.id === e.toolCallId);
+      if (i < 0) i = messages.map((m) => m.role).lastIndexOf("tool");
+      if (i < 0) return messages;
+      const m = { ...messages[i], ok: r.success === true, error: typeof r.error === "string" ? r.error : undefined };
+      return [...messages.slice(0, i), m, ...messages.slice(i + 1)];
     }
     default:
       return messages;

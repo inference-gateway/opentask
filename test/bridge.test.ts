@@ -65,6 +65,21 @@ describe("reduceAgui", () => {
     ]);
   });
 
+  test("tool result marks the matching tool row ok or failed", () => {
+    let m = reduceAgui([], { type: "TOOL_CALL_START", toolCallId: "a", toolCallName: "Bash" });
+    m = reduceAgui(m, { type: "TOOL_CALL_START", toolCallId: "b", toolCallName: "Read" });
+    m = reduceAgui(m, { type: "TOOL_CALL_RESULT", toolCallId: "a", content: JSON.stringify({ success: false, error: "exit 1" }) });
+    m = reduceAgui(m, { type: "TOOL_CALL_RESULT", toolCallId: "b", content: JSON.stringify({ success: true }) });
+    expect(m[0]).toMatchObject({ content: "Bash", ok: false, error: "exit 1" });
+    expect(m[1]).toMatchObject({ content: "Read", ok: true });
+  });
+
+  test("tool result with unknown id falls back to the last tool row; malformed content is a no-op", () => {
+    const start = reduceAgui([], { type: "TOOL_CALL_START", toolCallId: "a", toolCallName: "Bash" });
+    expect(reduceAgui(start, { type: "TOOL_CALL_RESULT", toolCallId: "zzz", content: "{\"success\":true}" })[0].ok).toBe(true);
+    expect(reduceAgui(start, { type: "TOOL_CALL_RESULT", toolCallId: "a", content: "not json" })).toBe(start);
+  });
+
   test("unknown events leave messages unchanged (same reference)", () => {
     const m: Msg[] = [{ role: "user", content: "q" }];
     expect(reduceAgui(m, { type: "RUN_STARTED" })).toBe(m);
