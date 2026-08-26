@@ -264,9 +264,13 @@ async function installSettingsContext(): Promise<string> {
 // as the prompt is sent.
 async function doInstall(owner: string, repo: string, context?: string): Promise<{ sent: true } | { error: string }> {
   const extra = [context?.trim(), await installSettingsContext()].filter(Boolean).join("\n");
+  const cur = await currentRepo().catch(() => undefined);
+  const inPlace = cur && "repo" in cur && cur.repo === `${owner}/${repo}`;
   const prompt = [
     `Install or update the OpenTask GitHub workflow in ${owner}/${repo}:`,
-    `1. Clone ${owner}/${repo} (shallow) into a temp dir under /tmp.`,
+    inPlace
+      ? `1. The current checkout already is ${owner}/${repo} - no clone. Add a git worktree under /tmp for the install branch so the checked-out branch stays untouched.`
+      : `1. Clone ${owner}/${repo} (shallow) into a temp dir under /tmp.`,
     `2. Check out branch infer/install-github-action, on top of origin's if it already exists (a re-install must update the open PR, not open a duplicate).`,
     `3. Create or update .github/workflows/tasks.yml for infer-action, following the repo's existing CI conventions and preserving any repo-specific customizations.`,
     `4. Show me a short summary of the changes, then commit, push the branch, and open (or update) the pull request. Wait for my approval on the push and PR creation.`,
