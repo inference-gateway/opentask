@@ -391,6 +391,11 @@ export function initBridge() {
         }
         broadcast();
       }
+      if (msg?.type === "interrupt") {
+        send({ type: "interrupt" });
+        running = false; // optimistic; the cancelled completion ends the stream
+        broadcast();
+      }
       if (msg?.type === "approval_response" && typeof msg.requestId === "string") {
         send({ type: "approval_response", request_id: msg.requestId, action: msg.action });
         if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined; // optimistic

@@ -12,6 +12,7 @@ import type {
   PanelResumeConversation,
   PanelSkill,
   PanelState,
+  PanelInterrupt,
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
@@ -19,7 +20,7 @@ import { SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
-import { toolLabel } from "./shared/agui";
+import { prettyArgs, toolLabel } from "./shared/agui";
 import { Markdown } from "./lib/markdown";
 import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
 import { caretPosition, type CaretPos } from "./lib/caret";
@@ -244,34 +245,34 @@ function SidePanel() {
         )}
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-            <div
-              className={
-                m.role === "user"
-                  ? "max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
-                  : m.role === "tool"
-                    ? "flex max-w-[85%] items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 font-mono text-xs text-muted-foreground"
-                    : m.role === "reasoning"
-                      ? "max-w-[85%] rounded-2xl rounded-bl-md border border-dashed border-border/60 bg-background/40 px-3.5 py-2 text-xs italic text-muted-foreground whitespace-pre-wrap"
-                      : "max-w-[85%] rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
-              }
-            >
-              {m.role === "tool" ? (
-                <>
+            {m.role === "tool" ? (
+              <details className="max-w-[85%] rounded-2xl border border-border/60 bg-background/60 font-mono text-xs text-muted-foreground open:w-full">
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-1 [&::-webkit-details-marker]:hidden">
                   {m.ok === undefined ? (
                     <span className="text-indigo-500">⚙</span>
                   ) : m.ok ? (
                     <span className="text-emerald-500">✓</span>
                   ) : (
-                    <span className="text-red-500" title={m.error}>✗</span>
+                    <span className="text-red-500">✗</span>
                   )}
-                  <span className="truncate" title={m.error}>{toolLabel(m.content, m.args)}</span>
-                </>
-              ) : m.role === "assistant" ? (
-                <Markdown text={m.content} artifactBase={artifactBase} />
-              ) : (
-                m.content
-              )}
-            </div>
+                  <span className="truncate">{toolLabel(m.content, m.args)}</span>
+                </summary>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">{prettyArgs(m.args)}</pre>
+                {m.error && <pre className="whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-red-500">{m.error}</pre>}
+              </details>
+            ) : (
+              <div
+                className={
+                  m.role === "user"
+                    ? "max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
+                    : m.role === "reasoning"
+                      ? "max-w-[85%] rounded-2xl rounded-bl-md border border-dashed border-border/60 bg-background/40 px-3.5 py-2 text-xs italic text-muted-foreground whitespace-pre-wrap"
+                      : "max-w-[85%] rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
+                }
+              >
+                {m.role === "assistant" ? <Markdown text={m.content} artifactBase={artifactBase} /> : m.content}
+              </div>
+            )}
           </div>
         ))}
         <div ref={endRef} />
@@ -311,6 +312,14 @@ function SidePanel() {
             <span className="size-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: "300ms" }} />
           </span>
           <span>Working…</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto h-6 px-2 text-xs"
+            onClick={() => portRef.current?.postMessage({ type: "interrupt" } satisfies PanelInterrupt)}
+          >
+            Stop
+          </Button>
         </div>
       )}
 

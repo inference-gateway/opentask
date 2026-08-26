@@ -85,6 +85,17 @@ export function toolLabel(name: string, args?: string): string {
   }
 }
 
+// prettyArgs pretty-prints a tool's raw JSON args for the expanded pill,
+// returning the raw string when it isn't valid JSON (mid-stream partial).
+export function prettyArgs(args?: string): string {
+  if (!args) return "";
+  try {
+    return JSON.stringify(JSON.parse(args), null, 2);
+  } catch {
+    return args;
+  }
+}
+
 // Hides messages the panel shouldn't render: empty content, the system prompt,
 // and injected <system-reminder> context. Filters the outbound view only.
 export function isVisibleMessage(m: Msg): boolean {
@@ -195,6 +206,7 @@ export type PanelState = {
 export type PanelConnect = { type: "connect" };
 export type PanelDisconnect = { type: "disconnect" };
 export type PanelUserMessage = { type: "user_message"; content: string };
+export type PanelInterrupt = { type: "interrupt" };
 export type PanelListConversations = { type: "list_conversations" };
 export type PanelResumeConversation = { type: "resume_conversation"; id: string };
 export type PanelApproval = {
