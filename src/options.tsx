@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
 import { DEFAULT_PROMPTS, mergePrompts, type Prompt } from "./shared/prompts";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_REFINE, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, normalizeTimeout, isBotConfig, isPermissions, isRefineConfig, isPluginOption, isInitConfig, isDependenciesConfig, type BotConfig, type Permissions, type RefineConfig, type PluginOption, type InitConfig, type DependenciesConfig } from "./shared/models";
+import { DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_REFINE, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, normalizeTimeout, isBotConfig, isPermissions, isRefineConfig, isPluginOption, isInitConfig, isDependenciesConfig, type BotConfig, type Permissions, type RefineConfig, type PluginOption, type InitConfig, type DependenciesConfig } from "./shared/models";
 import { DEFAULT_REFINE_PROMPT } from "./shared/task";
 import { applyTheme, type Theme } from "./shared/theme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/components/tabs";
@@ -34,7 +34,6 @@ function Options() {
   const [repos, setRepos] = useState<string[]>([]);
   const [reposError, setReposError] = useState("");
   const [defaultRepo, setDefaultRepo] = useState("");
-  const [cliModels, setCliModels] = useState<string[]>([]);
   const [bridgeConnected, setBridgeConnected] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -79,7 +78,6 @@ function Options() {
     const port = chrome.runtime.connect({ name: "bridge-panel" });
     port.onMessage.addListener((state: { connected?: boolean; models?: string[] }) => {
       setBridgeConnected(state?.connected === true);
-      if (Array.isArray(state?.models) && state.models.length) setCliModels(state.models);
       if (!state?.connected || fetched) return;
       fetched = true;
       void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
@@ -145,8 +143,6 @@ function Options() {
     applyTheme(t);
   }
 
-  // The CLI's configured models when connected; hardcoded defaults only as a fallback.
-  const modelNames = cliModels.length ? cliModels : DEFAULT_MODELS.map((x) => x.model);
 
   return (
     <div className="mx-auto max-w-3xl p-6">
@@ -175,7 +171,7 @@ function Options() {
         </TabsContent>
 
         <TabsContent value="workflow" className="flex flex-col gap-4">
-          <InstallTab connected={bridgeConnected} repos={repos} reposError={reposError} models={modelNames} defaultRepo={defaultRepo} />
+          <InstallTab connected={bridgeConnected} repos={repos} reposError={reposError} defaultRepo={defaultRepo} />
           <WorkflowTab timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} bot={bot} setBot={setBot} />
         </TabsContent>
 

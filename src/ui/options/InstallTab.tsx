@@ -6,19 +6,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type InstallState =
   | { kind: "idle" }
-  | { kind: "installing" }
-  | { kind: "done"; prUrl: string }
+  | { kind: "sent" }
   | { kind: "error"; message: string };
 
-// One-click (re)install of the OpenTask workflow, delegated to the CLI:
-// `infer workflow install` runs an agent that merges changes into the existing
-// workflow (preserving repo customizations) and opens - or updates - the PR.
+// One-click (re)install of the OpenTask workflow: sends an install prompt into
+// the connected CLI's chat, so the run streams live in the side panel and the
+// push / PR creation go through the usual tool-approval flow there.
 // `repos` are "owner/name" full names from the CLI's gh auth; connecting is
 // user-initiated from the side panel, so until then we just point at Connect.
-export function InstallTab({ connected, repos, reposError, models, defaultRepo }: { connected: boolean; repos: string[]; reposError: string; models: string[]; defaultRepo?: string }) {
+export function InstallTab({ connected, repos, reposError, defaultRepo }: { connected: boolean; repos: string[]; reposError: string; defaultRepo?: string }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
-  const [model, setModel] = useState(models[0] ?? "");
   const [context, setContext] = useState("");
   const [state, setState] = useState<InstallState>({ kind: "idle" });
 
@@ -35,11 +33,10 @@ export function InstallTab({ connected, repos, reposError, models, defaultRepo }
   const repoNames = repos.filter((r) => r.startsWith(`${owner}/`)).map((r) => r.slice(owner.length + 1));
 
   function install() {
-    setState({ kind: "installing" });
-    void chrome.runtime.sendMessage({ type: "install", owner, repo, model, context }).then((resp) => {
+    void chrome.runtime.sendMessage({ type: "install", owner, repo, context }).then((resp) => {
       if (!resp) return setState({ kind: "error", message: "Failed to send install request." });
       if (resp.error) return setState({ kind: "error", message: resp.error });
-      setState({ kind: "done", prUrl: resp.prUrl as string });
+      setState({ kind: "sent" });
     });
   }
 
@@ -48,10 +45,11 @@ export function InstallTab({ connected, repos, reposError, models, defaultRepo }
       title="Install workflow"
       description={
         <>
-          Runs <code>infer workflow install</code> through the connected CLI: an agent reads the
-          repo's existing workflow, languages, and CI conventions, then opens a pull request
-          adding or updating <code>.github/workflows/tasks.yml</code>. Re-installing updates the
-          same open PR, and your repo-specific customizations are preserved.
+          Asks the connected CLI's agent to add or update{" "}
+          <code>.github/workflows/tasks.yml</code> in the selected repository and open a pull
+          request. The run streams in the OpenTask side panel, where you approve the push and
+          PR creation. Re-installing updates the same open PR, and your repo-specific
+          customizations are preserved.
         </>
       }
     >
@@ -88,19 +86,6 @@ export function InstallTab({ connected, repos, reposError, models, defaultRepo }
           ))}
         </SelectContent>
       </Select>
-      <Label htmlFor="igw-install-model">Default model</Label>
-      <Select value={model || undefined} onValueChange={setModel} disabled={!models.length}>
-        <SelectTrigger id="igw-install-model">
-          <SelectValue placeholder="Select a model…" />
-        </SelectTrigger>
-        <SelectContent>
-          {models.map((m) => (
-            <SelectItem key={m} value={m}>
-              {m}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
       <Label htmlFor="igw-install-context">Additional context (optional)</Label>
       <textarea
         id="igw-install-context"
@@ -110,16 +95,14 @@ export function InstallTab({ connected, repos, reposError, models, defaultRepo }
         onChange={(e) => setContext(e.target.value)}
       />
       <div>
-        <Button onClick={install} disabled={state.kind === "installing" || !owner || !repo}>
-          {state.kind === "installing" ? "Agent is working (takes a few minutes)…" : "Install / Re-install"}
+        <Button onClick={install} disabled={!owner || !repo}>
+          Install / Re-install
         </Button>
       </div>
-      {state.kind === "done" && (
+      {state.kind === "sent" && (
         <p className="text-sm">
-          Pull request ready:{" "}
-          <a className="underline" href={state.prUrl} target="_blank" rel="noreferrer">
-            View PR
-          </a>
+          Install request sent — follow the run in the OpenTask side panel, where you'll be asked
+          to approve the pull request.
         </p>
       )}
       {state.kind === "error" && <p className="text-sm text-destructive">{state.message}</p>}

@@ -5,7 +5,7 @@ import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesCon
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
-import { initBridge, callTool } from "./lib/bridge";
+import { initBridge, callTool, sendUserMessage, CLI_DOWN } from "./lib/bridge";
 
 initBridge();
 
@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "install") {
-    doInstall(msg.owner, msg.repo, msg.model, msg.context)
+    doInstall(msg.owner, msg.repo, msg.context)
       .then((r) => sendResponse(r))
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
@@ -224,11 +224,6 @@ async function checkInstall(owner: string, repo: string): Promise<{ installed: b
   throw await ghFail(res);
 }
 
-// Ten minutes: the CLI clones the repo, runs the install agent, and opens the PR.
-const INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
-
-const shellQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
-
 // Serialize the extension settings the CLI has no config for, as freeform
 // guidance for the install agent.
 async function installSettingsContext(): Promise<string> {
@@ -263,22 +258,23 @@ async function installSettingsContext(): Promise<string> {
   return lines.join("\n");
 }
 
-// Install or update the workflow via the CLI: `infer workflow install` clones
-// the repo, runs an LLM agent that merges changes into the existing workflow
-// (following the /github-workflow catalog skill), and opens - or updates - the
-// install PR. The extension just triggers it over the bridge and reports the
-// PR URL from the command output.
-async function doInstall(owner: string, repo: string, model: string, context?: string): Promise<{ prUrl: string } | { error: string }> {
-  const extra = [context?.trim(), await installSettingsContext()].filter(Boolean).join("\n\n");
-  let cmd = `infer workflow install ${owner}/${repo}`;
-  if (model) cmd += ` --model ${shellQuote(model)}`;
-  if (extra) cmd += ` --context ${shellQuote(extra)}`;
+// Install or update the workflow by prompting the connected CLI's agent as a
+// regular chat message: the turn streams live in the side panel and the push /
+// PR creation go through the usual tool-approval flow there. Returns as soon
+// as the prompt is sent.
+async function doInstall(owner: string, repo: string, context?: string): Promise<{ sent: true } | { error: string }> {
+  const extra = [context?.trim(), await installSettingsContext()].filter(Boolean).join("\n");
+  const prompt = [
+    `Install or update the OpenTask GitHub workflow in ${owner}/${repo}:`,
+    `1. Clone ${owner}/${repo} (shallow) into a temp dir under /tmp.`,
+    `2. Check out branch infer/install-github-action, on top of origin's if it already exists (a re-install must update the open PR, not open a duplicate).`,
+    `3. Create or update .github/workflows/tasks.yml for infer-action, following the repo's existing CI conventions and preserving any repo-specific customizations.`,
+    `4. Show me a short summary of the changes, then commit, push the branch, and open (or update) the pull request. Wait for my approval on the push and PR creation.`,
+    extra ? `\nWorkflow configuration:\n${extra}` : "",
+  ].filter(Boolean).join("\n");
 
-  const r = await callTool("Bash", { command: cmd }, INSTALL_TIMEOUT_MS);
-  if (!r.success) return { error: r.error || r.output || "Install failed." };
-  const prUrl = (r.output.match(/https:\/\/github\.com\/\S+\/pull\/\d+/g) ?? []).pop();
-  if (!prUrl) return { error: r.output.trim() || "The install finished without reporting a PR URL." };
-  return { prUrl };
+  if (!sendUserMessage(prompt)) return { error: CLI_DOWN };
+  return { sent: true };
 }
 
 // Send a free-text task: open an issue whose body carries the "@opentask" trigger, so

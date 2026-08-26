@@ -73,6 +73,17 @@ export function callTool(toolName: string, args: object, timeoutMs = 120_000): P
   });
 }
 
+// Send a prompt into the connected CLI's chat as a regular user message: the
+// turn streams back over chat_event frames and tool approvals surface in the
+// panel, exactly as if the user had typed it there.
+export function sendUserMessage(content: string): boolean {
+  if (!connected) return false;
+  send({ type: "user_message", content });
+  running = true;
+  broadcast();
+  return true;
+}
+
 function failPendingTools() {
   for (const p of pendingTools.values()) {
     clearTimeout(p.timer);
