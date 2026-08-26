@@ -1,7 +1,3 @@
-// WebSocket client for the infer CLI browser bridge (issue #141). The CLI hosts
-// ws://127.0.0.1:<port>/ws; we dial in, authenticate with a shared token, execute
-// browser_command frames on a single controlled tab, and mirror the conversation
-// to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
 import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
 
@@ -59,7 +55,7 @@ const selfToolIds = new Set<string>();
 
 // Invoke a CLI tool over the bridge (tool_request/tool_result frames). The CLI
 // runs it through its normal tool pipeline, so an approval prompt may sit in
-// front of the result — hence the generous default timeout.
+// front of the result - hence the generous default timeout.
 export function callTool(toolName: string, args: object, timeoutMs = 120_000): Promise<ToolResult> {
   if (!connected) return Promise.reject(new Error(CLI_DOWN));
   const id = crypto.randomUUID();

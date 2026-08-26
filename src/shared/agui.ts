@@ -66,7 +66,7 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
 // RUN_FINISHED bracket the whole connection (not a turn), so they can't drive
 // the loader. Key off turn-level events instead: a tool call means work is
 // running (stays true through a long tool execution that emits nothing), and an
-// assistant message ending winds the turn down — a following tool call re-arms it.
+// assistant message ending winds the turn down - a following tool call re-arms it.
 // selfToolIds are tool calls the extension itself issued over the bridge
 // (callTool): no agent turn follows them, so they must not arm the loader.
 export function runningFromEvent(current: boolean, event: unknown, selfToolIds?: Pick<Set<string>, "has">): boolean {
@@ -237,7 +237,6 @@ export type PanelState = {
   connected: boolean;
   connecting: boolean;
   running: boolean;
-  // http://127.0.0.1:<port> — base for loading CLI-served artifacts (images).
   artifactBase: string;
   messages: Msg[];
   conversations: ConversationMeta[];

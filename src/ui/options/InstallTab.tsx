@@ -101,7 +101,7 @@ export function InstallTab({ connected, repos, reposError, defaultRepo }: { conn
       </div>
       {state.kind === "sent" && (
         <p className="text-sm">
-          Install request sent — follow the run in the OpenTask side panel, where you'll be asked
+          Install request sent - follow the run in the OpenTask side panel, where you'll be asked
           to approve the pull request.
         </p>
       )}

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-// ponytail: minimal agent-chat markdown, not CommonMark. XSS-safe by construction —
+// ponytail: minimal agent-chat markdown, not CommonMark. XSS-safe by construction -
 // builds React elements, never innerHTML. Swap for `marked`+sanitizer if we ever
 // need tables/nested lists/HTML passthrough.
 
