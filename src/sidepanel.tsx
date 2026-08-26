@@ -282,7 +282,9 @@ function SidePanel() {
                   )}
                   <span className="truncate">{toolLabel(m.content, m.args)}</span>
                 </summary>
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">{prettyArgs(m.args)}</pre>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">
+                  {m.args ? prettyArgs(m.args) : m.content}
+                </pre>
                 {m.error && <pre className="whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-red-500">{m.error}</pre>}
               </details>
             ) : (
