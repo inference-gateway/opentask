@@ -266,13 +266,17 @@ async function doInstall(owner: string, repo: string, context?: string): Promise
   const extra = [context?.trim(), await installSettingsContext()].filter(Boolean).join("\n");
   const cur = await currentRepo().catch(() => undefined);
   const inPlace = cur && "repo" in cur && cur.repo === `${owner}/${repo}`;
+  // Leading with /github-workflow activates the catalog skill carrying the
+  // infer-action authoring guide and canonical examples - without it the agent
+  // reverse-engineers infer-action over the network, one gh api call at a time.
   const prompt = [
-    `Install or update the OpenTask GitHub workflow in ${owner}/${repo}:`,
+    `/github-workflow`,
+    `Install or update the OpenTask GitHub workflow in ${owner}/${repo}. Read the /github-workflow skill's guide and its bundled example workflows FIRST - they are the canonical infer-action usage patterns. Do not fetch infer-action docs or examples from the network.`,
     inPlace
       ? `1. The current checkout already is ${owner}/${repo} - no clone. Add a git worktree under /tmp for the install branch so the checked-out branch stays untouched.`
       : `1. Clone ${owner}/${repo} (shallow) into a temp dir under /tmp.`,
     `2. Check out branch infer/install-github-action, on top of origin's if it already exists (a re-install must update the open PR, not open a duplicate).`,
-    `3. Create or update .github/workflows/tasks.yml for infer-action, following the repo's existing CI conventions and preserving any repo-specific customizations.`,
+    `3. Create or update .github/workflows/tasks.yml for infer-action following the skill's canonical workflow and the repo's existing CI conventions, preserving any repo-specific customizations.`,
     `4. Show me a short summary of the changes, then commit, push the branch, and open (or update) the pull request. Wait for my approval on the push and PR creation.`,
     extra ? `\nWorkflow configuration:\n${extra}` : "",
   ].filter(Boolean).join("\n");
