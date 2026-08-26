@@ -17,6 +17,7 @@ let messages: Msg[] = [];
 let conversations: ConversationMeta[] = [];
 let skills: PanelSkill[] = [];
 let cliModels: string[] = [];
+let currentModel: string | undefined;
 let activeConversationId: string | undefined;
 let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
@@ -33,7 +34,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, models: cliModels, activeConversationId, pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, models: cliModels, currentModel, activeConversationId, pendingApproval: approval };
 }
 
 function broadcast() {
@@ -149,6 +150,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       return;
     case "models":
       cliModels = Array.isArray(frame.models) ? (frame.models as unknown[]).filter((m): m is string => typeof m === "string") : [];
+      currentModel = typeof frame.current === "string" && frame.current ? frame.current : undefined;
       broadcast();
       return;
     case "browser_command": {
@@ -389,6 +391,11 @@ export function initBridge() {
           messages = [...messages, { role: "user", content }];
           running = true;
         }
+        broadcast();
+      }
+      if (msg?.type === "select_model" && typeof msg.model === "string" && msg.model) {
+        send({ type: "select_model", model: msg.model });
+        currentModel = msg.model; // optimistic; the CLI's models frame confirms
         broadcast();
       }
       if (msg?.type === "interrupt") {

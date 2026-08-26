@@ -200,6 +200,8 @@ export type PanelState = {
   skills: PanelSkill[];
   // provider/model ids the CLI is configured with (first = CLI default), for model pickers.
   models: string[];
+  // the model the CLI will use for the next turn (from the `models` frame).
+  currentModel?: string;
   activeConversationId?: string;
   pendingApproval?: PendingApproval;
 };
@@ -207,6 +209,7 @@ export type PanelConnect = { type: "connect" };
 export type PanelDisconnect = { type: "disconnect" };
 export type PanelUserMessage = { type: "user_message"; content: string };
 export type PanelInterrupt = { type: "interrupt" };
+export type PanelSelectModel = { type: "select_model"; model: string };
 export type PanelListConversations = { type: "list_conversations" };
 export type PanelResumeConversation = { type: "resume_conversation"; id: string };
 export type PanelApproval = {

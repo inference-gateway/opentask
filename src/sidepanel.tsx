@@ -13,6 +13,7 @@ import type {
   PanelSkill,
   PanelState,
   PanelInterrupt,
+  PanelSelectModel,
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
@@ -39,6 +40,8 @@ function SidePanel() {
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [skills, setSkills] = useState<PanelSkill[]>([]);
+  const [models, setModels] = useState<string[]>([]);
+  const [currentModel, setCurrentModel] = useState<string | undefined>(undefined);
   const [menu, setMenu] = useState<{ results: FuzzyResult<PanelSkill>[]; active: number; triggerIndex: number; pos: CaretPos } | null>(null);
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
@@ -66,6 +69,8 @@ function SidePanel() {
         setMessages(msg.messages);
         setConversations(msg.conversations);
         setSkills(msg.skills);
+        setModels(msg.models);
+        setCurrentModel(msg.currentModel);
         setActiveConversationId(msg.activeConversationId);
         setPendingApproval(msg.pendingApproval);
       });
@@ -218,6 +223,26 @@ function SidePanel() {
           <Button size="icon-xs" variant="ghost" onClick={newSession} aria-label="New chat">
             <SquarePen />
           </Button>
+        </div>
+      )}
+
+      {connected && models.length > 0 && (
+        <div className="flex items-center gap-2 border-b border-border/60 bg-background/60 px-3 py-2">
+          <Select
+            value={currentModel ?? ""}
+            onValueChange={(model) => portRef.current?.postMessage({ type: "select_model", model } satisfies PanelSelectModel)}
+          >
+            <SelectTrigger size="sm" className="h-7 min-w-0 flex-1 font-mono text-xs" aria-label="Model">
+              <SelectValue placeholder="Model" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="max-h-[50vh] w-(--radix-select-trigger-width)">
+              {models.map((m) => (
+                <SelectItem key={m} value={m} className="font-mono text-xs">
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
