@@ -7,7 +7,6 @@ import { DEFAULT_REFINE_PROMPT } from "./shared/task";
 import { applyTheme, type Theme } from "./shared/theme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/components/tabs";
 import { Button } from "@/ui/components/button";
-import { InstallTab } from "./ui/options/InstallTab";
 import { OrchestratorTab } from "./ui/options/OrchestratorTab";
 import { AgentsTab } from "./ui/options/AgentsTab";
 import { PromptsTab } from "./ui/options/PromptsTab";
@@ -153,7 +152,7 @@ function Options() {
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
           <TabsTrigger value="prompts">Prompts</TabsTrigger>
-          <TabsTrigger value="workflow">Workflow</TabsTrigger>
+          <TabsTrigger value="workflow">Workflows</TabsTrigger>
           <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
@@ -171,8 +170,7 @@ function Options() {
         </TabsContent>
 
         <TabsContent value="workflow" className="flex flex-col gap-4">
-          <InstallTab connected={bridgeConnected} repos={repos} reposError={reposError} defaultRepo={defaultRepo} />
-          <WorkflowTab timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} bot={bot} setBot={setBot} />
+          <WorkflowTab connected={bridgeConnected} repos={repos} reposError={reposError} defaultRepo={defaultRepo} timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} bot={bot} setBot={setBot} />
         </TabsContent>
 
         <TabsContent value="dependencies" className="flex flex-col gap-4">
