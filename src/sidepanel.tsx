@@ -361,7 +361,7 @@ function SidePanel() {
             <Button
               size="icon-sm"
               onClick={() => portRef.current?.postMessage({ type: "interrupt" } satisfies PanelInterrupt)}
-              className="bg-foreground text-background hover:opacity-90"
+              className="bg-red-500 text-white hover:bg-red-600"
               aria-label="Stop generating"
             >
               ■
