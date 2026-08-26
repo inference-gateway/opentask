@@ -18,7 +18,7 @@ import type {
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
-import { ArrowDown, SquarePen, X } from "lucide-react";
+import { ArrowDown, Check, Copy, SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
@@ -30,6 +30,27 @@ import { getTrigger } from "./lib/dom";
 import { replaceRange } from "./lib/insert";
 import { SkillMenu } from "@/ui/SkillMenu";
 
+// Hover-reveal copy-to-clipboard under a chat bubble, desktop-app style.
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      size="icon-xs"
+      variant="ghost"
+      aria-label="Copy message"
+      className="mt-0.5 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+    >
+      {copied ? <Check className="text-emerald-500" /> : <Copy />}
+    </Button>
+  );
+}
+
 function SidePanel() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -40,7 +61,10 @@ function SidePanel() {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
+  const [histIdx, setHistIdx] = useState(-1);
+  const histStash = useRef("");
   const [skills, setSkills] = useState<PanelSkill[]>([]);
+  const [history, setHistory] = useState<string[]>([]);
   const [models, setModels] = useState<string[]>([]);
   const [currentModel, setCurrentModel] = useState<string | undefined>(undefined);
   const [mode, setMode] = useState<string | undefined>(undefined);
@@ -72,6 +96,7 @@ function SidePanel() {
         setMessages(msg.messages);
         setConversations(msg.conversations);
         setSkills(msg.skills);
+        setHistory(msg.history);
         setModels(msg.models);
         setCurrentModel(msg.currentModel);
         setMode(msg.mode);
@@ -123,6 +148,7 @@ function SidePanel() {
     if (!content) return;
     portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage);
     setDraft("");
+    setHistIdx(-1);
   }
 
   function updateSkillMenu() {
@@ -295,7 +321,7 @@ function SidePanel() {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+          <div key={i} className={m.role === "user" ? "group flex justify-end" : "group flex justify-start"}>
             {m.role === "tool" ? (
               <details className="max-w-[85%] rounded-2xl border border-border/60 bg-background/60 font-mono text-xs text-muted-foreground open:w-full">
                 <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-1 [&::-webkit-details-marker]:hidden">
@@ -319,16 +345,19 @@ function SidePanel() {
                 {m.error && <pre className="whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-red-500">{m.error}</pre>}
               </details>
             ) : (
-              <div
-                className={
-                  m.role === "user"
-                    ? "max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
-                    : m.role === "reasoning"
-                      ? "max-w-[85%] rounded-2xl rounded-bl-md border border-dashed border-border/60 bg-background/40 px-3.5 py-2 text-xs italic text-muted-foreground whitespace-pre-wrap"
-                      : "max-w-[85%] rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
-                }
-              >
-                {m.role === "assistant" ? <Markdown text={m.content} artifactBase={artifactBase} /> : m.content}
+              <div className={m.role === "user" ? "flex max-w-[85%] flex-col items-end" : "flex max-w-[85%] flex-col items-start"}>
+                <div
+                  className={
+                    m.role === "user"
+                      ? "rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
+                      : m.role === "reasoning"
+                        ? "rounded-2xl rounded-bl-md border border-dashed border-border/60 bg-background/40 px-3.5 py-2 text-xs italic text-muted-foreground whitespace-pre-wrap"
+                        : "rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
+                  }
+                >
+                  {m.role === "assistant" ? <Markdown text={m.content} artifactBase={artifactBase} /> : m.content}
+                </div>
+                <CopyButton text={m.content} />
               </div>
             )}
           </div>
@@ -423,6 +452,31 @@ function SidePanel() {
                   commitSkill(menu.active);
                   return;
                 }
+              }
+              // The CLI's shared shell input history, mirroring the TUI's
+              // HistoryManager: ArrowUp always recalls (stashing the current
+              // draft on entry), ArrowDown walks newer and finally restores
+              // the stashed draft.
+              if (e.key === "ArrowUp" && history.length) {
+                e.preventDefault();
+                if (histIdx < 0) histStash.current = draft;
+                const next = Math.min(histIdx < 0 ? history.length - 1 : Math.max(0, histIdx - 1), history.length - 1);
+                setHistIdx(next);
+                setDraft(history[next]);
+                return;
+              }
+              if (e.key === "ArrowDown" && histIdx >= 0) {
+                e.preventDefault();
+                const next = histIdx + 1;
+                if (next >= history.length) {
+                  setHistIdx(-1);
+                  setDraft(histStash.current);
+                  histStash.current = "";
+                } else {
+                  setHistIdx(next);
+                  setDraft(history[next]);
+                }
+                return;
               }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

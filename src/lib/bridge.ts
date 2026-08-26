@@ -1,5 +1,5 @@
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -12,6 +12,7 @@ let attempt = 0;
 let messages: Msg[] = [];
 let conversations: ConversationMeta[] = [];
 let skills: PanelSkill[] = [];
+let history: string[] = [];
 let cliModels: string[] = [];
 let currentModel: string | undefined;
 let mode: string | undefined;
@@ -31,7 +32,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, models: cliModels, currentModel, mode, activeConversationId, pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, history, models: cliModels, currentModel, mode, activeConversationId, pendingApproval: approval };
 }
 
 function broadcast() {
@@ -70,12 +71,22 @@ export function callTool(toolName: string, args: object, timeoutMs = 120_000): P
   });
 }
 
+// Mirrors the CLI's history append for a just-sent message (trimmed, consecutive
+// duplicates skipped) so arrow-up recall is fresh without re-fetching the list;
+// the CLI persists the same entry to the shared store on its side.
+function recordHistory(content: string) {
+  const c = content.trim();
+  if (!c || history[history.length - 1] === c) return;
+  history = [...history, c];
+}
+
 // Send a prompt into the connected CLI's chat as a regular user message: the
 // turn streams back over chat_event frames and tool approvals surface in the
 // panel, exactly as if the user had typed it there.
 export function sendUserMessage(content: string): boolean {
   if (!connected) return false;
   send({ type: "user_message", content });
+  recordHistory(content);
   running = true;
   broadcast();
   return true;
@@ -148,6 +159,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       send({ type: "list_conversations" });
       send({ type: "list_skills" });
       send({ type: "list_models" });
+      send({ type: "list_history" });
       if (activeConversationId) send({ type: "resume_conversation", id: activeConversationId });
       broadcast();
       return;
@@ -157,6 +169,10 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       return;
     case "skills":
       skills = parseSkills(frame);
+      broadcast();
+      return;
+    case "history":
+      history = parseHistory(frame);
       broadcast();
       return;
     case "models":
@@ -390,6 +406,7 @@ export function initBridge() {
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         const content = msg.content.trim();
         send({ type: "user_message", content });
+        recordHistory(content);
         if (isClearCommand(content)) {
           messages = [];
           running = false;

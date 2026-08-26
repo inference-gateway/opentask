@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -274,5 +274,12 @@ describe("snapshotToMessages", () => {
   test("keeps orphan tool entries and drops roleless garbage", () => {
     const msgs = snapshotToMessages({ messages: [{ role: "tool", content: "Performed read", tool_call_id: "zzz" }, { content: "x" }, null] });
     expect(msgs).toEqual([{ role: "tool", content: "Performed read" }]);
+  });
+});
+
+describe("parseHistory", () => {
+  test("keeps string entries oldest-first, drops junk", () => {
+    expect(parseHistory({ type: "history", history: ["a", "b", 3, "", null] })).toEqual(["a", "b"]);
+    expect(parseHistory({ type: "history" })).toEqual([]);
   });
 });

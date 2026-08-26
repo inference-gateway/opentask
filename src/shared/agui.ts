@@ -198,6 +198,14 @@ export function parseConversations(frame: Record<string, unknown>): Conversation
   });
 }
 
+// Parses a `history` wire frame (the CLI's shared shell input history, oldest
+// first) into string entries, dropping non-strings.
+export function parseHistory(frame: Record<string, unknown>): string[] {
+  const list = frame.history;
+  if (!Array.isArray(list)) return [];
+  return list.filter((h): h is string => typeof h === "string" && h !== "");
+}
+
 // A skill the panel offers in the "/" menu (protocol `skills` frame). `scope` is
 // the CLI SkillScope: project | agents | user | plugin | catalog.
 export type PanelSkill = { name: string; description: string; scope: string };
@@ -241,6 +249,8 @@ export type PanelState = {
   messages: Msg[];
   conversations: ConversationMeta[];
   skills: PanelSkill[];
+  // the CLI's shell input history, oldest first, for arrow-up recall in the composer.
+  history: string[];
   // provider/model ids the CLI is configured with (first = CLI default), for model pickers.
   models: string[];
   // the model the CLI will use for the next turn (from the `models` frame).

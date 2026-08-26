@@ -52,6 +52,20 @@ test("auto-embeds a bare artifact image path in inline code", () => {
   expect(html("run `npm run build` now", "http://127.0.0.1:52789")).not.toContain("<img");
 });
 
+test("renders GFM tables", () => {
+  const out = html("| Requested | Status |\n|---|---|\n| `timeout` | ok |");
+  expect(out).toContain("<table");
+  expect(out).toContain("<th>Requested</th>");
+  expect(out).toContain("<code>timeout</code>");
+});
+
+test("renders bold spans containing inline code", () => {
+  const out = html("**GitHub App token: secret `KEY` changed**");
+  expect(out).toContain("<strong>");
+  expect(out).toContain("<code>KEY</code>");
+  expect(out).not.toContain("**");
+});
+
 test("no raw HTML injection", () => {
   const out = html("<img src=x onerror=alert(1)>");
   expect(out).not.toContain("<img");
