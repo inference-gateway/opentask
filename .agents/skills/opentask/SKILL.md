@@ -6,6 +6,9 @@ description: >
   bar (Tasks / Skills / Agents / Init tabs). Use when operating a browser on github.com to send the OpenTask agent a
   custom prompt (not just a saved template), install the agent workflow, refine an issue in place after research, or
   manage skills/agents - and, crucially, to decide when a plain `gh` CLI call is faster than driving the UI at all.
+  Also use when authoring, installing, or updating the GitHub Actions workflow that runs the agent on long-horizon
+  tasks (`.github/workflows/tasks.yml` via `inference-gateway/infer-action`) - bumping the action version, adding
+  inputs, or adapting the workflow to a repository's languages and CI conventions.
 license: Apache-2.0
 ---
 
@@ -100,6 +103,14 @@ agent research and fill it in.
 
 Refine is an in-place edit only (no branch/commit/PR), so it needs the account's
 **Create GitHub issues** permission; **re-install the workflow** after enabling it.
+
+## Authoring the GitHub Actions workflow
+
+Installing via the **Tasks** tab covers the common case. When you need to
+author `.github/workflows/tasks.yml` by hand, update an existing workflow, bump
+the `inference-gateway/infer-action` version, or adapt the workflow to a
+repository's languages and CI conventions, read
+[references/github-workflow.md](references/github-workflow.md).
 
 ## Notes and gotchas
 
