@@ -33,6 +33,7 @@ function Options() {
   const [theme, setTheme] = useState<Theme>("system");
   const [repos, setRepos] = useState<string[]>([]);
   const [reposError, setReposError] = useState("");
+  const [defaultRepo, setDefaultRepo] = useState("");
   const [cliModels, setCliModels] = useState<string[]>([]);
   const [bridgeConnected, setBridgeConnected] = useState(false);
   const [status, setStatus] = useState("");
@@ -73,9 +74,6 @@ function Options() {
     })();
   }, []);
 
-  // The Install tab's owner + repository dropdowns come from the CLI's gh auth (via
-  // the bridge). Connecting is user-initiated (the side panel's Connect button); watch
-  // the bridge state over the panel port and fetch repos once it reports connected.
   useEffect(() => {
     let fetched = false;
     const port = chrome.runtime.connect({ name: "bridge-panel" });
@@ -87,6 +85,9 @@ function Options() {
       void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
         if (r && Array.isArray(r.repos)) setRepos(r.repos);
         else setReposError(String(r?.error ?? "Failed to load repositories from the CLI."));
+      });
+      void chrome.runtime.sendMessage({ type: "current-repo" }).then((r) => {
+        if (r && typeof r.repo === "string" && r.repo.includes("/")) setDefaultRepo(r.repo);
       });
     });
     return () => port.disconnect();
@@ -151,9 +152,8 @@ function Options() {
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold mb-4">OpenTask settings</h1>
 
-      <Tabs defaultValue="install">
+      <Tabs defaultValue="workflow">
         <TabsList>
-          <TabsTrigger value="install">Install</TabsTrigger>
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
           <TabsTrigger value="prompts">Prompts</TabsTrigger>
@@ -161,10 +161,6 @@ function Options() {
           <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="install" className="flex flex-col gap-4">
-          <InstallTab connected={bridgeConnected} repos={repos} reposError={reposError} models={modelNames} />
-        </TabsContent>
 
         <TabsContent value="orchestrator" className="flex flex-col gap-4">
           <OrchestratorTab perms={perms} setPerms={setPerms} refine={refine} setRefine={setRefine} init={init} setInit={setInit} />
@@ -179,6 +175,7 @@ function Options() {
         </TabsContent>
 
         <TabsContent value="workflow" className="flex flex-col gap-4">
+          <InstallTab connected={bridgeConnected} repos={repos} reposError={reposError} models={modelNames} defaultRepo={defaultRepo} />
           <WorkflowTab timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} bot={bot} setBot={setBot} />
         </TabsContent>
 

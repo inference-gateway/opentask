@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Section } from "./Section";
 import { Button } from "@/ui/components/button";
 import { Label } from "@/ui/components/label";
@@ -15,12 +15,21 @@ type InstallState =
 // workflow (preserving repo customizations) and opens - or updates - the PR.
 // `repos` are "owner/name" full names from the CLI's gh auth; connecting is
 // user-initiated from the side panel, so until then we just point at Connect.
-export function InstallTab({ connected, repos, reposError, models }: { connected: boolean; repos: string[]; reposError: string; models: string[] }) {
+export function InstallTab({ connected, repos, reposError, models, defaultRepo }: { connected: boolean; repos: string[]; reposError: string; models: string[]; defaultRepo?: string }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [model, setModel] = useState(models[0] ?? "");
   const [context, setContext] = useState("");
   const [state, setState] = useState<InstallState>({ kind: "idle" });
+
+  useEffect(() => {
+    if (!defaultRepo || owner || repo) return;
+    const [o, r] = defaultRepo.split("/");
+    if (o && r) {
+      setOwner(o);
+      setRepo(r);
+    }
+  }, [defaultRepo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const owners = [...new Set(repos.map((r) => r.split("/")[0]))];
   const repoNames = repos.filter((r) => r.startsWith(`${owner}/`)).map((r) => r.slice(owner.length + 1));

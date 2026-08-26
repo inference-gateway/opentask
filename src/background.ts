@@ -70,6 +70,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
   }
+  if (msg?.type === "current-repo") {
+    currentRepo()
+      .then((r) => sendResponse(r))
+      .catch((err) => sendResponse({ error: String(err) }));
+    return true;
+  }
   if (msg?.type === "agents-catalog") {
     fetchAgentsCatalog()
       .then((r) => sendResponse(r))
@@ -156,6 +162,14 @@ async function listRepos(): Promise<{ repos: string[] } | { error: string }> {
   const r = await callTool("Bash", { command: "gh api 'user/repos?per_page=100' --paginate --jq '.[].full_name'" });
   if (!r.success) return { error: r.error || r.output || "gh api user/repos failed" };
   return { repos: r.output.split("\n").map((s) => s.trim()).filter(Boolean) };
+}
+
+// The repo the connected CLI is running in ("owner/name"), from its working
+// directory. Preselects the Install form's owner + repository dropdowns.
+async function currentRepo(): Promise<{ repo: string } | { error: string }> {
+  const r = await callTool("Bash", { command: "gh repo view --json nameWithOwner -q .nameWithOwner" });
+  if (!r.success) return { error: r.error || r.output || "gh repo view failed" };
+  return { repo: r.output.trim() };
 }
 
 async function fetchFromGitHub(owner: string, repo: string): Promise<Skill[]> {
