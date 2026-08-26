@@ -18,6 +18,7 @@ let conversations: ConversationMeta[] = [];
 let skills: PanelSkill[] = [];
 let cliModels: string[] = [];
 let currentModel: string | undefined;
+let mode: string | undefined;
 let activeConversationId: string | undefined;
 let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
@@ -34,7 +35,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, models: cliModels, currentModel, activeConversationId, pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, models: cliModels, currentModel, mode, activeConversationId, pendingApproval: approval };
 }
 
 function broadcast() {
@@ -137,8 +138,6 @@ async function connect() {
 }
 
 function scheduleReconnect() {
-  // A dead CLI would otherwise spam ERR_CONNECTION_REFUSED (Chrome logs every
-  // refused dial): after a few quick retries, leave it to the redial alarm.
   if (attempt >= 5) return;
   setTimeout(() => { if (wantConnected && !connected) void connect(); }, backoffMs(attempt++));
 }
@@ -167,6 +166,10 @@ async function handleFrame(socket: WebSocket, data: unknown) {
     case "models":
       cliModels = Array.isArray(frame.models) ? (frame.models as unknown[]).filter((m): m is string => typeof m === "string") : [];
       currentModel = typeof frame.current === "string" && frame.current ? frame.current : undefined;
+      broadcast();
+      return;
+    case "mode":
+      mode = typeof frame.mode === "string" && frame.mode ? frame.mode : undefined;
       broadcast();
       return;
     case "browser_command": {
@@ -340,7 +343,6 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   throw new Error(`unknown action: ${cmd.action}`);
 }
 
-// The tab the user is actually looking at (last focused window), or undefined.
 async function activeTabId(): Promise<number | undefined> {
   const [t] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   return t?.id;
@@ -403,25 +405,28 @@ export function initBridge() {
           pendingApproval = undefined;
           activeConversationId = undefined;
         } else {
-          // The CLI echoes the user message back as a chat_event (role user),
-          // exactly as it does for messages typed in the terminal.
           running = true;
         }
         broadcast();
       }
       if (msg?.type === "select_model" && typeof msg.model === "string" && msg.model) {
         send({ type: "select_model", model: msg.model });
-        currentModel = msg.model; // optimistic; the CLI's models frame confirms
+        currentModel = msg.model;
+        broadcast();
+      }
+      if (msg?.type === "set_mode" && typeof msg.mode === "string" && msg.mode) {
+        send({ type: "set_mode", mode: msg.mode });
+        mode = msg.mode;
         broadcast();
       }
       if (msg?.type === "interrupt") {
         send({ type: "interrupt" });
-        running = false; // optimistic; the cancelled completion ends the stream
+        running = false;
         broadcast();
       }
       if (msg?.type === "approval_response" && typeof msg.requestId === "string") {
         send({ type: "approval_response", request_id: msg.requestId, action: msg.action });
-        if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined; // optimistic
+        if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined;
         broadcast();
       }
     });

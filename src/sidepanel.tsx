@@ -14,10 +14,11 @@ import type {
   PanelState,
   PanelInterrupt,
   PanelSelectModel,
+  PanelSetMode,
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
-import { SquarePen, X } from "lucide-react";
+import { ArrowDown, SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
@@ -42,6 +43,8 @@ function SidePanel() {
   const [skills, setSkills] = useState<PanelSkill[]>([]);
   const [models, setModels] = useState<string[]>([]);
   const [currentModel, setCurrentModel] = useState<string | undefined>(undefined);
+  const [mode, setMode] = useState<string | undefined>(undefined);
+  const [atBottom, setAtBottom] = useState(true);
   const [menu, setMenu] = useState<{ results: FuzzyResult<PanelSkill>[]; active: number; triggerIndex: number; pos: CaretPos } | null>(null);
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
@@ -71,6 +74,7 @@ function SidePanel() {
         setSkills(msg.skills);
         setModels(msg.models);
         setCurrentModel(msg.currentModel);
+        setMode(msg.mode);
         setActiveConversationId(msg.activeConversationId);
         setPendingApproval(msg.pendingApproval);
       });
@@ -86,9 +90,12 @@ function SidePanel() {
     };
   }, []);
 
+  // Stick to the bottom only while the user is already there; scrolling up
+  // during a streaming turn must not be fought - a floating arrow offers the
+  // way back down instead.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages]);
+    if (atBottom) endRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, atBottom]);
 
   function connect() {
     portRef.current?.postMessage({ type: "connect" } satisfies PanelConnect);
@@ -243,6 +250,18 @@ function SidePanel() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            size="sm"
+            variant={mode === "auto" ? "default" : "outline"}
+            className="h-7 shrink-0 px-2 text-xs"
+            aria-pressed={mode === "auto"}
+            title="Auto mode: run tools without approval prompts (the CLI's shift+tab YOLO mode)"
+            onClick={() =>
+              portRef.current?.postMessage({ type: "set_mode", mode: mode === "auto" ? "standard" : "auto" } satisfies PanelSetMode)
+            }
+          >
+            Auto
+          </Button>
         </div>
       )}
 
@@ -258,7 +277,14 @@ function SidePanel() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
+      <div className="relative flex-1 min-h-0">
+      <div
+        className="h-full overflow-y-auto px-3 py-4 space-y-3"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
+        }}
+      >
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-600/15 text-2xl">
@@ -308,6 +334,21 @@ function SidePanel() {
           </div>
         ))}
         <div ref={endRef} />
+      </div>
+      {!atBottom && (
+        <Button
+          size="icon-xs"
+          variant="secondary"
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-border/60 shadow-md"
+          aria-label="Scroll to bottom"
+          onClick={() => {
+            setAtBottom(true);
+            endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+          }}
+        >
+          <ArrowDown />
+        </Button>
+      )}
       </div>
 
       {pendingApproval && (

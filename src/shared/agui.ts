@@ -246,6 +246,8 @@ export type PanelState = {
   models: string[];
   // the model the CLI will use for the next turn (from the `models` frame).
   currentModel?: string;
+  // the CLI's agent mode as its allowlist key: "standard" | "plan" | "auto".
+  mode?: string;
   activeConversationId?: string;
   pendingApproval?: PendingApproval;
 };
@@ -254,6 +256,7 @@ export type PanelDisconnect = { type: "disconnect" };
 export type PanelUserMessage = { type: "user_message"; content: string };
 export type PanelInterrupt = { type: "interrupt" };
 export type PanelSelectModel = { type: "select_model"; model: string };
+export type PanelSetMode = { type: "set_mode"; mode: string };
 export type PanelListConversations = { type: "list_conversations" };
 export type PanelResumeConversation = { type: "resume_conversation"; id: string };
 export type PanelApproval = {
