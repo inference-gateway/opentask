@@ -65,6 +65,18 @@ describe("reduceAgui", () => {
     ]);
   });
 
+  test("a user message streamed by the CLI (role user on START) renders as a user bubble", () => {
+    let m = reduceAgui([], { type: "TEXT_MESSAGE_START", messageId: "u1", role: "user" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_CONTENT", messageId: "u1", delta: "what's up" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_END", messageId: "u1" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_START", messageId: "a1", role: "assistant" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_CONTENT", messageId: "a1", delta: "not much" });
+    expect(m).toEqual([
+      { role: "user", content: "what's up", id: "u1" },
+      { role: "assistant", content: "not much", id: "a1" },
+    ]);
+  });
+
   test("tool result marks the matching tool row ok or failed", () => {
     let m = reduceAgui([], { type: "TOOL_CALL_START", toolCallId: "a", toolCallName: "Bash" });
     m = reduceAgui(m, { type: "TOOL_CALL_START", toolCallId: "b", toolCallName: "Read" });

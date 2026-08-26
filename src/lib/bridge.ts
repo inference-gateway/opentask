@@ -388,7 +388,8 @@ export function initBridge() {
           pendingApproval = undefined;
           activeConversationId = undefined;
         } else {
-          messages = [...messages, { role: "user", content }];
+          // The CLI echoes the user message back as a chat_event (role user),
+          // exactly as it does for messages typed in the terminal.
           running = true;
         }
         broadcast();

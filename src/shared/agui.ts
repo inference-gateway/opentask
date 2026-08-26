@@ -13,16 +13,18 @@ export type Msg = { role: string; content: string; args?: string; id?: string; o
 // else is a no-op by contract.
 export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   const e = event as {
-    type?: unknown; role?: string; delta?: string; toolCallName?: string; toolCallId?: string; content?: string;
+    type?: unknown; role?: string; delta?: string; toolCallName?: string; toolCallId?: string; content?: string; messageId?: string;
   } | null;
   if (!e || typeof e.type !== "string") return messages;
   switch (e.type) {
     case "TEXT_MESSAGE_START":
-      return [...messages, { role: e.role ?? "assistant", content: "" }];
+      return [...messages, { role: e.role ?? "assistant", content: "", id: e.messageId }];
     case "TEXT_MESSAGE_CONTENT": {
       const last = messages[messages.length - 1];
-      if (!last || last.role === "user")
-        return [...messages, { role: "assistant", content: e.delta ?? "" }];
+      // A delta belongs to the message START opened (by id); otherwise it can
+      // only continue an assistant message, never a finished user one.
+      const continues = !!last && ((!!last.id && last.id === e.messageId) || last.role !== "user");
+      if (!continues) return [...messages, { role: "assistant", content: e.delta ?? "" }];
       return [...messages.slice(0, -1), { ...last, content: last.content + (e.delta ?? "") }];
     }
     case "REASONING_MESSAGE_START":
