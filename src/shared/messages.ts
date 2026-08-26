@@ -10,7 +10,7 @@ export type SkillsResponse = { items: Skill[] } | { error: string };
 export type CheckInstallRequest = { type: "check-install"; owner: string; repo: string };
 export type CheckInstallResponse = { installed: boolean; url?: string } | { error: string };
 
-export type InstallRequest = { type: "install"; owner: string; repo: string; model: string };
+export type InstallRequest = { type: "install"; owner: string; repo: string; model: string; context?: string };
 export type InstallResponse = { prUrl: string } | { error: string };
 
 export type CreateTaskRequest = { type: "create-task"; owner: string; repo: string; prompt: string };

@@ -1,6 +1,6 @@
 import * as storage from "./shared/storage";
 import { isValidHf, podRequestBody, githubError, parseGhHttp, type Skill, type SkillsCatalogResponse, type ApplySkillsResponse, type DispatchTaskResponse, type AgentsCatalogResponse, type GpuState } from "./shared/messages";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isBotConfig, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, workflowYaml, reconcileWorkflow, prBody, normalizeTimeout, resolveAutoDetect } from "./shared/models";
+import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isBotConfig, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, normalizeTimeout } from "./shared/models";
 import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesConfig } from "./shared/models";
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
@@ -13,7 +13,6 @@ const TTL = 10 * 60 * 1000;
 
 const WORKFLOW_PATH = ".github/workflows/tasks.yml";
 const WORKFLOW_FILE = "tasks.yml";
-const BRANCH = "infer-agent-install";
 const SKILLS_BRANCH = "infer-skills-update";
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -24,7 +23,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "install") {
-    doInstall(msg.owner, msg.repo, msg.model)
+    doInstall(msg.owner, msg.repo, msg.model, msg.context)
       .then((r) => sendResponse(r))
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
@@ -211,76 +210,61 @@ async function checkInstall(owner: string, repo: string): Promise<{ installed: b
   throw await ghFail(res);
 }
 
-async function doInstall(owner: string, repo: string, model: string): Promise<{ prUrl: string; manual?: boolean } | { error: string }> {
-  const storedModels = await storage.get<unknown[]>("models");
-  const models: ModelOption[] = Array.isArray(storedModels) && storedModels.length && storedModels.every(isModelOption)
-    ? (storedModels as ModelOption[])
-    : DEFAULT_MODELS;
+// Ten minutes: the CLI clones the repo, runs the install agent, and opens the PR.
+const INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
+
+const shellQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
+
+// Serialize the extension settings the CLI has no config for, as freeform
+// guidance for the install agent.
+async function installSettingsContext(): Promise<string> {
   const bot: BotConfig = await loadBot();
   const storedPerms = await storage.get<unknown>("permissions");
   const perms: Permissions = isPermissions(storedPerms) ? storedPerms : DEFAULT_PERMISSIONS;
-  const plugins = await loadPlugins();
+  const plugins = enabledPlugins(await loadPlugins());
   const agents = await loadSelectedAgents();
-  const timeout = normalizeTimeout(await storage.get<unknown>("timeout"));
   const instructions = (await storage.get<string>("instructions")) ?? DEFAULT_INSTRUCTIONS;
   const debug = (await storage.get<boolean>("debug")) ?? false;
   const visionModel = (await storage.get<string>("visionModel")) ?? "";
   const imageModel = (await storage.get<string>("imageModel")) ?? "";
   const reviewInline = (await storage.get<boolean>("reviewInline")) ?? false;
+  const timeout = normalizeTimeout(await storage.get<unknown>("timeout"));
   const deps = await loadDependencies();
-  // The chosen model may come from the CLI's configured list, not DEFAULT_MODELS.
-  const defaultModel = model || models[0].model;
 
-  const repoRes = await ghFetch(owner, repo, "");
-  if (!repoRes.ok) throw await ghFail(repoRes);
-  const defaultBranch = (await repoRes.json()).default_branch;
-  const headSha = await headShaFor(owner, repo, defaultBranch);
+  const lines: string[] = [`Job timeout-minutes: ${timeout}.`];
+  if (bot.enabled) lines.push(`Use the GitHub App token variant: client-id secret ${bot.clientId}, private-key secret ${bot.privateKeySecret}.`);
+  if (plugins.length) lines.push(`Pre-install these infer-action plugins: ${plugins.join(", ")}.`);
+  if (agents.length) lines.push(`Expose these A2A agents (agents input): ${agents.join(",")}.`);
+  if (!perms.createPRs) lines.push("Default enable-git-operations to false (advisory mode).");
+  if (perms.createIssues) lines.push("Allow gh issue create/edit in bash-allow-append.");
+  if (perms.comment) lines.push("Allow gh issue comment and gh pr comment in bash-allow-append.");
+  if (deps.apt?.trim()) lines.push(`apt packages: ${deps.apt.trim()}.`);
+  const langs = deps.items.filter((d) => d.enabled && d.id !== "task").map((d) => d.id);
+  if (!deps.autoDetect && langs.length) lines.push(`Ensure the workflow's languages input includes: ${langs.join(" ")}.`);
+  if (debug) lines.push("Enable debug output.");
+  if (reviewInline) lines.push('Set review-inline: "true".');
+  if (visionModel.trim()) lines.push(`Vision model: ${visionModel.trim()}.`);
+  if (imageModel.trim()) lines.push(`Image generation model: ${imageModel.trim()}.`);
+  if (instructions.trim()) lines.push(`Custom instructions for the agent:\n${instructions.trim()}`);
+  return lines.join("\n");
+}
 
-  const resolvedDeps = deps.autoDetect ? resolveAutoDetect(deps, await fetchLanguages(owner, repo)) : deps;
-  const yaml = workflowYaml(models, defaultModel, bot, perms, enabledPlugins(plugins), agents, timeout, instructions, resolvedDeps, debug, visionModel, imageModel, reviewInline);
+// Install or update the workflow via the CLI: `infer workflow install` clones
+// the repo, runs an LLM agent that merges changes into the existing workflow
+// (following the /github-workflow catalog skill), and opens - or updates - the
+// install PR. The extension just triggers it over the bridge and reports the
+// PR URL from the command output.
+async function doInstall(owner: string, repo: string, model: string, context?: string): Promise<{ prUrl: string } | { error: string }> {
+  const extra = [context?.trim(), await installSettingsContext()].filter(Boolean).join("\n\n");
+  let cmd = `infer workflow install ${owner}/${repo}`;
+  if (model) cmd += ` --model ${shellQuote(model)}`;
+  if (extra) cmd += ` --context ${shellQuote(extra)}`;
 
-  const current = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}?ref=${defaultBranch}`);
-  const currentData = current.status === 200 ? await current.json() : undefined;
-  const existing = currentData ? atob((currentData.content as string).replace(/\s/g, "")) : undefined;
-  const desired = existing ? reconcileWorkflow(existing, yaml) : yaml;
-  if (desired === existing) {
-    return { error: "The workflow is already up to date - nothing to install." };
-  }
-  const content = btoa(desired);
-  const title = currentData ? "ci: sync OpenTask Agent workflow" : "feat: add OpenTask Agent workflow";
-
-  const branch = `${BRANCH}-${Date.now().toString(36)}`;
-  const branchRes = await ghFetch(owner, repo, "git/refs", {
-    method: "POST",
-    body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: headSha }),
-  });
-  if (!branchRes.ok) throw await ghFail(branchRes);
-
-  const putRes = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      message: title,
-      content,
-      branch,
-      ...(currentData ? { sha: currentData.sha } : {}),
-    }),
-  });
-  if (!putRes.ok) throw await ghFail(putRes);
-
-  const body = prBody(models, defaultModel, bot, enabledPlugins(plugins), agents);
-  const prRes = await openPull(owner, repo, { title, head: branch, base: defaultBranch, body });
-  if (prRes.ok) return { prUrl: (await prRes.json()).html_url };
-  if (prRes.status === 422) {
-    const detail = githubError(422, await prRes.text().catch(() => ""));
-    return { error: /no commits between/i.test(detail) ? "The workflow is already up to date - nothing to re-install." : detail };
-  }
-  if (prRes.status >= 500) {
-    const detail = await prRes.text().catch(() => "");
-    console.warn(`[igw] POST /pulls ${prRes.status}: ${detail.slice(0, 300)}`);
-    const q = `expand=1&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-    return { prUrl: `https://github.com/${owner}/${repo}/compare/${defaultBranch}...${branch}?${q}`, manual: true };
-  }
-  throw await ghFail(prRes);
+  const r = await callTool("Bash", { command: cmd }, INSTALL_TIMEOUT_MS);
+  if (!r.success) return { error: r.error || r.output || "Install failed." };
+  const prUrl = (r.output.match(/https:\/\/github\.com\/\S+\/pull\/\d+/g) ?? []).pop();
+  if (!prUrl) return { error: r.output.trim() || "The install finished without reporting a PR URL." };
+  return { prUrl };
 }
 
 // Send a free-text task: open an issue whose body carries the "@opentask" trigger, so
