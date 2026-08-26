@@ -285,6 +285,11 @@ function SidePanel() {
                 <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">
                   {m.args ? prettyArgs(m.args) : m.content}
                 </pre>
+                {m.result && (
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-foreground/80">
+                    {m.result}
+                  </pre>
+                )}
                 {m.error && <pre className="whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-red-500">{m.error}</pre>}
               </details>
             ) : (

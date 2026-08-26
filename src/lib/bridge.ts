@@ -3,7 +3,7 @@
 // browser_command frames on a single controlled tab, and mirror the conversation
 // to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -159,10 +159,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       return;
     }
     case "conversation_snapshot": {
-      const list = Array.isArray(frame.messages) ? (frame.messages as Msg[]) : [];
-      messages = list
-        .filter((m) => m && typeof m.role === "string")
-        .map((m) => ({ role: m.role, content: typeof m.content === "string" ? m.content : "" }));
+      messages = snapshotToMessages(frame);
       running = false;
       broadcast();
       return;

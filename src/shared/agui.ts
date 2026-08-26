@@ -6,7 +6,8 @@
 // tool role; `id` is its toolCallId and `ok`/`error` arrive with
 // TOOL_CALL_RESULT (unset while the tool is still running). Other roles leave
 // them unset.
-export type Msg = { role: string; content: string; args?: string; id?: string; ok?: boolean; error?: string };
+// `result` is the tool's output text when known (snapshot history).
+export type Msg = { role: string; content: string; args?: string; id?: string; ok?: boolean; error?: string; result?: string };
 
 // Folds one AG-UI chat_event into the rendered message list. Text streaming,
 // reasoning streaming, and tool calls (name + args) are rendered; everything
@@ -85,6 +86,44 @@ export function toolLabel(name: string, args?: string): string {
   } catch {
     return `${name}(${args})`;
   }
+}
+
+// snapshotToMessages rebuilds the panel transcript from a conversation_snapshot
+// frame: assistant `tool_calls` become tool rows (name + args + id), and tool
+// entries attach their text as that row's result instead of a separate bubble.
+// `tool_results` (id -> success) sets ok. Entries without a role are dropped.
+export function snapshotToMessages(frame: Record<string, unknown>): Msg[] {
+  const list = Array.isArray(frame.messages) ? (frame.messages as unknown[]) : [];
+  const results = (frame.tool_results ?? {}) as Record<string, unknown>;
+  const out: Msg[] = [];
+  for (const raw of list) {
+    const m = raw as {
+      role?: unknown; content?: unknown; tool_call_id?: unknown;
+      tool_calls?: { id?: unknown; function?: { name?: unknown; arguments?: unknown } }[];
+    } | null;
+    if (!m || typeof m.role !== "string") continue;
+    const content = typeof m.content === "string" ? m.content : "";
+    if (m.role === "tool" && typeof m.tool_call_id === "string") {
+      const row = out.find((o) => o.role === "tool" && o.id === m.tool_call_id);
+      if (row) {
+        row.result = content;
+        continue;
+      }
+    }
+    if (content) out.push({ role: m.role, content });
+    for (const tc of Array.isArray(m.tool_calls) ? m.tool_calls : []) {
+      const id = typeof tc?.id === "string" ? tc.id : undefined;
+      const ok = id !== undefined && typeof results[id] === "boolean" ? (results[id] as boolean) : undefined;
+      out.push({
+        role: "tool",
+        content: typeof tc?.function?.name === "string" ? tc.function.name : "tool",
+        args: typeof tc?.function?.arguments === "string" ? tc.function.arguments : "",
+        id,
+        ok,
+      });
+    }
+  }
+  return out;
 }
 
 // prettyArgs pretty-prints a tool's raw JSON args for the expanded pill,

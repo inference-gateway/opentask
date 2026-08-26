@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -244,5 +244,29 @@ describe("stripAnsi", () => {
 
   test("leaves plain text untouched", () => {
     expect(stripAnsi("no codes here")).toBe("no codes here");
+  });
+});
+
+describe("snapshotToMessages", () => {
+  test("rebuilds tool rows from assistant tool_calls and attaches tool entries as results", () => {
+    const msgs = snapshotToMessages({
+      messages: [
+        { role: "user", content: "ls please" },
+        { role: "assistant", content: "", tool_calls: [{ id: "t1", function: { name: "Bash", arguments: "{\"command\":\"ls\"}" } }] },
+        { role: "tool", content: "a.txt\nb.txt", tool_call_id: "t1" },
+        { role: "assistant", content: "Two files." },
+      ],
+      tool_results: { t1: true },
+    });
+    expect(msgs).toEqual([
+      { role: "user", content: "ls please" },
+      { role: "tool", content: "Bash", args: "{\"command\":\"ls\"}", id: "t1", ok: true, result: "a.txt\nb.txt" },
+      { role: "assistant", content: "Two files." },
+    ]);
+  });
+
+  test("keeps orphan tool entries and drops roleless garbage", () => {
+    const msgs = snapshotToMessages({ messages: [{ role: "tool", content: "Performed read", tool_call_id: "zzz" }, { content: "x" }, null] });
+    expect(msgs).toEqual([{ role: "tool", content: "Performed read" }]);
   });
 });
