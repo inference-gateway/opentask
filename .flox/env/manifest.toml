@@ -1,13 +1,15 @@
-schema-version = "1.13.0"
+schema-version = "1.15.0"
 
 [install]
 bun.pkg-path = "bun"
 bun.version = "1.3.13"
-infer.flake = "github:inference-gateway/cli/v0.174.0"
+infer.flake = "github:inference-gateway/cli/v0.181.0"
 claude-code.pkg-path = "claude-code"
-claude-code.version = "2.1.201"
+claude-code.version = "2.1.238"
+claude-code.pkg-group = "claude-code"
 codex.pkg-path = "codex"
-codex.version = "0.142.3"
+codex.version = "0.149.0"
+codex.pkg-group = "codex"
 go-task.pkg-path = "go-task"
 go-task.version = "3.48.0"
 

@@ -1,42 +1,22 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
-import type { PatEntry, BotEntry } from "./shared/storage";
 import { DEFAULT_PROMPTS, mergePrompts, type Prompt } from "./shared/prompts";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_REFINE, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, normalizeTimeout, isModelOption, isPermissions, isRefineConfig, isPluginOption, isInitConfig, isDependenciesConfig, githubAppUrl, type BotConfig, type Permissions, type RefineConfig, type PluginOption, type InitConfig, type DependenciesConfig } from "./shared/models";
+import { DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_REFINE, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, normalizeTimeout, isBotConfig, isPermissions, isRefineConfig, isPluginOption, isInitConfig, isDependenciesConfig, type BotConfig, type Permissions, type RefineConfig, type PluginOption, type InitConfig, type DependenciesConfig } from "./shared/models";
 import { DEFAULT_REFINE_PROMPT } from "./shared/task";
 import { applyTheme, type Theme } from "./shared/theme";
-import type { Account } from "./ui/options/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/components/tabs";
 import { Button } from "@/ui/components/button";
-import { AccountsTab } from "./ui/options/AccountsTab";
 import { OrchestratorTab } from "./ui/options/OrchestratorTab";
 import { AgentsTab } from "./ui/options/AgentsTab";
-import { ModelsTab } from "./ui/options/ModelsTab";
 import { PromptsTab } from "./ui/options/PromptsTab";
 import { WorkflowTab } from "./ui/options/WorkflowTab";
 import { DependenciesTab } from "./ui/options/DependenciesTab";
 import { AppearanceTab } from "./ui/options/AppearanceTab";
 
-// Merges the two owner-keyed lists into accounts. Empty -> one blank starter row.
-function mergeAccounts(toks: PatEntry[], bots: BotEntry[]): Account[] {
-  const owners = [...new Set([...toks.map((t) => t.owner), ...bots.map((b) => b.owner)])].filter(Boolean);
-  const accounts = owners.map((owner) => {
-    const be = bots.find((b) => b.owner === owner);
-    return {
-      owner,
-      token: toks.find((t) => t.owner === owner)?.token ?? "",
-      bot: be ? { enabled: be.enabled, clientId: be.clientId, privateKeySecret: be.privateKeySecret } : DEFAULT_BOT,
-    };
-  });
-  return accounts.length ? accounts : [{ owner: "", token: "", bot: DEFAULT_BOT }];
-}
-
 function Options() {
-  const [accounts, setAccounts] = useState<Account[]>([{ owner: "", token: "", bot: DEFAULT_BOT }]);
-  const [selected, setSelected] = useState(0);
+  const [bot, setBot] = useState<BotConfig>(DEFAULT_BOT);
   const [promptsText, setPromptsText] = useState("");
-  const [modelsText, setModelsText] = useState("");
   const [instructions, setInstructions] = useState(DEFAULT_INSTRUCTIONS);
   const [refinePromptText, setRefinePromptText] = useState(DEFAULT_REFINE_PROMPT);
   const [perms, setPerms] = useState<Permissions>(DEFAULT_PERMISSIONS);
@@ -50,20 +30,18 @@ function Options() {
   const [imageModel, setImageModel] = useState("");
   const [deps, setDeps] = useState<DependenciesConfig>(DEFAULT_DEPENDENCIES);
   const [theme, setTheme] = useState<Theme>("system");
-  const [showToken, setShowToken] = useState(false);
-  const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
-  const [orgOwners, setOrgOwners] = useState<string[]>([]);
+  const [repos, setRepos] = useState<string[]>([]);
+  const [reposError, setReposError] = useState("");
+  const [defaultRepo, setDefaultRepo] = useState("");
+  const [bridgeConnected, setBridgeConnected] = useState(false);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     void (async () => {
-      const toks = await storage.loadTokens();
-      const bots = await storage.loadBots();
-      setAccounts(mergeAccounts(toks, bots));
+      const b = await storage.get<unknown>("bot");
+      setBot(isBotConfig(b) ? b : DEFAULT_BOT);
       const p = mergePrompts(await storage.get<Prompt[]>("prompts"));
       setPromptsText(JSON.stringify(p, null, 2));
-      const m = (await storage.get<unknown[]>("models")) ?? DEFAULT_MODELS;
-      setModelsText(JSON.stringify(m, null, 2));
       setInstructions((await storage.get<string>("instructions")) ?? DEFAULT_INSTRUCTIONS);
       setRefinePromptText((await storage.get<string>("refinePrompt")) ?? DEFAULT_REFINE_PROMPT);
       const pm = await storage.get<unknown>("permissions");
@@ -84,7 +62,6 @@ function Options() {
       const dpc = isDependenciesConfig(dp) ? dp : DEFAULT_DEPENDENCIES;
       setDeps({
         autoDetect: dpc.autoDetect,
-        customSteps: dpc.customSteps ?? "",
         apt: dpc.apt ?? "",
         items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: dpc.items.find((s) => s.id === d.id)?.enabled ?? d.enabled })),
       });
@@ -95,17 +72,23 @@ function Options() {
     })();
   }, []);
 
-  const activeToken = (accounts[selected] ?? accounts[0]).token.trim();
   useEffect(() => {
-    if (!activeToken) { setOwnerOptions([]); setOrgOwners([]); return; }
-    let cancelled = false;
-    void chrome.runtime.sendMessage({ type: "list-owners", token: activeToken }).then((r) => {
-      if (cancelled || !r || !Array.isArray(r.owners)) return;
-      setOwnerOptions(r.owners);
-      setOrgOwners(Array.isArray(r.orgs) ? r.orgs : []);
+    let fetched = false;
+    const port = chrome.runtime.connect({ name: "bridge-panel" });
+    port.onMessage.addListener((state: { connected?: boolean; models?: string[] }) => {
+      setBridgeConnected(state?.connected === true);
+      if (!state?.connected || fetched) return;
+      fetched = true;
+      void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
+        if (r && Array.isArray(r.repos)) setRepos(r.repos);
+        else setReposError(String(r?.error ?? "Failed to load repositories from the CLI."));
+      });
+      void chrome.runtime.sendMessage({ type: "current-repo" }).then((r) => {
+        if (r && typeof r.repo === "string" && r.repo.includes("/")) setDefaultRepo(r.repo);
+      });
     });
-    return () => { cancelled = true; };
-  }, [activeToken]);
+    return () => port.disconnect();
+  }, []);
 
   async function save() {
     let parsed: unknown;
@@ -117,22 +100,11 @@ function Options() {
     if (!Array.isArray(parsed) || !parsed.every(isPrompt)) {
       return setStatus("Prompts must be an array of { id, label, description, insert }.");
     }
-    let models: unknown;
-    try {
-      models = JSON.parse(modelsText);
-    } catch {
-      return setStatus("Models must be valid JSON.");
-    }
-    if (!Array.isArray(models) || !models.length || !models.every(isModelOption)) {
-      return setStatus("Models must be a non-empty array of { model, keyInput, secret }.");
-    }
-    if (accounts.some((a) => a.bot.enabled && (!a.bot.clientId.trim() || !a.bot.privateKeySecret.trim()))) {
+    if (bot.enabled && (!bot.clientId.trim() || !bot.privateKeySecret.trim())) {
       return setStatus("Custom Bot needs a Client ID and a private-key secret name.");
     }
-    await storage.saveTokens(accounts.map((a) => ({ owner: a.owner, token: a.token })));
-    await storage.saveBots(accounts.map((a) => ({ owner: a.owner, ...a.bot })));
+    await storage.set("bot", { enabled: bot.enabled, clientId: bot.clientId.trim(), privateKeySecret: bot.privateKeySecret.trim() });
     await storage.set("prompts", parsed);
-    await storage.set("models", models);
     await storage.set("instructions", instructions);
     await storage.set("refinePrompt", refinePromptText);
     await storage.set("permissions", perms);
@@ -149,33 +121,11 @@ function Options() {
     setStatus("Saved.");
   }
 
-  function updateAccount(patch: Partial<Account>) {
-    setAccounts((prev) => prev.map((a, j) => (j === selected ? { ...a, ...patch } : a)));
-  }
-
-  function updateBot(patch: Partial<BotConfig>) {
-    updateAccount({ bot: { ...account.bot, ...patch } });
-  }
-
-  function addAccount() {
-    setAccounts((prev) => [...prev, { owner: "", token: "", bot: DEFAULT_BOT }]);
-    setSelected(accounts.length);
-  }
-
-  function removeAccount() {
-    setAccounts((prev) => {
-      const next = prev.filter((_, j) => j !== selected);
-      return next.length ? next : [{ owner: "", token: "", bot: DEFAULT_BOT }];
-    });
-    setSelected(0);
-  }
-
   function reset() {
     setPromptsText(JSON.stringify(DEFAULT_PROMPTS, null, 2));
-    setModelsText(JSON.stringify(DEFAULT_MODELS, null, 2));
     setInstructions(DEFAULT_INSTRUCTIONS);
     setRefinePromptText(DEFAULT_REFINE_PROMPT);
-    updateAccount({ bot: DEFAULT_BOT });
+    setBot(DEFAULT_BOT);
     setPerms(DEFAULT_PERMISSIONS);
     setRefine(DEFAULT_REFINE);
     setInit(DEFAULT_INIT);
@@ -192,47 +142,20 @@ function Options() {
     applyTheme(t);
   }
 
-  const account = accounts[selected] ?? accounts[0];
-  const appUrl = githubAppUrl(account.owner, orgOwners.includes(account.owner));
-  const ownerChoices = [...new Set([...accounts.map((a) => a.owner), ...ownerOptions])].filter(Boolean);
 
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold mb-4">OpenTask settings</h1>
 
-      <Tabs defaultValue="accounts">
+      <Tabs defaultValue="workflow">
         <TabsList>
-          <TabsTrigger value="accounts">Accounts</TabsTrigger>
-          <TabsTrigger value="models">Models</TabsTrigger>
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
           <TabsTrigger value="prompts">Prompts</TabsTrigger>
-          <TabsTrigger value="workflow">Workflow</TabsTrigger>
+          <TabsTrigger value="workflow">Workflows</TabsTrigger>
           <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="accounts" className="flex flex-col gap-4">
-          <AccountsTab
-            account={account}
-            accounts={accounts}
-            selected={selected}
-            activeToken={activeToken}
-            ownerChoices={ownerChoices}
-            appUrl={appUrl}
-            showToken={showToken}
-            setShowToken={setShowToken}
-            setSelected={setSelected}
-            updateAccount={updateAccount}
-            updateBot={updateBot}
-            addAccount={addAccount}
-            removeAccount={removeAccount}
-          />
-        </TabsContent>
-
-        <TabsContent value="models" className="flex flex-col gap-4">
-          <ModelsTab modelsText={modelsText} setModelsText={setModelsText} />
-        </TabsContent>
 
         <TabsContent value="orchestrator" className="flex flex-col gap-4">
           <OrchestratorTab perms={perms} setPerms={setPerms} refine={refine} setRefine={setRefine} init={init} setInit={setInit} />
@@ -247,7 +170,7 @@ function Options() {
         </TabsContent>
 
         <TabsContent value="workflow" className="flex flex-col gap-4">
-          <WorkflowTab timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} />
+          <WorkflowTab connected={bridgeConnected} repos={repos} reposError={reposError} defaultRepo={defaultRepo} timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} bot={bot} setBot={setBot} />
         </TabsContent>
 
         <TabsContent value="dependencies" className="flex flex-col gap-4">

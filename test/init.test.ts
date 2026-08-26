@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { initPrompt } from "../src/shared/task";
-import { DEFAULT_INIT, DEFAULT_TIMEOUT, DEFAULT_MODELS, DEFAULT_BOT, isInitConfig, normalizeTimeout, workflowYaml } from "../src/shared/models";
+import { DEFAULT_INIT, DEFAULT_TIMEOUT, isInitConfig, normalizeTimeout } from "../src/shared/models";
 
 test("isInitConfig accepts the three-boolean shape and rejects others", () => {
   expect(isInitConfig(DEFAULT_INIT)).toBe(true);
@@ -28,13 +28,6 @@ test("normalizeTimeout defaults invalid input and rounds positive numbers", () =
   expect(normalizeTimeout("30")).toBe(DEFAULT_TIMEOUT);
   expect(normalizeTimeout(30)).toBe(30);
   expect(normalizeTimeout(12.6)).toBe(13);
-});
-
-test("workflowYaml emits the given job timeout, defaulting to 25", () => {
-  const def = workflowYaml(DEFAULT_MODELS, DEFAULT_MODELS[0].model, DEFAULT_BOT);
-  expect(def).toContain("timeout-minutes: 25");
-  const custom = workflowYaml(DEFAULT_MODELS, DEFAULT_MODELS[0].model, DEFAULT_BOT, undefined, undefined, undefined, 40);
-  expect(custom).toContain("timeout-minutes: 40");
 });
 
 test("initPrompt includes only the enabled extras", () => {

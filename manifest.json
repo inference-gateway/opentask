@@ -9,7 +9,8 @@
     "tabs",
     "scripting",
     "sidePanel",
-    "alarms"
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://api.github.com/*",

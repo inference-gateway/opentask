@@ -1,9 +1,5 @@
-// WebSocket client for the infer CLI browser bridge (issue #141). The CLI hosts
-// ws://127.0.0.1:<port>/ws; we dial in, authenticate with a shared token, execute
-// browser_command frames on a single controlled tab, and mirror the conversation
-// to the side panel. Contract: inference-gateway/cli docs/browser-extension-protocol.md.
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -16,6 +12,10 @@ let attempt = 0;
 let messages: Msg[] = [];
 let conversations: ConversationMeta[] = [];
 let skills: PanelSkill[] = [];
+let history: string[] = [];
+let cliModels: string[] = [];
+let currentModel: string | undefined;
+let mode: string | undefined;
 let activeConversationId: string | undefined;
 let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
@@ -32,7 +32,7 @@ function panelState(): PanelState {
     toolName: stripAnsi(pendingApproval.toolName),
     toolArgs: stripAnsi(pendingApproval.toolArgs),
   };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, activeConversationId, pendingApproval: approval };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, history, models: cliModels, currentModel, mode, activeConversationId, pendingApproval: approval };
 }
 
 function broadcast() {
@@ -42,6 +42,107 @@ function broadcast() {
 
 function send(frame: Record<string, unknown>) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
+}
+
+export const CLI_DOWN = "Connect the infer CLI to use GitHub features (Options -> Orchestrator -> CLI Bridge).";
+
+export type ToolResult = { success: boolean; output: string; error: string };
+
+const pendingTools = new Map<string, { resolve: (r: ToolResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+
+// Tool-call ids issued by callTool, so their echoed AG-UI events don't arm the
+// panel loader. Entries clear on the call's TOOL_CALL_RESULT chat event.
+const selfToolIds = new Set<string>();
+
+// Invoke a CLI tool over the bridge (tool_request/tool_result frames). The CLI
+// runs it through its normal tool pipeline, so an approval prompt may sit in
+// front of the result - hence the generous default timeout.
+export function callTool(toolName: string, args: object, timeoutMs = 120_000): Promise<ToolResult> {
+  if (!connected) return Promise.reject(new Error(CLI_DOWN));
+  const id = crypto.randomUUID();
+  selfToolIds.add(id);
+  send({ type: "tool_request", id, tool_name: toolName, tool_args: JSON.stringify(args) });
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pendingTools.delete(id);
+      reject(new Error("infer CLI tool call timed out"));
+    }, timeoutMs);
+    pendingTools.set(id, { resolve, reject, timer });
+  });
+}
+
+// Mirrors the CLI's history append for a just-sent message (trimmed, consecutive
+// duplicates skipped) so arrow-up recall is fresh without re-fetching the list;
+// the CLI persists the same entry to the shared store on its side.
+function recordHistory(content: string) {
+  const c = content.trim();
+  if (!c || history[history.length - 1] === c) return;
+  history = [...history, c];
+}
+
+// Grab the user's attention on an approval request: try to open the side panel
+// outright (Chrome only allows that on a user gesture, so it usually throws
+// when triggered by a WebSocket frame), and fall back to an action badge plus
+// a clickable system notification that opens the panel.
+const APPROVAL_NOTIFICATION = "opentask-approval";
+async function alertApproval(req: PendingApproval) {
+  const win = await chrome.windows.getLastFocused().catch(() => undefined);
+  if (win?.id !== undefined) {
+    try {
+      await chrome.sidePanel.open({ windowId: win.id });
+      return;
+    } catch {
+      // No user gesture - fall through to badge + notification.
+    }
+  }
+  void chrome.action.setBadgeText({ text: "!" });
+  void chrome.action.setBadgeBackgroundColor({ color: "#f59e0b" });
+  void chrome.notifications.create(APPROVAL_NOTIFICATION, {
+    type: "basic",
+    iconUrl: "icons/icon-128.png",
+    title: "OpenTask: approval needed",
+    message: `The agent wants to run ${stripAnsi(req.toolName)}. Click to review.`,
+  });
+}
+
+function clearApprovalAlert() {
+  void chrome.action.setBadgeText({ text: "" });
+  void chrome.notifications.clear(APPROVAL_NOTIFICATION);
+}
+
+// Detach from the current CLI conversation and start fresh. The new_session
+// frame is handled synchronously in the CLI's read loop, so a user_message
+// sent right after is guaranteed to land in the new session (a "/clear" chat
+// message runs async CLI-side and would race it).
+export function startNewSession(): boolean {
+  if (!connected) return false;
+  send({ type: "new_session" });
+  messages = [];
+  running = false;
+  pendingApproval = undefined;
+  activeConversationId = undefined;
+  broadcast();
+  return true;
+}
+
+// Send a prompt into the connected CLI's chat as a regular user message: the
+// turn streams back over chat_event frames and tool approvals surface in the
+// panel, exactly as if the user had typed it there.
+export function sendUserMessage(content: string): boolean {
+  if (!connected) return false;
+  send({ type: "user_message", content });
+  recordHistory(content);
+  running = true;
+  broadcast();
+  return true;
+}
+
+function failPendingTools() {
+  for (const p of pendingTools.values()) {
+    clearTimeout(p.timer);
+    p.reject(new Error(CLI_DOWN));
+  }
+  pendingTools.clear();
 }
 
 async function connect() {
@@ -81,6 +182,7 @@ async function connect() {
     connected = false;
     running = false;
     pendingApproval = undefined;
+    failPendingTools();
     broadcast();
     scheduleReconnect();
   };
@@ -88,6 +190,7 @@ async function connect() {
 }
 
 function scheduleReconnect() {
+  if (attempt >= 5) return;
   setTimeout(() => { if (wantConnected && !connected) void connect(); }, backoffMs(attempt++));
 }
 
@@ -100,6 +203,8 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       attempt = 0;
       send({ type: "list_conversations" });
       send({ type: "list_skills" });
+      send({ type: "list_models" });
+      send({ type: "list_history" });
       if (activeConversationId) send({ type: "resume_conversation", id: activeConversationId });
       broadcast();
       return;
@@ -111,23 +216,35 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       skills = parseSkills(frame);
       broadcast();
       return;
+    case "history":
+      history = parseHistory(frame);
+      broadcast();
+      return;
+    case "models":
+      cliModels = Array.isArray(frame.models) ? (frame.models as unknown[]).filter((m): m is string => typeof m === "string") : [];
+      currentModel = typeof frame.current === "string" && frame.current ? frame.current : undefined;
+      broadcast();
+      return;
+    case "mode":
+      mode = typeof frame.mode === "string" && frame.mode ? frame.mode : undefined;
+      broadcast();
+      return;
     case "browser_command": {
       const result = await runCommand(frame as unknown as BrowserCommand);
       if (ws === socket) send(result);
       return;
     }
     case "conversation_snapshot": {
-      const list = Array.isArray(frame.messages) ? (frame.messages as Msg[]) : [];
-      messages = list
-        .filter((m) => m && typeof m.role === "string")
-        .map((m) => ({ role: m.role, content: typeof m.content === "string" ? m.content : "" }));
+      messages = snapshotToMessages(frame);
       running = false;
       broadcast();
       return;
     }
     case "chat_event": {
       const next = reduceAgui(messages, frame.event);
-      const nextRunning = runningFromEvent(running, frame.event);
+      const nextRunning = runningFromEvent(running, frame.event, selfToolIds);
+      const ev = frame.event as { type?: unknown; toolCallId?: unknown } | null;
+      if (ev?.type === "TOOL_CALL_RESULT" && typeof ev.toolCallId === "string") selfToolIds.delete(ev.toolCallId);
       if (next !== messages || nextRunning !== running) {
         messages = next;
         running = nextRunning;
@@ -140,11 +257,25 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       if (!req) return;
       pendingApproval = req;
       broadcast();
+      void alertApproval(req);
+      return;
+    }
+    case "tool_result": {
+      const pending = typeof frame.id === "string" ? pendingTools.get(frame.id) : undefined;
+      if (!pending) return;
+      pendingTools.delete(frame.id as string);
+      clearTimeout(pending.timer);
+      pending.resolve({
+        success: frame.success === true,
+        output: typeof frame.output === "string" ? frame.output : "",
+        error: typeof frame.error === "string" ? frame.error : "",
+      });
       return;
     }
     case "approval_resolved": {
       if (pendingApproval && pendingApproval.requestId === frame.request_id) {
         pendingApproval = undefined;
+        clearApprovalAlert();
         broadcast();
       }
       return;
@@ -209,11 +340,6 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
     };
   }
 
-  // navigate owns controlledTabId; before any navigate we operate on the tab the
-  // user is actually focused on so read/screenshot/tabs describe the current tab.
-  // ponytail: read/screenshot bind to the live focused tab until navigate takes
-  // control; a tab switch between a read and a follow-up click retargets — fine
-  // for inspection, revisit if click/type sequences need stickiness.
   let tabId = controlledTabId;
   if (tabId === undefined || !(await chrome.tabs.get(tabId).catch(() => undefined)))
     tabId = await activeTabId();
@@ -271,7 +397,6 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   throw new Error(`unknown action: ${cmd.action}`);
 }
 
-// The tab the user is actually looking at (last focused window), or undefined.
 async function activeTabId(): Promise<number | undefined> {
   const [t] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   return t?.id;
@@ -295,9 +420,18 @@ function waitForLoad(tabId: number): Promise<void> {
 }
 
 export function initBridge() {
+  chrome.notifications.onClicked.addListener((id) => {
+    if (id !== APPROVAL_NOTIFICATION) return;
+    clearApprovalAlert();
+    void chrome.windows.getLastFocused().then((win) => {
+      if (win?.id !== undefined) return chrome.sidePanel.open({ windowId: win.id });
+    }).catch(() => undefined);
+  });
+
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== "bridge-panel") return;
     panels.add(port);
+    clearApprovalAlert();
     port.onDisconnect.addListener(() => panels.delete(port));
     port.onMessage.addListener((msg) => {
       if (msg?.type === "connect") {
@@ -314,6 +448,7 @@ export function initBridge() {
         const sock = ws;
         ws = undefined;
         sock?.close();
+        failPendingTools();
         broadcast();
       }
       if (msg?.type === "list_conversations") {
@@ -326,28 +461,41 @@ export function initBridge() {
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         const content = msg.content.trim();
-        send({ type: "user_message", content });
         if (isClearCommand(content)) {
-          messages = [];
-          running = false;
-          pendingApproval = undefined;
-          activeConversationId = undefined; // New chat detaches from the resumed conversation.
+          startNewSession();
         } else {
-          messages = [...messages, { role: "user", content }];
+          send({ type: "user_message", content });
+          recordHistory(content);
           running = true;
+          broadcast();
         }
+      }
+      if (msg?.type === "select_model" && typeof msg.model === "string" && msg.model) {
+        send({ type: "select_model", model: msg.model });
+        currentModel = msg.model;
+        broadcast();
+      }
+      if (msg?.type === "set_mode" && typeof msg.mode === "string" && msg.mode) {
+        send({ type: "set_mode", mode: msg.mode });
+        mode = msg.mode;
+        broadcast();
+      }
+      if (msg?.type === "interrupt") {
+        send({ type: "interrupt" });
+        running = false;
         broadcast();
       }
       if (msg?.type === "approval_response" && typeof msg.requestId === "string") {
         send({ type: "approval_response", request_id: msg.requestId, action: msg.action });
-        if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined; // optimistic
+        if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined;
+        clearApprovalAlert();
         broadcast();
       }
     });
     port.postMessage(panelState());
   });
 
-  chrome.alarms.create("bridge-redial", { periodInMinutes: 0.5 });
+  chrome.alarms.create("bridge-redial", { periodInMinutes: 1 });
   chrome.alarms.onAlarm.addListener((a) => {
     if (a.name === "bridge-redial" && wantConnected && !connected) void connect();
   });

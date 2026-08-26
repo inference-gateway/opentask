@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -38,6 +38,60 @@ describe("reduceAgui", () => {
     expect(m).toEqual([{ role: "tool", content: "Write", args: '{"file_path":"dummy.txt"}' }]);
   });
 
+  test("streams reasoning start/content into one reasoning message", () => {
+    let m: Msg[] = [];
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_START", role: "assistant" });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_CONTENT", delta: "I should run " });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_CONTENT", delta: "the tests." });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_END" });
+    expect(m).toEqual([{ role: "reasoning", content: "I should run the tests." }]);
+  });
+
+  test("reasoning content without a prior start creates a reasoning message", () => {
+    expect(reduceAgui([{ role: "user", content: "q" }], { type: "REASONING_MESSAGE_CONTENT", delta: "hm" })).toEqual([
+      { role: "user", content: "q" },
+      { role: "reasoning", content: "hm" },
+    ]);
+  });
+
+  test("a tool call after reasoning leaves the reasoning message intact", () => {
+    let m: Msg[] = [];
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_START" });
+    m = reduceAgui(m, { type: "REASONING_MESSAGE_CONTENT", delta: "run it" });
+    m = reduceAgui(m, { type: "TOOL_CALL_START", toolCallName: "Bash" });
+    expect(m).toEqual([
+      { role: "reasoning", content: "run it" },
+      { role: "tool", content: "Bash", args: "" },
+    ]);
+  });
+
+  test("a user message streamed by the CLI (role user on START) renders as a user bubble", () => {
+    let m = reduceAgui([], { type: "TEXT_MESSAGE_START", messageId: "u1", role: "user" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_CONTENT", messageId: "u1", delta: "what's up" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_END", messageId: "u1" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_START", messageId: "a1", role: "assistant" });
+    m = reduceAgui(m, { type: "TEXT_MESSAGE_CONTENT", messageId: "a1", delta: "not much" });
+    expect(m).toEqual([
+      { role: "user", content: "what's up", id: "u1" },
+      { role: "assistant", content: "not much", id: "a1" },
+    ]);
+  });
+
+  test("tool result marks the matching tool row ok or failed", () => {
+    let m = reduceAgui([], { type: "TOOL_CALL_START", toolCallId: "a", toolCallName: "Bash" });
+    m = reduceAgui(m, { type: "TOOL_CALL_START", toolCallId: "b", toolCallName: "Read" });
+    m = reduceAgui(m, { type: "TOOL_CALL_RESULT", toolCallId: "a", content: JSON.stringify({ success: false, error: "exit 1" }) });
+    m = reduceAgui(m, { type: "TOOL_CALL_RESULT", toolCallId: "b", content: JSON.stringify({ success: true }) });
+    expect(m[0]).toMatchObject({ content: "Bash", ok: false, error: "exit 1" });
+    expect(m[1]).toMatchObject({ content: "Read", ok: true });
+  });
+
+  test("tool result with unknown id falls back to the last tool row; malformed content is a no-op", () => {
+    const start = reduceAgui([], { type: "TOOL_CALL_START", toolCallId: "a", toolCallName: "Bash" });
+    expect(reduceAgui(start, { type: "TOOL_CALL_RESULT", toolCallId: "zzz", content: "{\"success\":true}" })[0].ok).toBe(true);
+    expect(reduceAgui(start, { type: "TOOL_CALL_RESULT", toolCallId: "a", content: "not json" })).toBe(start);
+  });
+
   test("unknown events leave messages unchanged (same reference)", () => {
     const m: Msg[] = [{ role: "user", content: "q" }];
     expect(reduceAgui(m, { type: "RUN_STARTED" })).toBe(m);
@@ -56,6 +110,12 @@ describe("runningFromEvent", () => {
     expect(runningFromEvent(false, { type: "RUN_STARTED" })).toBe(false);
     expect(runningFromEvent(true, { type: "RUN_FINISHED" })).toBe(true);
     expect(runningFromEvent(true, { type: "RUN_ERROR" })).toBe(true);
+  });
+
+  test("extension-initiated tool calls never arm the loader", () => {
+    const self = new Set(["ext-1"]);
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START", toolCallId: "ext-1" }, self)).toBe(false);
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START", toolCallId: "agent-1" }, self)).toBe(true);
   });
 
   test("streaming and malformed events preserve the current flag", () => {
@@ -190,5 +250,36 @@ describe("stripAnsi", () => {
 
   test("leaves plain text untouched", () => {
     expect(stripAnsi("no codes here")).toBe("no codes here");
+  });
+});
+
+describe("snapshotToMessages", () => {
+  test("rebuilds tool rows from assistant tool_calls and attaches tool entries as results", () => {
+    const msgs = snapshotToMessages({
+      messages: [
+        { role: "user", content: "ls please" },
+        { role: "assistant", content: "", tool_calls: [{ id: "t1", function: { name: "Bash", arguments: "{\"command\":\"ls\"}" } }] },
+        { role: "tool", content: "a.txt\nb.txt", tool_call_id: "t1" },
+        { role: "assistant", content: "Two files." },
+      ],
+      tool_results: { t1: true },
+    });
+    expect(msgs).toEqual([
+      { role: "user", content: "ls please" },
+      { role: "tool", content: "Bash", args: "{\"command\":\"ls\"}", id: "t1", ok: true, result: "a.txt\nb.txt" },
+      { role: "assistant", content: "Two files." },
+    ]);
+  });
+
+  test("keeps orphan tool entries and drops roleless garbage", () => {
+    const msgs = snapshotToMessages({ messages: [{ role: "tool", content: "Performed read", tool_call_id: "zzz" }, { content: "x" }, null] });
+    expect(msgs).toEqual([{ role: "tool", content: "Performed read" }]);
+  });
+});
+
+describe("parseHistory", () => {
+  test("keeps string entries oldest-first, drops junk", () => {
+    expect(parseHistory({ type: "history", history: ["a", "b", 3, "", null] })).toEqual(["a", "b"]);
+    expect(parseHistory({ type: "history" })).toEqual([]);
   });
 });
