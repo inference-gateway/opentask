@@ -112,6 +112,12 @@ describe("runningFromEvent", () => {
     expect(runningFromEvent(true, { type: "RUN_ERROR" })).toBe(true);
   });
 
+  test("extension-initiated tool calls never arm the loader", () => {
+    const self = new Set(["ext-1"]);
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START", toolCallId: "ext-1" }, self)).toBe(false);
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START", toolCallId: "agent-1" }, self)).toBe(true);
+  });
+
   test("streaming and malformed events preserve the current flag", () => {
     expect(runningFromEvent(true, { type: "TEXT_MESSAGE_CONTENT", delta: "x" })).toBe(true);
     expect(runningFromEvent(true, { type: "TOOL_CALL_ARGS", delta: "{" })).toBe(true);

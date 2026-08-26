@@ -67,10 +67,13 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
 // the loader. Key off turn-level events instead: a tool call means work is
 // running (stays true through a long tool execution that emits nothing), and an
 // assistant message ending winds the turn down — a following tool call re-arms it.
-export function runningFromEvent(current: boolean, event: unknown): boolean {
-  const t = (event as { type?: unknown } | null)?.type;
-  if (t === "TOOL_CALL_START") return true;
-  if (t === "TEXT_MESSAGE_END") return false;
+// selfToolIds are tool calls the extension itself issued over the bridge
+// (callTool): no agent turn follows them, so they must not arm the loader.
+export function runningFromEvent(current: boolean, event: unknown, selfToolIds?: Pick<Set<string>, "has">): boolean {
+  const e = event as { type?: unknown; toolCallId?: unknown } | null;
+  if (typeof e?.toolCallId === "string" && selfToolIds?.has(e.toolCallId)) return current;
+  if (e?.type === "TOOL_CALL_START") return true;
+  if (e?.type === "TEXT_MESSAGE_END") return false;
   return current;
 }
 

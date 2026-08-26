@@ -52,12 +52,17 @@ export type ToolResult = { success: boolean; output: string; error: string };
 
 const pendingTools = new Map<string, { resolve: (r: ToolResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
+// Tool-call ids issued by callTool, so their echoed AG-UI events don't arm the
+// panel loader. Entries clear on the call's TOOL_CALL_RESULT chat event.
+const selfToolIds = new Set<string>();
+
 // Invoke a CLI tool over the bridge (tool_request/tool_result frames). The CLI
 // runs it through its normal tool pipeline, so an approval prompt may sit in
 // front of the result — hence the generous default timeout.
 export function callTool(toolName: string, args: object, timeoutMs = 120_000): Promise<ToolResult> {
   if (!connected) return Promise.reject(new Error(CLI_DOWN));
   const id = crypto.randomUUID();
+  selfToolIds.add(id);
   send({ type: "tool_request", id, tool_name: toolName, tool_args: JSON.stringify(args) });
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -166,7 +171,9 @@ async function handleFrame(socket: WebSocket, data: unknown) {
     }
     case "chat_event": {
       const next = reduceAgui(messages, frame.event);
-      const nextRunning = runningFromEvent(running, frame.event);
+      const nextRunning = runningFromEvent(running, frame.event, selfToolIds);
+      const ev = frame.event as { type?: unknown; toolCallId?: unknown } | null;
+      if (ev?.type === "TOOL_CALL_RESULT" && typeof ev.toolCallId === "string") selfToolIds.delete(ev.toolCallId);
       if (next !== messages || nextRunning !== running) {
         messages = next;
         running = nextRunning;
