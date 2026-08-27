@@ -22,7 +22,6 @@ let controlledTabId: number | undefined;
 const panels = new Set<chrome.runtime.Port>();
 
 const PING_INTERVAL_MS = 20_000;
-// ponytail: fixed 5min idle cutoff, promote to an option if anyone asks
 const IDLE_DISCONNECT_MS = 5 * 60_000;
 let lastActivity = 0;
 let pingTimer: ReturnType<typeof setInterval> | undefined;
