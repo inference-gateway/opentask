@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { runCommand } from "../src/lib/bridge";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -281,5 +282,83 @@ describe("parseHistory", () => {
   test("keeps string entries oldest-first, drops junk", () => {
     expect(parseHistory({ type: "history", history: ["a", "b", 3, "", null] })).toEqual(["a", "b"]);
     expect(parseHistory({ type: "history" })).toEqual([]);
+  });
+});
+
+describe("runCommand", () => {
+  beforeEach(() => {
+    (globalThis as Record<string, unknown>).chrome = {
+      tabs: {
+        query: async () => [{ id: 7, url: "https://example.com", title: "Example" }],
+        get: async () => ({ id: 7, url: "https://example.com", title: "Example" }),
+        update: async () => ({}),
+      },
+      scripting: {
+        executeScript: async ({ func, args }: { func: (...a: never[]) => unknown; args: unknown[] }) => {
+          try {
+            return [{ result: func(...(args as never[])) }];
+          } catch {
+            return [{ result: undefined }];
+          }
+        },
+      },
+    };
+  });
+
+  test("a click on a missing element surfaces the error instead of silent success", async () => {
+    const result = await runCommand({ type: "browser_command", id: "1", action: "click", selector: "#missing" });
+    expect(result.error).toBe("selector not found: #missing");
+  });
+
+  test("a click with a Playwright-style selector surfaces the SyntaxError", async () => {
+    const result = await runCommand({ type: "browser_command", id: "2", action: "click", selector: 'button:has-text("Comment")' });
+    expect(result.error).not.toBe("");
+  });
+
+  test("a type on a missing element surfaces the error", async () => {
+    const result = await runCommand({ type: "browser_command", id: "3", action: "type", selector: "#missing", text: "hi" });
+    expect(result.error).toBe("selector not found: #missing");
+  });
+
+  test("a read on a missing element surfaces the error instead of empty content", async () => {
+    const result = await runCommand({ type: "browser_command", id: "4", action: "read", selector: "#missing" });
+    expect(result.error).toBe("selector not found: #missing");
+  });
+
+  test("a read on an existing textarea returns its value", async () => {
+    document.body.innerHTML = '<textarea name="note">hello</textarea>';
+    const result = await runCommand({ type: "browser_command", id: "5", action: "read", selector: "textarea" });
+    expect(result).toMatchObject({ error: "", content: "hello" });
+  });
+
+  test("a text= click finds the element by visible text and the click bubbles to a delegated handler", async () => {
+    document.body.innerHTML = '<table><tbody><tr class="zA"><td><span class="bog">Data restoration is now open</span></td></tr></tbody></table>';
+    let clicked = false;
+    document.querySelector("tr")?.addEventListener("click", () => { clicked = true; });
+    const result = await runCommand({ type: "browser_command", id: "t7", action: "click", selector: 'text="Data restoration is now open"' });
+    expect(clicked).toBe(true);
+    expect(result.error).toBe("");
+  });
+
+  test("a text= click with no matching text reports selector not found", async () => {
+    document.body.innerHTML = "<p>unrelated</p>";
+    const result = await runCommand({ type: "browser_command", id: "t8", action: "click", selector: "text=No such subject" });
+    expect(result.error).toBe("selector not found: text=No such subject");
+  });
+
+  test("a text= type targets the element containing the text", async () => {
+    document.body.innerHTML = "<div>Reply here</div>";
+    const result = await runCommand({ type: "browser_command", id: "t9", action: "type", selector: "text=Reply here", text: "hi" });
+    expect(result.error).toBe("");
+    expect(document.querySelector("div")?.textContent).toBe("hi");
+  });
+
+  test("a click on an existing element clicks it and reports no error", async () => {
+    document.body.innerHTML = '<button id="b"></button>';
+    let clicked = false;
+    document.getElementById("b")?.addEventListener("click", () => { clicked = true; });
+    const result = await runCommand({ type: "browser_command", id: "6", action: "click", selector: "#b" });
+    expect(clicked).toBe(true);
+    expect(result.error).toBe("");
   });
 });
