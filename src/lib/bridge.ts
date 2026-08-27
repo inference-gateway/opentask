@@ -344,7 +344,7 @@ type BrowserCommand = {
   timeout_ms?: number;
 };
 
-async function runCommand(cmd: BrowserCommand) {
+export async function runCommand(cmd: BrowserCommand) {
   const result: Record<string, unknown> = { type: "browser_result", id: cmd.id, url: "", title: "", content: "", events: [], error: "" };
   const DEFAULT_TIMEOUT_MS = 30_000;
   const timeoutMs = DEFAULT_TIMEOUT_MS;
@@ -396,42 +396,56 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   const sel = cmd.selector ?? "";
   if (cmd.action === "click") {
     await run(tabId, (s: string) => {
-      const el = document.querySelector(s) as HTMLElement | null;
-      if (!el) throw new Error("selector not found: " + s);
-      el.click();
+      try {
+        const el = document.querySelector(s) as HTMLElement | null;
+        if (!el) throw new Error("selector not found: " + s);
+        el.click();
+        return {};
+      } catch (e) {
+        return { err: e instanceof Error ? e.message : String(e) };
+      }
     }, [sel]);
     return {};
   }
   if (cmd.action === "type") {
     await run(tabId, (s: string, text: string, enter: boolean) => {
-      const el = document.querySelector(s) as (HTMLElement & { value?: string }) | null;
-      if (!el) throw new Error("selector not found: " + s);
-      el.focus();
-      if ("value" in el) el.value = text;
-      else el.textContent = text;
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-      if (enter) {
-        for (const t of ["keydown", "keypress", "keyup"])
-          el.dispatchEvent(new KeyboardEvent(t, { key: "Enter", code: "Enter", bubbles: true }));
-        (el.closest("form") as HTMLFormElement | null)?.requestSubmit?.();
+      try {
+        const el = document.querySelector(s) as (HTMLElement & { value?: string }) | null;
+        if (!el) throw new Error("selector not found: " + s);
+        el.focus();
+        if ("value" in el) el.value = text;
+        else el.textContent = text;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        if (enter) {
+          for (const t of ["keydown", "keypress", "keyup"])
+            el.dispatchEvent(new KeyboardEvent(t, { key: "Enter", code: "Enter", bubbles: true }));
+          (el.closest("form") as HTMLFormElement | null)?.requestSubmit?.();
+        }
+        return {};
+      } catch (e) {
+        return { err: e instanceof Error ? e.message : String(e) };
       }
     }, [sel, cmd.text ?? "", cmd.press_enter === true]);
     return {};
   }
   if (cmd.action === "read") {
     const content = await run(tabId, (s: string) => {
-      const el = (s ? document.querySelector(s) : document.body) as HTMLElement | null;
-      if (!el) throw new Error("selector not found: " + s);
-      const tag = el.tagName.toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") {
-        const type = (el.getAttribute("type") || "").toLowerCase();
-        const ac = (el.getAttribute("autocomplete") || "").toLowerCase();
-        const hay = ((el.getAttribute("name") || "") + " " + (el.id || "") + " " + (el.getAttribute("aria-label") || "")).toLowerCase();
-        const sensitive = type === "password" || ac === "current-password" || ac === "new-password" || ac === "one-time-code" || /pass|secret|token|otp|cvc|card/.test(hay);
-        return sensitive ? "[redacted]" : ((el as HTMLInputElement).value || "");
+      try {
+        const el = (s ? document.querySelector(s) : document.body) as HTMLElement | null;
+        if (!el) throw new Error("selector not found: " + s);
+        const tag = el.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") {
+          const type = (el.getAttribute("type") || "").toLowerCase();
+          const ac = (el.getAttribute("autocomplete") || "").toLowerCase();
+          const hay = ((el.getAttribute("name") || "") + " " + (el.id || "") + " " + (el.getAttribute("aria-label") || "")).toLowerCase();
+          const sensitive = type === "password" || ac === "current-password" || ac === "new-password" || ac === "one-time-code" || /pass|secret|token|otp|cvc|card/.test(hay);
+          return { value: sensitive ? "[redacted]" : ((el as HTMLInputElement).value || "") };
+        }
+        return { value: el.innerText };
+      } catch (e) {
+        return { err: e instanceof Error ? e.message : String(e) };
       }
-      return el.innerText;
     }, [sel]);
     return { content };
   }
@@ -450,9 +464,18 @@ async function activeTabId(): Promise<number | undefined> {
   return t?.id;
 }
 
-async function run<A extends unknown[], R>(tabId: number, func: (...args: A) => R, args: A): Promise<R> {
+// Result envelope for injected page functions: when the injected function
+// throws, chrome.scripting.executeScript still resolves (with result:
+// undefined) and the exception dies in the page console, so injected
+// functions catch everything and return the error as data for run() to
+// re-throw into browser_result.error. Do NOT let injected functions throw.
+type Injected<R> = { value?: R; err?: string };
+
+async function run<A extends unknown[], R>(tabId: number, func: (...args: A) => Injected<R>, args: A): Promise<R> {
   const [{ result }] = await chrome.scripting.executeScript({ target: { tabId }, func, args } as never);
-  return result as R;
+  const r = result as Injected<R> | undefined;
+  if (r?.err) throw new Error(r.err);
+  return r?.value as R;
 }
 
 function waitForLoad(tabId: number): Promise<void> {
