@@ -19,10 +19,10 @@
       },
       "go-task": {
         "pkg-path": "go-task",
-        "version": "3.48.0"
+        "version": "3.52.0"
       },
       "infer": {
-        "flake": "github:inference-gateway/cli/v0.182.1"
+        "flake": "github:inference-gateway/cli/v0.183.0"
       }
     },
     "hook": {
@@ -212,13 +212,13 @@
       "description": "Incredibly fast JavaScript runtime, bundler, transpiler and package manager – all in one",
       "install_id": "bun",
       "license": "[ MIT, LGPL-2.1-only ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=56c02bc00adcf003215cc4bd996d6efaf4cff188",
       "name": "bun-1.3.13",
       "pname": "bun",
-      "rev": "e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "rev_count": 1055335,
-      "rev_date": "2026-08-16T06:49:45Z",
-      "scrape_date": "2026-08-17T04:55:26.135789Z",
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "rev_count": 1060451,
+      "rev_date": "2026-08-23T15:22:48Z",
+      "scrape_date": "2026-08-25T04:56:36.648258Z",
       "stabilities": [
         "unstable"
       ],
@@ -241,13 +241,13 @@
       "description": "Incredibly fast JavaScript runtime, bundler, transpiler and package manager – all in one",
       "install_id": "bun",
       "license": "[ MIT, LGPL-2.1-only ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=56c02bc00adcf003215cc4bd996d6efaf4cff188",
       "name": "bun-1.3.13",
       "pname": "bun",
-      "rev": "e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "rev_count": 1055335,
-      "rev_date": "2026-08-16T06:49:45Z",
-      "scrape_date": "2026-08-17T05:24:50.509876Z",
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "rev_count": 1060451,
+      "rev_date": "2026-08-23T15:22:48Z",
+      "scrape_date": "2026-08-25T05:27:21.742672Z",
       "stabilities": [
         "unstable"
       ],
@@ -266,17 +266,17 @@
     {
       "attr_path": "bun",
       "broken": false,
-      "derivation": "/nix/store/wi5xzxwprd9v5zi6q3ciszph2ij2z7zi-bun-1.3.13.drv",
+      "derivation": "/nix/store/7h3640p4921b6nfqf9zxa45glrp4q79r-bun-1.3.13.drv",
       "description": "Incredibly fast JavaScript runtime, bundler, transpiler and package manager – all in one",
       "install_id": "bun",
       "license": "[ MIT, LGPL-2.1-only ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=56c02bc00adcf003215cc4bd996d6efaf4cff188",
       "name": "bun-1.3.13",
       "pname": "bun",
-      "rev": "e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "rev_count": 1055335,
-      "rev_date": "2026-08-16T06:49:45Z",
-      "scrape_date": "2026-08-17T05:57:50.609594Z",
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "rev_count": 1060451,
+      "rev_date": "2026-08-23T15:22:48Z",
+      "scrape_date": "2026-08-25T06:00:35.940561Z",
       "stabilities": [
         "unstable"
       ],
@@ -286,7 +286,7 @@
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/q89kjapqlqwlvlvwaicq6djbqp2dadgm-bun-1.3.13"
+        "out": "/nix/store/dynr642xrg1fib1y2ry70hybjmzvqz3y-bun-1.3.13"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -295,27 +295,27 @@
     {
       "attr_path": "go-task",
       "broken": false,
-      "derivation": "/nix/store/106bjghc79gmk1anglncksc5mqgr5fn1-go-task-3.48.0.drv",
+      "derivation": "/nix/store/gj52dfrvbmzli9zgsxs5nr8pq9dnx3a3-go-task-3.52.0.drv",
       "description": "Task runner / simpler Make alternative written in Go",
       "install_id": "go-task",
       "license": "MIT",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "name": "go-task-3.48.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "name": "go-task-3.52.0",
       "pname": "go-task",
-      "rev": "e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "rev_count": 1055335,
-      "rev_date": "2026-08-16T06:49:45Z",
-      "scrape_date": "2026-08-17T04:55:27.483716Z",
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "rev_count": 1060451,
+      "rev_date": "2026-08-23T15:22:48Z",
+      "scrape_date": "2026-08-25T04:56:37.960978Z",
       "stabilities": [
         "unstable"
       ],
       "unfree": false,
-      "version": "3.48.0",
+      "version": "3.52.0",
       "outputs_to_install": [
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/rdnwxkmra0p3raw949d83wddni4iw3fk-go-task-3.48.0"
+        "out": "/nix/store/cai65hxx8nfq0pcy1jsi9bpf9rdkgm8d-go-task-3.52.0"
       },
       "system": "aarch64-darwin",
       "group": "toplevel",
@@ -324,27 +324,27 @@
     {
       "attr_path": "go-task",
       "broken": false,
-      "derivation": "/nix/store/6ps7kbrb61wd6q1bd0y94mh3k73sl4sn-go-task-3.48.0.drv",
+      "derivation": "/nix/store/wmdyhn95p90c069j12zwz31g1kszwj95-go-task-3.52.0.drv",
       "description": "Task runner / simpler Make alternative written in Go",
       "install_id": "go-task",
       "license": "MIT",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "name": "go-task-3.48.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "name": "go-task-3.52.0",
       "pname": "go-task",
-      "rev": "e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "rev_count": 1055335,
-      "rev_date": "2026-08-16T06:49:45Z",
-      "scrape_date": "2026-08-17T05:24:52.984597Z",
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "rev_count": 1060451,
+      "rev_date": "2026-08-23T15:22:48Z",
+      "scrape_date": "2026-08-25T05:27:24.289889Z",
       "stabilities": [
         "unstable"
       ],
       "unfree": false,
-      "version": "3.48.0",
+      "version": "3.52.0",
       "outputs_to_install": [
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/dkf43g07rk6l4zzsp9aw3zncfpyxis7l-go-task-3.48.0"
+        "out": "/nix/store/viya59rc1708vqi0g67kzmsnvn4ql3gn-go-task-3.52.0"
       },
       "system": "aarch64-linux",
       "group": "toplevel",
@@ -353,27 +353,27 @@
     {
       "attr_path": "go-task",
       "broken": false,
-      "derivation": "/nix/store/8vf8lbr1jzh8klpki8b38rdwl22afa2d-go-task-3.48.0.drv",
+      "derivation": "/nix/store/zf3yrbidi6fxh2lcng7axqyi171s1ygg-go-task-3.52.0.drv",
       "description": "Task runner / simpler Make alternative written in Go",
       "install_id": "go-task",
       "license": "MIT",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "name": "go-task-3.48.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "name": "go-task-3.52.0",
       "pname": "go-task",
-      "rev": "e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
-      "rev_count": 1055335,
-      "rev_date": "2026-08-16T06:49:45Z",
-      "scrape_date": "2026-08-17T05:57:53.258072Z",
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "rev_count": 1060451,
+      "rev_date": "2026-08-23T15:22:48Z",
+      "scrape_date": "2026-08-25T06:00:38.748718Z",
       "stabilities": [
         "unstable"
       ],
       "unfree": false,
-      "version": "3.48.0",
+      "version": "3.52.0",
       "outputs_to_install": [
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/99gg9mgy3spckimy9dj8z50n193srnn3-go-task-3.48.0"
+        "out": "/nix/store/x9x07fj5xhwp1riqms54b75izn59xdch-go-task-3.52.0"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -381,12 +381,12 @@
     },
     {
       "install_id": "infer",
-      "locked-url": "github:inference-gateway/cli/cd55924120c7519d4bb56a463dadb659a84bd51b?narHash=sha256-RcNvkJYT2iB2dN9bI56gQdblIaHdvr827hZDrprLc8g%3D",
+      "locked-url": "github:inference-gateway/cli/ef3889df30a9a08b1c0c0d75972dacec9cc12105?narHash=sha256-JsEkRxqGW6iUw/LdH8dvU56VOkH%2Biz1rIeHpt49qQk8%3D",
       "flake-description": "Inference Gateway CLI - infer",
       "locked-flake-attr-path": "packages.aarch64-darwin.default",
-      "derivation": "/nix/store/xfv4vcbx8zz40h142073vqk7yqxx3gmh-infer-0.182.1.drv",
+      "derivation": "/nix/store/gkhwx1ywwh65ayvcr0pinqrm5i4b7cmi-infer-0.183.0.drv",
       "outputs": {
-        "out": "/nix/store/jai79xz2400akzchkwqmp7ra6phgln57-infer-0.182.1"
+        "out": "/nix/store/7sv3nii4hkafzmbxcd4rxars1rd441b6-infer-0.183.0"
       },
       "output-names": [
         "out"
@@ -397,9 +397,9 @@
       "requested-outputs-to-install": [],
       "package-system": "aarch64-darwin",
       "system": "aarch64-darwin",
-      "name": "infer-0.182.1",
+      "name": "infer-0.183.0",
       "pname": "infer",
-      "version": "0.182.1",
+      "version": "0.183.0",
       "description": "Command-line interface for the Inference Gateway - AI model interaction manager",
       "licenses": [
         "MIT"
@@ -410,12 +410,12 @@
     },
     {
       "install_id": "infer",
-      "locked-url": "github:inference-gateway/cli/cd55924120c7519d4bb56a463dadb659a84bd51b?narHash=sha256-RcNvkJYT2iB2dN9bI56gQdblIaHdvr827hZDrprLc8g%3D",
+      "locked-url": "github:inference-gateway/cli/ef3889df30a9a08b1c0c0d75972dacec9cc12105?narHash=sha256-JsEkRxqGW6iUw/LdH8dvU56VOkH%2Biz1rIeHpt49qQk8%3D",
       "flake-description": "Inference Gateway CLI - infer",
       "locked-flake-attr-path": "packages.aarch64-linux.default",
-      "derivation": "/nix/store/nkknbj2vl2x58ka64xwg6kq55nnc9awg-infer-0.182.1.drv",
+      "derivation": "/nix/store/ggjr0c9lziv2yz323x6kq550jgwsf2gx-infer-0.183.0.drv",
       "outputs": {
-        "out": "/nix/store/1nfzk49ylxcr1zsnnhirnj49wyiqsp9p-infer-0.182.1"
+        "out": "/nix/store/nnzvchn58bz95cc4nk36a4568l04hqcj-infer-0.183.0"
       },
       "output-names": [
         "out"
@@ -426,9 +426,9 @@
       "requested-outputs-to-install": [],
       "package-system": "aarch64-linux",
       "system": "aarch64-linux",
-      "name": "infer-0.182.1",
+      "name": "infer-0.183.0",
       "pname": "infer",
-      "version": "0.182.1",
+      "version": "0.183.0",
       "description": "Command-line interface for the Inference Gateway - AI model interaction manager",
       "licenses": [
         "MIT"
@@ -439,12 +439,12 @@
     },
     {
       "install_id": "infer",
-      "locked-url": "github:inference-gateway/cli/cd55924120c7519d4bb56a463dadb659a84bd51b?narHash=sha256-RcNvkJYT2iB2dN9bI56gQdblIaHdvr827hZDrprLc8g%3D",
+      "locked-url": "github:inference-gateway/cli/ef3889df30a9a08b1c0c0d75972dacec9cc12105?narHash=sha256-JsEkRxqGW6iUw/LdH8dvU56VOkH%2Biz1rIeHpt49qQk8%3D",
       "flake-description": "Inference Gateway CLI - infer",
       "locked-flake-attr-path": "packages.x86_64-linux.default",
-      "derivation": "/nix/store/jhldkakz3qjy008s2rndpazz4jqb8lxj-infer-0.182.1.drv",
+      "derivation": "/nix/store/7bpbyz3p1mmi78zfd49pl63v756z173i-infer-0.183.0.drv",
       "outputs": {
-        "out": "/nix/store/q76n0wrc6hsjn0jip4i3rp4c15qra2hq-infer-0.182.1"
+        "out": "/nix/store/zcn3lk108bcsb1h6x3adbqia9fygzn2h-infer-0.183.0"
       },
       "output-names": [
         "out"
@@ -455,9 +455,9 @@
       "requested-outputs-to-install": [],
       "package-system": "x86_64-linux",
       "system": "x86_64-linux",
-      "name": "infer-0.182.1",
+      "name": "infer-0.183.0",
       "pname": "infer",
-      "version": "0.182.1",
+      "version": "0.183.0",
       "description": "Command-line interface for the Inference Gateway - AI model interaction manager",
       "licenses": [
         "MIT"
