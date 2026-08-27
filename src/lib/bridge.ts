@@ -62,7 +62,7 @@ function disconnect() {
   broadcast();
 }
 
-function panelState(): PanelState {
+export function panelState(): PanelState {
   const clean = messages.map((m) => ({
     ...m,
     content: stripAnsi(m.content),
@@ -238,7 +238,7 @@ function scheduleReconnect() {
   setTimeout(() => { if (wantConnected && !connected) void connect(); }, backoffMs(attempt++));
 }
 
-async function handleFrame(socket: WebSocket, data: unknown) {
+export async function handleFrame(socket: WebSocket, data: unknown) {
   const frame = parseFrame(data);
   if (!frame) return;
   switch (frame.type) {
@@ -286,6 +286,10 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       broadcast();
       return;
     }
+    case "interrupted":
+      running = false;
+      broadcast();
+      return;
     case "chat_event": {
       touch();
       const next = reduceAgui(messages, frame.event);
