@@ -291,6 +291,11 @@ function InstallSection({ connected, repos, reposError, defaultRepo }: { connect
         </p>
       )}
       {connected && reposError && !repos.length && <p className="text-sm text-destructive">{reposError}</p>}
+      {connected && !reposError && !repos.length && (
+        <p className="text-sm text-muted-foreground">
+          Loading repositories… if the side panel asks to approve a <code>gh</code> command, approve it.
+        </p>
+      )}
       <Label htmlFor="igw-install-owner">Owner</Label>
       <Select value={owner || undefined} onValueChange={(o) => { setOwner(o); setRepo(""); }} disabled={!owners.length}>
         <SelectTrigger id="igw-install-owner">

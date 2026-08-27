@@ -73,15 +73,21 @@ function Options() {
   }, []);
 
   useEffect(() => {
-    let fetched = false;
+    let wasConnected = false;
+    let loaded = false;
     const port = chrome.runtime.connect({ name: "bridge-panel" });
     port.onMessage.addListener((state: { connected?: boolean; models?: string[] }) => {
-      setBridgeConnected(state?.connected === true);
-      if (!state?.connected || fetched) return;
-      fetched = true;
+      const connected = state?.connected === true;
+      setBridgeConnected(connected);
+      const justConnected = connected && !wasConnected;
+      wasConnected = connected;
+      if (!justConnected || loaded) return;
       void chrome.runtime.sendMessage({ type: "list-repos" }).then((r) => {
-        if (r && Array.isArray(r.repos)) setRepos(r.repos);
-        else setReposError(String(r?.error ?? "Failed to load repositories from the CLI."));
+        if (r && Array.isArray(r.repos) && r.repos.length) {
+          loaded = true;
+          setRepos(r.repos);
+          setReposError("");
+        } else setReposError(String(r?.error ?? "The CLI returned no repositories."));
       });
       void chrome.runtime.sendMessage({ type: "current-repo" }).then((r) => {
         if (r && typeof r.repo === "string" && r.repo.includes("/")) setDefaultRepo(r.repo);
