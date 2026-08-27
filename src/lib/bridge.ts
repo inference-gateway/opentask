@@ -397,7 +397,17 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   if (cmd.action === "click") {
     await run(tabId, (s: string) => {
       try {
-        const el = document.querySelector(s) as HTMLElement | null;
+        const find = (q: string): HTMLElement | null => {
+          if (!q.startsWith("text=")) return document.querySelector(q) as HTMLElement | null;
+          const text = q.slice(5).replace(/^["']|["']$/g, "");
+          const walker = document.createTreeWalker(document.body, 4 /* NodeFilter.SHOW_TEXT */);
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            const el = n.parentElement;
+            if (n.textContent?.includes(text) && el && el.checkVisibility?.() !== false) return el;
+          }
+          return null;
+        };
+        const el = find(s);
         if (!el) throw new Error("selector not found: " + s);
         el.click();
         return {};
@@ -410,7 +420,17 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   if (cmd.action === "type") {
     await run(tabId, (s: string, text: string, enter: boolean) => {
       try {
-        const el = document.querySelector(s) as (HTMLElement & { value?: string }) | null;
+        const find = (q: string): HTMLElement | null => {
+          if (!q.startsWith("text=")) return document.querySelector(q) as HTMLElement | null;
+          const text = q.slice(5).replace(/^["']|["']$/g, "");
+          const walker = document.createTreeWalker(document.body, 4 /* NodeFilter.SHOW_TEXT */);
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            const el = n.parentElement;
+            if (n.textContent?.includes(text) && el && el.checkVisibility?.() !== false) return el;
+          }
+          return null;
+        };
+        const el = find(s) as (HTMLElement & { value?: string }) | null;
         if (!el) throw new Error("selector not found: " + s);
         el.focus();
         if ("value" in el) el.value = text;

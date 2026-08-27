@@ -331,6 +331,28 @@ describe("runCommand", () => {
     expect(result).toMatchObject({ error: "", content: "hello" });
   });
 
+  test("a text= click finds the element by visible text and the click bubbles to a delegated handler", async () => {
+    document.body.innerHTML = '<table><tbody><tr class="zA"><td><span class="bog">Data restoration is now open</span></td></tr></tbody></table>';
+    let clicked = false;
+    document.querySelector("tr")?.addEventListener("click", () => { clicked = true; });
+    const result = await runCommand({ type: "browser_command", id: "t7", action: "click", selector: 'text="Data restoration is now open"' });
+    expect(clicked).toBe(true);
+    expect(result.error).toBe("");
+  });
+
+  test("a text= click with no matching text reports selector not found", async () => {
+    document.body.innerHTML = "<p>unrelated</p>";
+    const result = await runCommand({ type: "browser_command", id: "t8", action: "click", selector: "text=No such subject" });
+    expect(result.error).toBe("selector not found: text=No such subject");
+  });
+
+  test("a text= type targets the element containing the text", async () => {
+    document.body.innerHTML = "<div>Reply here</div>";
+    const result = await runCommand({ type: "browser_command", id: "t9", action: "type", selector: "text=Reply here", text: "hi" });
+    expect(result.error).toBe("");
+    expect(document.querySelector("div")?.textContent).toBe("hi");
+  });
+
   test("a click on an existing element clicks it and reports no error", async () => {
     document.body.innerHTML = '<button id="b"></button>';
     let clicked = false;
