@@ -21,6 +21,48 @@ let pendingApproval: PendingApproval | undefined;
 let controlledTabId: number | undefined;
 const panels = new Set<chrome.runtime.Port>();
 
+const PING_INTERVAL_MS = 20_000;
+// ponytail: fixed 5min idle cutoff, promote to an option if anyone asks
+const IDLE_DISCONNECT_MS = 5 * 60_000;
+let lastActivity = 0;
+let pingTimer: ReturnType<typeof setInterval> | undefined;
+
+function touch() {
+  lastActivity = Date.now();
+}
+
+function stopKeepalive() {
+  clearInterval(pingTimer);
+  pingTimer = undefined;
+}
+
+// Chrome only extends the MV3 service worker's lifetime on WebSocket *message*
+// activity - the CLI's protocol-level pings are control frames handled below
+// JS and don't count - so send a JSON ping (ignored by the CLI) every 20s to
+// keep the worker alive, and disconnect after 5min without real activity so an
+// abandoned panel doesn't pin the worker forever.
+function startKeepalive() {
+  stopKeepalive();
+  touch();
+  pingTimer = setInterval(() => {
+    if (Date.now() - lastActivity >= IDLE_DISCONNECT_MS) disconnect();
+    else send({ type: "ping" });
+  }, PING_INTERVAL_MS);
+}
+
+function disconnect() {
+  wantConnected = false;
+  connected = false;
+  running = false;
+  pendingApproval = undefined;
+  const sock = ws;
+  ws = undefined;
+  sock?.close();
+  stopKeepalive();
+  failPendingTools();
+  broadcast();
+}
+
 function panelState(): PanelState {
   const clean = messages.map((m) => ({
     ...m,
@@ -59,6 +101,7 @@ const selfToolIds = new Set<string>();
 // front of the result - hence the generous default timeout.
 export function callTool(toolName: string, args: object, timeoutMs = 120_000): Promise<ToolResult> {
   if (!connected) return Promise.reject(new Error(CLI_DOWN));
+  touch();
   const id = crypto.randomUUID();
   selfToolIds.add(id);
   send({ type: "tool_request", id, tool_name: toolName, tool_args: JSON.stringify(args) });
@@ -130,6 +173,7 @@ export function startNewSession(): boolean {
 // panel, exactly as if the user had typed it there.
 export function sendUserMessage(content: string): boolean {
   if (!connected) return false;
+  touch();
   send({ type: "user_message", content });
   recordHistory(content);
   running = true;
@@ -182,6 +226,7 @@ async function connect() {
     connected = false;
     running = false;
     pendingApproval = undefined;
+    stopKeepalive();
     failPendingTools();
     broadcast();
     scheduleReconnect();
@@ -201,6 +246,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
     case "browser_hello_ack":
       connected = true;
       attempt = 0;
+      startKeepalive();
       send({ type: "list_conversations" });
       send({ type: "list_skills" });
       send({ type: "list_models" });
@@ -230,6 +276,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       broadcast();
       return;
     case "browser_command": {
+      touch();
       const result = await runCommand(frame as unknown as BrowserCommand);
       if (ws === socket) send(result);
       return;
@@ -241,6 +288,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       return;
     }
     case "chat_event": {
+      touch();
       const next = reduceAgui(messages, frame.event);
       const nextRunning = runningFromEvent(running, frame.event, selfToolIds);
       const ev = frame.event as { type?: unknown; toolCallId?: unknown } | null;
@@ -253,6 +301,7 @@ async function handleFrame(socket: WebSocket, data: unknown) {
       return;
     }
     case "approval_request": {
+      touch();
       const req = approvalFromFrame(frame);
       if (!req) return;
       pendingApproval = req;
@@ -434,6 +483,7 @@ export function initBridge() {
     clearApprovalAlert();
     port.onDisconnect.addListener(() => panels.delete(port));
     port.onMessage.addListener((msg) => {
+      touch();
       if (msg?.type === "connect") {
         wantConnected = true;
         attempt = 0;
@@ -441,15 +491,7 @@ export function initBridge() {
         broadcast();
       }
       if (msg?.type === "disconnect") {
-        wantConnected = false;
-        connected = false;
-        running = false;
-        pendingApproval = undefined;
-        const sock = ws;
-        ws = undefined;
-        sock?.close();
-        failPendingTools();
-        broadcast();
+        disconnect();
       }
       if (msg?.type === "list_conversations") {
         send({ type: "list_conversations" });
