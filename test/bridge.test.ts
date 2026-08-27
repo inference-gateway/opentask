@@ -294,8 +294,6 @@ describe("runCommand", () => {
         update: async () => ({}),
       },
       scripting: {
-        // Mirrors Chrome: executeScript invokes func in the page and, when it
-        // throws, RESOLVES with result: undefined instead of rejecting.
         executeScript: async ({ func, args }: { func: (...a: never[]) => unknown; args: unknown[] }) => {
           try {
             return [{ result: func(...(args as never[])) }];
