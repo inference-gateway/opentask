@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.1](https://github.com/inference-gateway/opentask/compare/v1.13.0...v1.13.1) (2026-08-28)
+
+### 🐛 Bug Fixes
+
+* clear running state on CLI interrupted frame ([#164](https://github.com/inference-gateway/opentask/issues/164)) ([ab5deb9](https://github.com/inference-gateway/opentask/commit/ab5deb918462d0536fd702000b900d75d8a9e6ce))
+* handle bridge reconnection and repo loading ([ab2e695](https://github.com/inference-gateway/opentask/commit/ab2e695a5aec62188c2c3db1d699de5c518588a4))
+* keep the CLI bridge alive with JSON pings and idle-disconnect after 5min ([#159](https://github.com/inference-gateway/opentask/issues/159)) ([b23359e](https://github.com/inference-gateway/opentask/commit/b23359e228e170e92ad0fc3678f2f1afee2003ae))
+* surface injected-script errors in bridge browser commands ([#163](https://github.com/inference-gateway/opentask/issues/163)) ([751a7db](https://github.com/inference-gateway/opentask/commit/751a7db568d51f435fbce22dfc6a22f84144a8da)), closes [#157](https://github.com/inference-gateway/opentask/issues/157)
+
+### 👷 CI
+
+* bump infer-action to v0.50.0 ([#161](https://github.com/inference-gateway/opentask/issues/161)) ([635544c](https://github.com/inference-gateway/opentask/commit/635544c2796213fb8f957b6787cdb612e2b287bd))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump flox deps ([b002eb5](https://github.com/inference-gateway/opentask/commit/b002eb53962d0434eeb00623a4f798f2aac11b69))
+* **deps:** bump infer-action to v0.50.1 ([#162](https://github.com/inference-gateway/opentask/issues/162)) ([82d6fc3](https://github.com/inference-gateway/opentask/commit/82d6fc3ff646691a5d0080bd028b35dc2ce203cb))
+* **deps:** update flox env dependencies ([4a4b421](https://github.com/inference-gateway/opentask/commit/4a4b421bfc79eb7241ae1fd3770b3e6aa12646ef))
+
 ## [1.13.0](https://github.com/inference-gateway/opentask/compare/v1.12.1...v1.13.0) (2026-08-26)
 
 ### ✨ Features
