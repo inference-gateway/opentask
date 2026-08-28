@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.2](https://github.com/inference-gateway/opentask/compare/v1.13.1...v1.13.2) (2026-08-28)
+
+### 🐛 Bug Fixes
+
+* stop Refine and Init from shadowing the repo DEFAULT_MODEL ([#166](https://github.com/inference-gateway/opentask/issues/166)) ([0031bfe](https://github.com/inference-gateway/opentask/commit/0031bfe46ff1138fb8564dde229d123973e4cb3d))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer-action to v0.50.2 ([#165](https://github.com/inference-gateway/opentask/issues/165)) ([6a2bb9a](https://github.com/inference-gateway/opentask/commit/6a2bb9ac75539ae38a53fefbc24217eefbb4d8b9))
+
 ## [1.13.1](https://github.com/inference-gateway/opentask/compare/v1.13.0...v1.13.1) (2026-08-28)
 
 ### 🐛 Bug Fixes
