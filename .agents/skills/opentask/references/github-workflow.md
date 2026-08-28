@@ -140,6 +140,11 @@ repository:
   the full block, plus
   `llamacpp-api-url`/`llamacpp-api-key` for self-hosted endpoints), and
   default the model from `${{ inputs.model || vars.DEFAULT_MODEL || '<default>' }}`.
+- Give the `model` input `default: ""`. GitHub substitutes a declared default for
+  any input a dispatch omits, so a non-empty one makes `inputs.model` always
+  truthy and silently shadows the repository's `DEFAULT_MODEL` variable on every
+  `workflow_dispatch` run. Empty keeps `vars.DEFAULT_MODEL` in charge unless the
+  dispatcher deliberately picks a model.
 - Add `languages:` and setup steps matching the repository's actual languages
   and derive `bash-allow-append` from the repo's own scripts, per "Adapt to
   the repository" above (see `go-project.yml`, `rust-project.yml`,

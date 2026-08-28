@@ -6,7 +6,7 @@ on:
       model:
         description: Model to use (provider/model, e.g. llamacpp/phi-4)
         required: false
-        default: ollama_cloud/deepseek-v4-flash:preview
+        default: ""
       prompt:
         description: Task for the agent (workflow_dispatch only)
         required: false

@@ -222,9 +222,11 @@ add them under the repo's **Settings → Secrets and variables → Actions**:
 | Secret | `LLAMACPP_API_KEY` | the generated bearer token (masked; **Copy** copies the real value) |
 | Variable | `DEFAULT_MODEL` | `llamacpp/<repo:quant>` (the model the gateway registers) |
 
-`DEFAULT_MODEL` is the model used for **issue-triggered** runs. For **Run task**
-dispatches, the running llama.cpp model also appears in the Tasks-tab model dropdown.
-Then **re-install the workflow** so it wires the `LLAMACPP_*` secrets onto infer-action.
+`DEFAULT_MODEL` is the model used for every run that does not name one explicitly -
+issue-triggered runs, **Refine**, and **Init**. Only **Run task** can override it, via
+the Tasks-tab model dropdown, which also lists the running llama.cpp model; leave that
+dropdown on *Repository default* to use `DEFAULT_MODEL` there too. Then **re-install the
+workflow** so it wires the `LLAMACPP_*` secrets onto infer-action.
 
 > **Each redeploy is a new pod** with a new URL and token - update `LLAMACPP_API_URL`
 > and `LLAMACPP_API_KEY` again from the popup. **Deprovision** from the popup terminates

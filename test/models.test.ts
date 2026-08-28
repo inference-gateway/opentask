@@ -1,8 +1,6 @@
 import { expect, test } from "bun:test";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEPENDENCY_DEFS, isModelOption, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl } from "../src/shared/models";
+import { MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEPENDENCY_DEFS, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl } from "../src/shared/models";
 
-const models = DEFAULT_MODELS;
-const def = "anthropic/claude-sonnet-4-6";
 const noBot = DEFAULT_BOT;
 const bot = { enabled: true, clientId: "Iv23liABC", privateKeySecret: "OPENTASK_APP_PRIVATE_KEY" };
 
@@ -26,11 +24,10 @@ test("isPermissions accepts a full config and rejects malformed ones", () => {
   expect(isPermissions(null)).toBe(false);
 });
 
-test("isModelOption accepts a full entry and rejects malformed ones", () => {
-  expect(DEFAULT_MODELS.every(isModelOption)).toBe(true);
-  expect(isModelOption({ model: "x", keyInput: "y", secret: "z" })).toBe(true);
-  expect(isModelOption({ model: "x", keyInput: "y" })).toBe(false);
-  expect(isModelOption(null)).toBe(false);
+test("MODELS are provider-prefixed ids and none is empty", () => {
+  expect(MODELS.length).toBeGreaterThan(0);
+  expect(MODELS.every((m) => /^[a-z0-9_]+\/.+/.test(m))).toBe(true);
+  expect(new Set(MODELS).size).toBe(MODELS.length);
 });
 
 test("isBotConfig accepts a full config and rejects malformed ones", () => {
