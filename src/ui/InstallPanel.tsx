@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as storage from "../shared/storage";
-import { DEFAULT_MODELS, isModelOption, type ModelOption } from "../shared/models";
+import { MODELS } from "../shared/models";
 import { DEFAULT_PROMPTS, mergePrompts, type Prompt } from "../shared/prompts";
 import type { GpuState } from "../shared/messages";
 import { ask } from "./ask";
@@ -17,9 +17,8 @@ type SendState =
 
 export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: string; onClose: () => void }) {
   const [state, setState] = useState<State>({ kind: "checking" });
-  const [models, setModels] = useState<ModelOption[]>(DEFAULT_MODELS);
   const [gpuModel, setGpuModel] = useState<string | null>(null);
-  const [model, setModel] = useState(DEFAULT_MODELS[0].model);
+  const [model, setModel] = useState("");
   const [prompts, setPrompts] = useState<Prompt[]>(DEFAULT_PROMPTS);
   const [task, setTask] = useState("");
   const [createIssue, setCreateIssue] = useState(true);
@@ -28,12 +27,6 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
 
   useEffect(() => {
     void (async () => {
-      const stored = await storage.get<unknown[]>("models");
-      const list = Array.isArray(stored) && stored.length && stored.every(isModelOption)
-        ? (stored as ModelOption[])
-        : DEFAULT_MODELS;
-      setModels(list);
-      setModel(list[0].model);
       setPrompts(mergePrompts(await storage.get<Prompt[]>("prompts")));
     })();
     ask({ type: "gpu-status" }, (resp) => {
@@ -125,8 +118,9 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
                 onChange={(e) => setModel(e.target.value)}
                 aria-label="Model for this run"
               >
+                <option value="">Repository default (DEFAULT_MODEL)</option>
                 {gpuModel && <option value={gpuModel}>{gpuModel}</option>}
-                {models.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+                {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
             )}
             <button

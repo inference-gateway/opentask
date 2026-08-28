@@ -1,7 +1,7 @@
 import * as storage from "./shared/storage";
 import { isValidHf, podRequestBody, githubError, parseGhHttp, type Skill, type SkillsCatalogResponse, type ApplySkillsResponse, type DispatchTaskResponse, type AgentsCatalogResponse, type GpuState } from "./shared/messages";
-import { DEFAULT_MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isModelOption, isBotConfig, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, normalizeTimeout } from "./shared/models";
-import type { ModelOption, BotConfig, Permissions, PluginOption, DependenciesConfig } from "./shared/models";
+import { DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isBotConfig, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, normalizeTimeout } from "./shared/models";
+import type { BotConfig, Permissions, PluginOption, DependenciesConfig } from "./shared/models";
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
@@ -284,7 +284,9 @@ async function createTask(owner: string, repo: string, prompt: string): Promise<
 }
 
 // Run a free-text task without an issue: dispatch the installed workflow with the prompt,
-// which infer-action picks up via its direct-prompt input.
+// which infer-action picks up via its direct-prompt input. An empty `model` omits the input
+// entirely so the workflow's own `vars.DEFAULT_MODEL` decides - only a deliberate pick in
+// the Run task dropdown sends an override.
 async function dispatchTask(owner: string, repo: string, model: string, prompt: string, extra?: Record<string, string>): Promise<DispatchTaskResponse> {
   if (!prompt || !prompt.trim()) return { error: "Task is empty." };
   const repoRes = await ghFetch(owner, repo, "");
@@ -296,36 +298,30 @@ async function dispatchTask(owner: string, repo: string, model: string, prompt: 
       method: "POST",
       body: JSON.stringify({ ref: base, inputs }),
     });
-  let res = await dispatch({ model, prompt, ...extra });
-  if (res.status === 422 && extra) res = await dispatch({ model, prompt });
+  const core: Record<string, string> = model ? { model, prompt } : { prompt };
+  let res = await dispatch({ ...core, ...extra });
+  if (res.status === 422 && extra) res = await dispatch(core);
   if (res.status === 204) return { url: `https://github.com/${owner}/${repo}/actions` };
   if (res.status === 404) return { error: "Workflow not found on the default branch. Merge the OpenTask Agent install PR first." };
   if (res.status === 422) return { error: "Dispatch rejected - the installed workflow may predate the prompt input. Re-install the OpenTask Agent workflow." };
   throw await ghFail(res);
 }
 
-// Refine one existing issue: pick the default model and dispatch the workflow with a
-// refine prompt. Delegates to dispatchTask for the actual dispatch + error handling.
+// Refine one existing issue: dispatch the workflow with a refine prompt. Sends no model,
+// so the repository's DEFAULT_MODEL variable picks it. Delegates to dispatchTask for the
+// actual dispatch + error handling.
 async function refineIssue(owner: string, repo: string, issue: number): Promise<DispatchTaskResponse> {
-  const stored = await storage.get<unknown[]>("models");
-  const models: ModelOption[] = Array.isArray(stored) && stored.length && stored.every(isModelOption)
-    ? (stored as ModelOption[])
-    : DEFAULT_MODELS;
   const template = (await storage.get<string>("refinePrompt")) ?? DEFAULT_REFINE_PROMPT;
-  return dispatchTask(owner, repo, models[0].model, refinePrompt(owner, repo, issue, template), { enable_git: "false", system_prompt: REFINE_SYSTEM_PROMPT });
+  return dispatchTask(owner, repo, "", refinePrompt(owner, repo, issue, template), { enable_git: "false", system_prompt: REFINE_SYSTEM_PROMPT });
 }
 
 // Scaffold a repo: read the global init config, then dispatch the installed workflow with
 // an init prompt. Like refineIssue, delegates to dispatchTask for dispatch + error handling
 // (including "workflow not found - merge the install PR first" when it isn't installed yet).
 async function initProject(owner: string, repo: string): Promise<DispatchTaskResponse> {
-  const storedModels = await storage.get<unknown[]>("models");
-  const models: ModelOption[] = Array.isArray(storedModels) && storedModels.length && storedModels.every(isModelOption)
-    ? (storedModels as ModelOption[])
-    : DEFAULT_MODELS;
   const storedInit = await storage.get<unknown>("init");
   const init = isInitConfig(storedInit) ? storedInit : DEFAULT_INIT;
-  return dispatchTask(owner, repo, models[0].model, initPrompt(owner, repo, init));
+  return dispatchTask(owner, repo, "", initPrompt(owner, repo, init));
 }
 
 // --- Skills registry ---

@@ -1,27 +1,19 @@
-// Install-workflow config, shared by the popup (model dropdown) and background
-// (generated workflow). Each ModelOption maps a provider-prefixed model id to the
-// inference-gateway/infer-action provider-key input and the repo secret it reads.
-// A BotConfig optionally makes the workflow authenticate as a GitHub App. All of
-// this is editable in the options page.
-export type ModelOption = { model: string; keyInput: string; secret: string };
+// Install-workflow config. A BotConfig optionally makes the workflow authenticate
+// as a GitHub App. All of this is editable in the options page.
 
-// Curated from infer-action's README supported-model list. First entry = default.
-export const DEFAULT_MODELS: ModelOption[] = [
-  { model: "ollama_cloud/deepseek-v4-flash:preview", keyInput: "ollama-cloud-api-key", secret: "OLLAMA_CLOUD_API_KEY" },
-  { model: "deepseek/deepseek-v4-flash", keyInput: "deepseek-api-key", secret: "DEEPSEEK_API_KEY" },
-  { model: "anthropic/claude-sonnet-4-6", keyInput: "anthropic-api-key", secret: "ANTHROPIC_API_KEY" },
-  { model: "openai/gpt-5", keyInput: "openai-api-key", secret: "OPENAI_API_KEY" },
-  { model: "google/gemini-3-pro", keyInput: "google-api-key", secret: "GOOGLE_API_KEY" },
-  { model: "moonshot/kimi-k2", keyInput: "moonshot-api-key", secret: "MOONSHOT_API_KEY" },
+// Choices for the Run task model override, curated from infer-action's README
+// supported-model list. This is a menu, not a default: no entry is privileged, and
+// an empty selection omits the `model` dispatch input so the repository's
+// DEFAULT_MODEL variable decides. The workflow already wires every provider key,
+// so an entry needs no secret mapping of its own.
+export const MODELS = [
+  "ollama_cloud/deepseek-v4-flash:preview",
+  "deepseek/deepseek-v4-flash",
+  "anthropic/claude-sonnet-4-6",
+  "openai/gpt-5",
+  "google/gemini-3-pro",
+  "moonshot/kimi-k2",
 ];
-
-export function isModelOption(m: unknown): m is ModelOption {
-  return (
-    !!m &&
-    typeof m === "object" &&
-    ["model", "keyInput", "secret"].every((k) => typeof (m as Record<string, unknown>)[k] === "string")
-  );
-}
 
 // Optional GitHub App identity. When enabled, the workflow mints an installation
 // token via actions/create-github-app-token and acts as the App, so the agent's
