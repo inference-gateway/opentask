@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
-import { runCommand } from "../src/lib/bridge";
+import { handleFrame, panelState, runCommand } from "../src/lib/bridge";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -360,5 +360,21 @@ describe("runCommand", () => {
     const result = await runCommand({ type: "browser_command", id: "6", action: "click", selector: "#b" });
     expect(clicked).toBe(true);
     expect(result.error).toBe("");
+  });
+});
+
+describe("handleFrame interrupted", () => {
+  const socket = {} as WebSocket;
+
+  test("an interrupted frame clears the running state", async () => {
+    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "TOOL_CALL_START", toolCallName: "Bash" } }));
+    expect(panelState().running).toBe(true);
+    await handleFrame(socket, JSON.stringify({ type: "interrupted" }));
+    expect(panelState().running).toBe(false);
+  });
+
+  test("an interrupted frame while idle keeps running false", async () => {
+    await handleFrame(socket, JSON.stringify({ type: "interrupted" }));
+    expect(panelState().running).toBe(false);
   });
 });
