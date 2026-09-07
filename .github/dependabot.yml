@@ -1,15 +1,11 @@
 ---
 version: 2
 updates:
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
     versioning-strategy: increase
-    # Dependabot's npm ecosystem cannot regenerate bun.lock (no Bun
-    # lockfile support). .github/workflows/lockfile.yml re-syncs the
-    # lockfile on these PRs so `bun install --frozen-lockfile` in CI
-    # keeps passing.
     groups:
       npm:
         patterns:
