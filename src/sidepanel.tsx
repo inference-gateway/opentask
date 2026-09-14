@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
 import { applyTheme, type Theme } from "./shared/theme";
 import type {
+  Attachment,
   ConversationMeta,
   Msg,
   PanelApproval,
@@ -18,11 +19,11 @@ import type {
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
-import { ArrowDown, Check, Copy, SquarePen, X } from "lucide-react";
+import { ArrowDown, Check, Copy, Paperclip, SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
-import { prettyArgs, toolLabel } from "./shared/agui";
+import { attachmentLine, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, prettyArgs, toolLabel } from "./shared/agui";
 import { Markdown } from "./lib/markdown";
 import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
 import { caretPosition, type CaretPos } from "./lib/caret";
@@ -62,6 +63,9 @@ function SidePanel() {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [draft, setDraft] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachmentNotice, setAttachmentNotice] = useState<string | undefined>(undefined);
+  const [dropActive, setDropActive] = useState(false);
   const [histIdx, setHistIdx] = useState(-1);
   const histStash = useRef("");
   const [skills, setSkills] = useState<PanelSkill[]>([]);
@@ -74,6 +78,7 @@ function SidePanel() {
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const approveRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -145,12 +150,51 @@ function SidePanel() {
     portRef.current?.postMessage({ type: "resume_conversation", id } satisfies PanelResumeConversation);
   }
 
+  // Reads one picked/pasted/dropped file as raw base64 (the data-URL prefix is
+  // dropped); resolves undefined when the browser can't read it.
+  function readFileAsBase64(file: File): Promise<string | undefined> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? "").split(",")[1]);
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addFiles(files: FileList | null) {
+    if (!files?.length) return;
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        setAttachmentNotice(`"${file.name}" is too large (max 10 MB per file)`);
+        continue;
+      }
+      const data = await readFileAsBase64(file);
+      if (!data) {
+        setAttachmentNotice(`Could not read "${file.name}"`);
+        continue;
+      }
+      setAttachments((list) =>
+        list.length >= MAX_ATTACHMENTS
+          ? list
+          : [...list, { filename: file.name || "pasted-image.png", mime_type: file.type || "application/octet-stream", data }],
+      );
+    }
+  }
+
   function sendMessage() {
-    const content = draft.trim();
-    if (!content) return;
-    portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage);
+    const text = draft.trim();
+    if (!text && !attachments.length) return;
+    const footer = attachmentLine(attachments);
+    const content = text && footer ? `${text}\n\n${footer}` : text || footer;
+    portRef.current?.postMessage({
+      type: "user_message",
+      content,
+      ...(attachments.length ? { attachments } : {}),
+    } satisfies PanelUserMessage);
     setDraft("");
+    setAttachments([]);
     setHistIdx(-1);
+    setAttachmentNotice(undefined);
   }
 
   function updateSkillMenu() {
@@ -435,7 +479,68 @@ function SidePanel() {
       )}
 
       <div className="border-t border-border/60 bg-background/80 p-3 backdrop-blur-sm">
-        <div className="flex items-end gap-2 rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20">
+        <div
+          className={
+          "rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20" +
+          (dropActive ? " border-indigo-500/60 bg-indigo-500/5" : "")
+          }
+          onDragOver={(e) => {
+          e.preventDefault();
+          setDropActive(true);
+          }}
+          onDragLeave={() => setDropActive(false)}
+          onDrop={(e) => {
+          e.preventDefault();
+          setDropActive(false);
+          void addFiles(e.dataTransfer?.files ?? null);
+          }}
+        >
+          {attachmentNotice && <div className="px-1 pt-1 text-xs text-red-500">{attachmentNotice}</div>}
+          {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 px-1 pt-1.5">
+              {attachments.map((a, i) => (
+                <span key={i} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-1 pr-1.5 text-xs">
+                  {a.mime_type.startsWith("image/") ? (
+                    <img src={`data:${a.mime_type};base64,${a.data}`} alt="" className="size-6 rounded-full object-cover" />
+                  ) : (
+                    <Paperclip className="size-3 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="max-w-40 truncate">{a.filename}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${a.filename}`}
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => setAttachments((list) => list.filter((_, j) => j !== i))}
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+          </div>
+          )}
+          <div className="flex items-end gap-2">
+          <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              aria-hidden="true"
+              tabIndex={-1}
+              className="hidden"
+              onChange={(e) => {
+                void addFiles(e.target.files);
+                e.target.value = "";
+              }}
+          />
+          <Button
+              size="icon-sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Attach files"
+              title="Attach files"
+              onClick={() => fileInputRef.current?.click()}
+          >
+              <Paperclip />
+          </Button>
           <Textarea
             ref={taRef}
             rows={2}
@@ -447,6 +552,12 @@ function SidePanel() {
               updateSkillMenu();
             }}
             onBlur={() => setMenu(null)}
+            onPaste={(e) => {
+                  if (e.clipboardData?.files.length) {
+                    e.preventDefault();
+                    void addFiles(e.clipboardData.files);
+                  }
+            }}
             onKeyDown={(e) => {
               if (menu && e.key === "Escape") {
                 e.preventDefault();
@@ -513,7 +624,7 @@ function SidePanel() {
           ) : (
             <Button
               size="icon-sm"
-              disabled={!connected || !draft.trim()}
+              disabled={!connected || (!draft.trim() && !attachments.length)}
               onClick={sendMessage}
               className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
               aria-label="Send message"
@@ -531,6 +642,7 @@ function SidePanel() {
             onSelect={commitSkill}
           />
         )}
+        </div>
       </div>
     </div>
   );

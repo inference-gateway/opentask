@@ -1,5 +1,5 @@
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseAttachments, parseConversations, parseFrame, parseHistory, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type Attachment, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -552,7 +552,11 @@ export function initBridge() {
         if (isClearCommand(content)) {
           startNewSession();
         } else {
-          send({ type: "user_message", content });
+          // `attachments` rides the user_message frame (see Attachment in
+          // shared/agui.ts). CLIs before the attachments contract ignore the
+          // unknown field; the message text still names each attachment.
+          const attachments: Attachment[] = parseAttachments(msg.attachments);
+          send(attachments.length ? { type: "user_message", content, attachments } : { type: "user_message", content });
           recordHistory(content);
           running = true;
           broadcast();

@@ -229,6 +229,45 @@ export function parseSkills(frame: Record<string, unknown>): PanelSkill[] {
 // SW <-> side-panel Port protocol ("bridge-panel").
 export type PendingApproval = { requestId: string; toolName: string; toolArgs: string };
 
+// A file the user attached in the composer: raw base64 (no data-URL prefix),
+// its original filename and mime type. Field names mirror the CLI's
+// ImageAttachment JSON (data/mime_type/filename) so the user_message wire
+// frame's optional `attachments` array maps straight into UserInputEvent.Images.
+// CLIs older than the attachments contract ignore the unknown field, so the
+// message content also names each attachment (attachmentLine).
+export type Attachment = { filename: string; mime_type: string; data: string };
+
+// Per-file raw-byte cap (10 MB) and attachment count cap, so one dropped
+// screenshot can't blow the single WS text frame user_message travels in.
+// ponytail: hard cap, stream/chunked transfer if someone needs to attach more.
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export const MAX_ATTACHMENTS = 10;
+
+// Validates an unknown attachments array (a port message from the panel):
+// drops non-objects and entries without usable strings, and enforces the caps.
+export function parseAttachments(value: unknown): Attachment[] {
+  const list = Array.isArray(value) ? value : [];
+  const out: Attachment[] = [];
+  for (const raw of list) {
+    const o = raw as { filename?: unknown; mime_type?: unknown; data?: unknown } | null;
+    if (typeof o?.filename !== "string" || o.filename === "") continue;
+    if (typeof o?.mime_type !== "string" || o.mime_type === "") continue;
+    if (typeof o?.data !== "string" || o.data === "") continue;
+    if (o.data.length > Math.ceil(MAX_ATTACHMENT_BYTES / 3) * 4) continue; // base64 of a max-size file
+    out.push({ filename: o.filename, mime_type: o.mime_type, data: o.data });
+    if (out.length >= MAX_ATTACHMENTS) break;
+  }
+  return out;
+}
+
+// The message-content footer naming each attachment, so an agent whose CLI
+// ignores the attachments field still learns what was attached and can ask
+// for a path. Empty string when there are none.
+export function attachmentLine(attachments: Attachment[]): string {
+  if (attachments.length === 0) return "";
+  return `[attached: ${attachments.map((a) => `${a.filename} (${a.mime_type})`).join(", ")}]`;
+}
+
 // Parses an approval_request wire frame into a PendingApproval, or undefined
 // when it lacks a usable request id (nothing to answer).
 export function approvalFromFrame(frame: Record<string, unknown>): PendingApproval | undefined {
@@ -262,7 +301,7 @@ export type PanelState = {
 };
 export type PanelConnect = { type: "connect" };
 export type PanelDisconnect = { type: "disconnect" };
-export type PanelUserMessage = { type: "user_message"; content: string };
+export type PanelUserMessage = { type: "user_message"; content: string; attachments?: Attachment[] };
 export type PanelInterrupt = { type: "interrupt" };
 export type PanelSelectModel = { type: "select_model"; model: string };
 export type PanelSetMode = { type: "set_mode"; mode: string };
