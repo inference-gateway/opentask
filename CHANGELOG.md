@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.1](https://github.com/inference-gateway/opentask/compare/v1.14.0...v1.14.1) (2026-09-14)
+
+### 🐛 Bug Fixes
+
+* **sidepanel:** focus the approval prompt so a/d shortcuts work ([#178](https://github.com/inference-gateway/opentask/issues/178)) ([134f287](https://github.com/inference-gateway/opentask/commit/134f28783025f11e765ff8b0fe6ed2e83d5d1d67))
+
 ## [1.14.0](https://github.com/inference-gateway/opentask/compare/v1.13.2...v1.14.0) (2026-09-14)
 
 ### ✨ Features
