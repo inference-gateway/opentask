@@ -28,6 +28,7 @@ import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
 import { caretPosition, type CaretPos } from "./lib/caret";
 import { getTrigger } from "./lib/dom";
 import { replaceRange } from "./lib/insert";
+import { approvalShortcut } from "./lib/utils";
 import { SkillMenu } from "@/ui/SkillMenu";
 
 // Hover-reveal copy-to-clipboard under a chat bubble, desktop-app style.
@@ -184,6 +185,17 @@ function SidePanel() {
     } satisfies PanelApproval);
     setPendingApproval(undefined);
   }
+
+  // Window-level a/d while an approval is pending, matching the visible
+  // button labels; approvalShortcut no-ops while typing in the composer.
+  useEffect(() => {
+    if (!pendingApproval) return;
+    function onKey(e: KeyboardEvent) {
+        if (approvalShortcut(e, respondApproval)) e.preventDefault();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingApproval]);
 
   return (
     <div className="flex h-screen flex-col bg-gradient-to-b from-background to-muted/40 text-foreground text-sm">
@@ -402,6 +414,7 @@ function SidePanel() {
                 Deny
               </Button>
             </div>
+            <div className="mt-2 text-center text-xs text-muted-foreground">A to approve · D to deny</div>
           </div>
         </div>
       )}
