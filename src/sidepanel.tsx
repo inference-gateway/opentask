@@ -74,6 +74,7 @@ function SidePanel() {
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const approveRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     void (async () => {
@@ -188,8 +189,11 @@ function SidePanel() {
 
   // Window-level a/d while an approval is pending, matching the visible
   // button labels; approvalShortcut no-ops while typing in the composer.
+  // The prompt steals focus (Approve button) on mount so a/d and native
+  // Enter/Space work without a click, even though the composer held focus.
   useEffect(() => {
     if (!pendingApproval) return;
+    approveRef.current?.focus();
     function onKey(e: KeyboardEvent) {
         if (approvalShortcut(e, respondApproval)) e.preventDefault();
     }
@@ -407,7 +411,7 @@ function SidePanel() {
               </pre>
             )}
             <div className="flex gap-2">
-              <Button size="sm" className="flex-1" onClick={() => respondApproval("approve")}>
+              <Button ref={approveRef} size="sm" className="flex-1" onClick={() => respondApproval("approve")}>
                 Approve
               </Button>
               <Button size="sm" variant="destructive" className="flex-1" onClick={() => respondApproval("reject")}>
