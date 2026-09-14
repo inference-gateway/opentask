@@ -152,13 +152,13 @@ function SidePanel() {
 
   const PREVIEWABLE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
-  function normalizeMimeType(mimeType: string | undefined): string {
-    const normalized = (mimeType ?? "").trim().toLowerCase();
-    return PREVIEWABLE_IMAGE_MIME_TYPES.has(normalized) ? normalized : "application/octet-stream";
-  }
-
-  function isPreviewableImageMimeType(mimeType: string): boolean {
-    return PREVIEWABLE_IMAGE_MIME_TYPES.has(mimeType);
+  // The whitelisted mime type for a chip thumbnail's data: URL, or undefined
+  // when the file isn't a browser-renderable image. Only the preview is
+  // sanitized; the wire keeps the file's real type so the CLI can tell a
+  // HEIC or PDF apart from an opaque blob.
+  function previewMimeType(mimeType: string): string | undefined {
+    const normalized = mimeType.trim().toLowerCase();
+    return PREVIEWABLE_IMAGE_MIME_TYPES.has(normalized) ? normalized : undefined;
   }
 
   function readFileAsBase64(file: File): Promise<string | undefined> {
@@ -182,7 +182,7 @@ function SidePanel() {
         setAttachmentNotice(`Could not read "${file.name}"`);
         continue;
       }
-      const mimeType = normalizeMimeType(file.type);
+      const mimeType = file.type || "application/octet-stream";
       setAttachments((list) =>
         list.length >= MAX_ATTACHMENTS
           ? list
@@ -511,8 +511,8 @@ function SidePanel() {
               {attachments.map((a, i) => (
                 <span key={i} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-1 pr-1.5 text-xs">
                   {(() => {
-                    const safeMimeType = normalizeMimeType(a.mime_type);
-                    return isPreviewableImageMimeType(safeMimeType) ? (
+                    const safeMimeType = previewMimeType(a.mime_type);
+                    return safeMimeType ? (
                       <img
                         src={`data:${safeMimeType};base64,${a.data}`}
                         alt=""
