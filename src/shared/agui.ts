@@ -252,7 +252,7 @@ export function parseAttachments(value: unknown): Attachment[] {
     if (typeof o?.filename !== "string" || o.filename === "") continue;
     if (typeof o?.mime_type !== "string" || o.mime_type === "") continue;
     if (typeof o?.data !== "string" || o.data === "") continue;
-    if (o.data.length > Math.ceil(MAX_ATTACHMENT_BYTES / 3) * 4) continue; // base64 of a max-size file
+    if (o.data.length > Math.ceil(MAX_ATTACHMENT_BYTES / 3) * 4) continue;
     out.push({ filename: o.filename, mime_type: o.mime_type, data: o.data });
     if (out.length >= MAX_ATTACHMENTS) break;
   }
