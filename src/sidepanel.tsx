@@ -507,32 +507,42 @@ function SidePanel() {
         >
           {attachmentNotice && <div className="px-1 pt-1 text-xs text-red-500">{attachmentNotice}</div>}
           {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 px-1 pt-1.5">
-              {attachments.map((a, i) => (
-                <span key={i} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-1 pr-1.5 text-xs">
-                  {(() => {
-                    const safeMimeType = previewMimeType(a.mime_type);
-                    return safeMimeType ? (
-                      <img
-                        src={`data:${safeMimeType};base64,${a.data}`}
-                        alt=""
-                        className="size-6 rounded-full object-cover"
-                      />
-                    ) : (
-                      <Paperclip className="size-3 shrink-0 text-muted-foreground" />
-                    );
-                  })()}
-                  <span className="max-w-40 truncate">{a.filename}</span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${a.filename}`}
-                    className="text-muted-foreground transition-colors hover:text-foreground"
-                    onClick={() => setAttachments((list) => list.filter((_, j) => j !== i))}
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
-              ))}
+          <div className="flex flex-wrap gap-2 px-1 pt-1.5">
+              {attachments.map((a, i) => {
+                const safeMimeType = previewMimeType(a.mime_type);
+                const remove = () => setAttachments((list) => list.filter((_, j) => j !== i));
+                return safeMimeType ? (
+                  <div key={i} className="relative w-20 text-xs" title={a.filename}>
+                    <img
+                      src={`data:${safeMimeType};base64,${a.data}`}
+                      alt={a.filename}
+                      className="size-20 rounded-md border border-border/60 object-cover"
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Remove ${a.filename}`}
+                      className="absolute -right-1.5 -top-1.5 rounded-full border border-border bg-background p-0.5 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+                      onClick={remove}
+                    >
+                      <X className="size-3" />
+                    </button>
+                    <span className="mt-0.5 block truncate text-muted-foreground">{a.filename}</span>
+                  </div>
+                ) : (
+                  <span key={i} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-2 pr-1.5 text-xs" title={a.filename}>
+                    <Paperclip className="size-3 shrink-0 text-muted-foreground" />
+                    <span className="max-w-40 truncate">{a.filename}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${a.filename}`}
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      onClick={remove}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                );
+              })}
           </div>
           )}
           <div className="flex items-end gap-2">
