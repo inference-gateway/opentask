@@ -150,8 +150,6 @@ function SidePanel() {
     portRef.current?.postMessage({ type: "resume_conversation", id } satisfies PanelResumeConversation);
   }
 
-  // Reads one picked/pasted/dropped file as raw base64 (the data-URL prefix is
-  // dropped); resolves undefined when the browser can't read it.
   const PREVIEWABLE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
   function normalizeMimeType(mimeType: string | undefined): string {
