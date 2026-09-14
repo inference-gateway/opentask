@@ -239,7 +239,6 @@ export type Attachment = { filename: string; mime_type: string; data: string };
 
 // Per-file raw-byte cap (10 MB) and attachment count cap, so one dropped
 // screenshot can't blow the single WS text frame user_message travels in.
-// ponytail: hard cap, stream/chunked transfer if someone needs to attach more.
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 export const MAX_ATTACHMENTS = 10;
 
