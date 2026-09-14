@@ -1,5 +1,5 @@
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
+import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseAttachments, parseConversations, parseFrame, parseHistory, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type Attachment, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
 
 export const DEFAULT_PORT = "52789";
 
@@ -552,7 +552,8 @@ export function initBridge() {
         if (isClearCommand(content)) {
           startNewSession();
         } else {
-          send({ type: "user_message", content });
+          const attachments: Attachment[] = parseAttachments(msg.attachments);
+          send(attachments.length ? { type: "user_message", content, attachments } : { type: "user_message", content });
           recordHistory(content);
           running = true;
           broadcast();
