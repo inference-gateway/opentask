@@ -152,6 +152,17 @@ function SidePanel() {
 
   // Reads one picked/pasted/dropped file as raw base64 (the data-URL prefix is
   // dropped); resolves undefined when the browser can't read it.
+  const PREVIEWABLE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+  function normalizeMimeType(mimeType: string | undefined): string {
+    const normalized = (mimeType ?? "").trim().toLowerCase();
+    return normalized || "application/octet-stream";
+  }
+
+  function isPreviewableImageMimeType(mimeType: string): boolean {
+    return PREVIEWABLE_IMAGE_MIME_TYPES.has(mimeType);
+  }
+
   function readFileAsBase64(file: File): Promise<string | undefined> {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -173,10 +184,11 @@ function SidePanel() {
         setAttachmentNotice(`Could not read "${file.name}"`);
         continue;
       }
+      const mimeType = normalizeMimeType(file.type);
       setAttachments((list) =>
         list.length >= MAX_ATTACHMENTS
           ? list
-          : [...list, { filename: file.name || "pasted-image.png", mime_type: file.type || "application/octet-stream", data }],
+          : [...list, { filename: file.name || "pasted-image.png", mime_type: mimeType, data }],
       );
     }
   }
@@ -500,8 +512,12 @@ function SidePanel() {
           <div className="flex flex-wrap gap-1.5 px-1 pt-1.5">
               {attachments.map((a, i) => (
                 <span key={i} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-1 pr-1.5 text-xs">
-                  {a.mime_type.startsWith("image/") ? (
-                    <img src={`data:${a.mime_type};base64,${a.data}`} alt="" className="size-6 rounded-full object-cover" />
+                  {isPreviewableImageMimeType(normalizeMimeType(a.mime_type)) ? (
+                    <img
+                      src={`data:${normalizeMimeType(a.mime_type)};base64,${a.data}`}
+                      alt=""
+                      className="size-6 rounded-full object-cover"
+                    />
                   ) : (
                     <Paperclip className="size-3 shrink-0 text-muted-foreground" />
                   )}
