@@ -19,7 +19,7 @@ import type {
   PanelUserMessage,
   PendingApproval,
 } from "./shared/agui";
-import { ArrowDown, Check, Copy, Paperclip, SquarePen, X } from "lucide-react";
+import { ArrowDown, Check, Copy, Paperclip, Plus, SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
@@ -556,7 +556,7 @@ function SidePanel() {
               title="Attach files"
               onClick={() => fileInputRef.current?.click()}
           >
-              <Paperclip />
+              <Plus />
           </Button>
           <Textarea
             ref={taRef}
