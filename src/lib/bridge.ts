@@ -552,9 +552,6 @@ export function initBridge() {
         if (isClearCommand(content)) {
           startNewSession();
         } else {
-          // `attachments` rides the user_message frame (see Attachment in
-          // shared/agui.ts). CLIs before the attachments contract ignore the
-          // unknown field; the message text still names each attachment.
           const attachments: Attachment[] = parseAttachments(msg.attachments);
           send(attachments.length ? { type: "user_message", content, attachments } : { type: "user_message", content });
           recordHistory(content);
