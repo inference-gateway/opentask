@@ -154,7 +154,7 @@ function SidePanel() {
 
   function normalizeMimeType(mimeType: string | undefined): string {
     const normalized = (mimeType ?? "").trim().toLowerCase();
-    return normalized || "application/octet-stream";
+    return PREVIEWABLE_IMAGE_MIME_TYPES.has(normalized) ? normalized : "application/octet-stream";
   }
 
   function isPreviewableImageMimeType(mimeType: string): boolean {
@@ -510,15 +510,18 @@ function SidePanel() {
           <div className="flex flex-wrap gap-1.5 px-1 pt-1.5">
               {attachments.map((a, i) => (
                 <span key={i} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-1 pr-1.5 text-xs">
-                  {isPreviewableImageMimeType(normalizeMimeType(a.mime_type)) ? (
-                    <img
-                      src={`data:${normalizeMimeType(a.mime_type)};base64,${a.data}`}
-                      alt=""
-                      className="size-6 rounded-full object-cover"
-                    />
-                  ) : (
-                    <Paperclip className="size-3 shrink-0 text-muted-foreground" />
-                  )}
+                  {(() => {
+                    const safeMimeType = normalizeMimeType(a.mime_type);
+                    return isPreviewableImageMimeType(safeMimeType) ? (
+                      <img
+                        src={`data:${safeMimeType};base64,${a.data}`}
+                        alt=""
+                        className="size-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <Paperclip className="size-3 shrink-0 text-muted-foreground" />
+                    );
+                  })()}
                   <span className="max-w-40 truncate">{a.filename}</span>
                   <button
                     type="button"
