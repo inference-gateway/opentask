@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.14.0](https://github.com/inference-gateway/opentask/compare/v1.13.2...v1.14.0) (2026-09-14)
+
+### ✨ Features
+
+* **sidepanel:** a/d keyboard shortcuts for tool-approval prompt ([#174](https://github.com/inference-gateway/opentask/issues/174)) ([f7d4a3e](https://github.com/inference-gateway/opentask/commit/f7d4a3e16c286bc137d31a3cb0662f0f999235a1))
+
+### 📚 Documentation
+
+* condense AGENTS.md to the agents.md standard ([#168](https://github.com/inference-gateway/opentask/issues/168)) ([c154885](https://github.com/inference-gateway/opentask/commit/c1548859a631c7c17332fe13b051a718de6abd36))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump inference-gateway/infer-action ([#169](https://github.com/inference-gateway/opentask/issues/169)) ([73582ec](https://github.com/inference-gateway/opentask/commit/73582ec5c36ace4f76aca534a3548146fae864bf))
+* **deps:** bump inference-gateway/infer-action ([#171](https://github.com/inference-gateway/opentask/issues/171)) ([0158803](https://github.com/inference-gateway/opentask/commit/0158803396f59abdab554406f4e5747edb912edf))
+* **deps:** bump the npm group across 1 directory with 5 updates ([#170](https://github.com/inference-gateway/opentask/issues/170)) ([7344342](https://github.com/inference-gateway/opentask/commit/73443421d08d9916a767526044806ba30f1dd8c7))
+* **deps:** bump the npm group with 4 updates ([#172](https://github.com/inference-gateway/opentask/issues/172)) ([c84c0c3](https://github.com/inference-gateway/opentask/commit/c84c0c380dd4691ff1db7ef8528b2b6c0b944aa6))
+* **deps:** update infer-action version to 0.50.5 ([9d04f38](https://github.com/inference-gateway/opentask/commit/9d04f3889b70e5f94ece6d87d89d7bc9e41bf705))
+
 ## [1.13.2](https://github.com/inference-gateway/opentask/compare/v1.13.1...v1.13.2) (2026-08-28)
 
 ### 🐛 Bug Fixes
