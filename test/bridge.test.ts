@@ -363,6 +363,25 @@ describe("runCommand", () => {
   });
 });
 
+describe("handleFrame chat_event active conversation", () => {
+  const socket = {} as WebSocket;
+
+  test("RUN_STARTED adopts the threadId as the active conversation (issue #182)", async () => {
+    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "RUN_STARTED", threadId: "s1" } }));
+    expect(panelState().activeConversationId).toBe("s1");
+  });
+
+  test("a RUN_STARTED without a threadId leaves the active conversation alone", async () => {
+    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "RUN_STARTED" } }));
+    expect(panelState().activeConversationId).toBe("s1");
+  });
+
+  test("a later run adopts its own threadId (new session after New chat)", async () => {
+    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "RUN_STARTED", threadId: "s2" } }));
+    expect(panelState().activeConversationId).toBe("s2");
+  });
+});
+
 describe("handleFrame interrupted", () => {
   const socket = {} as WebSocket;
 

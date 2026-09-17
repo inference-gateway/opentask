@@ -294,9 +294,15 @@ export async function handleFrame(socket: WebSocket, data: unknown) {
       touch();
       const next = reduceAgui(messages, frame.event);
       const nextRunning = runningFromEvent(running, frame.event, selfToolIds);
-      const ev = frame.event as { type?: unknown; toolCallId?: unknown } | null;
+      const ev = frame.event as { type?: unknown; toolCallId?: unknown; threadId?: unknown } | null;
       if (ev?.type === "TOOL_CALL_RESULT" && typeof ev.toolCallId === "string") selfToolIds.delete(ev.toolCallId);
-      if (next !== messages || nextRunning !== running) {
+      let idChanged = false;
+      if (ev?.type === "RUN_STARTED" && typeof ev.threadId === "string" && ev.threadId !== "" && ev.threadId !== activeConversationId) {
+        activeConversationId = ev.threadId;
+        send({ type: "list_conversations" });
+        idChanged = true;
+      }
+      if (next !== messages || nextRunning !== running || idChanged) {
         messages = next;
         running = nextRunning;
         broadcast();
