@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.0](https://github.com/inference-gateway/opentask/compare/v1.14.1...v1.15.0) (2026-09-17)
+
+### ✨ Features
+
+* **sidepanel:** attach files and images to the composer ([#179](https://github.com/inference-gateway/opentask/issues/179)) ([12424e2](https://github.com/inference-gateway/opentask/commit/12424e2d1c3571fba92f582ab665ecda7b9047c7))
+* **sidepanel:** show attached images as larger thumbnail tiles ([#180](https://github.com/inference-gateway/opentask/issues/180)) ([3177ab5](https://github.com/inference-gateway/opentask/commit/3177ab5d26e6897dde110cf822a2832c9bee3cfe))
+
+### 🐛 Bug Fixes
+
+* **bridge:** show the active conversation in the dropdown ([#183](https://github.com/inference-gateway/opentask/issues/183)) ([fc941ab](https://github.com/inference-gateway/opentask/commit/fc941ab7f38244f9316a40d624d576ed2447d59e))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer-action to v0.51.5 ([#181](https://github.com/inference-gateway/opentask/issues/181)) ([37a0aa6](https://github.com/inference-gateway/opentask/commit/37a0aa6082b5254f304b09ae7cf3defa9aaf36fe))
+* update flox dependencies ([614b31e](https://github.com/inference-gateway/opentask/commit/614b31eae5bc8affb69c552d160381e52ba0b4b3))
+
 ## [1.14.1](https://github.com/inference-gateway/opentask/compare/v1.14.0...v1.14.1) (2026-09-14)
 
 ### 🐛 Bug Fixes
