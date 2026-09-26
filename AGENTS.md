@@ -42,7 +42,7 @@ Code readability:
 
 ## Security
 
-Never commit personal access tokens or `.env`. Tokens live in extension storage at runtime; document new configuration in `.env.example` and `README.md`. When adding a manifest permission, document its justification in `docs/store/privacy-declarations.md` and check whether `manifest.firefox.json`/`manifest.safari.json` need the same change.
+Never commit personal access tokens or `.env`. The extension stores no GitHub credential (GitHub auth comes from the host CLI's `gh`); the only secrets in `chrome.storage.local` are user-entered keys such as the optional RunPod API key; document new configuration in `README.md`. When adding a manifest permission, document its justification in `docs/store/privacy-declarations.md` and check whether `manifest.firefox.json`/`manifest.safari.json` need the same change.
 
 ## Commits, Releases & PRs
 
