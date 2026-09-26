@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.0](https://github.com/inference-gateway/opentask/compare/v1.15.0...v1.16.0) (2026-09-26)
+
+### ✨ Features
+
+* **sidepanel:** render TodoWrite tool calls as a visual todo list ([#187](https://github.com/inference-gateway/opentask/issues/187)) ([805c741](https://github.com/inference-gateway/opentask/commit/805c7419d1ecac7df36629a0cdfc30f35ded8d9e)), references [inference-gateway/cli#1330](https://github.com/inference-gateway/cli/issues/1330) [#186](https://github.com/inference-gateway/opentask/issues/186)
+
+### 📚 Documentation
+
+* expand AGENTS.md with release, hook, and cross-browser conventions ([#184](https://github.com/inference-gateway/opentask/issues/184)) ([7ffb317](https://github.com/inference-gateway/opentask/commit/7ffb3171b590071a56ca9f056e3a8ec66762f71a))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump the npm group with 4 updates ([#188](https://github.com/inference-gateway/opentask/issues/188)) ([91904e9](https://github.com/inference-gateway/opentask/commit/91904e908e64d913c3eafb09984c7f02bd6c3b99))
+* **deps:** bump the npm group with 7 updates ([#185](https://github.com/inference-gateway/opentask/issues/185)) ([efc4df6](https://github.com/inference-gateway/opentask/commit/efc4df633c4c19126f1f631548e17bb6f0330a79))
+* **deps:** update infer-action to version 0.51.9 ([5d84b7d](https://github.com/inference-gateway/opentask/commit/5d84b7d3d2d921a65db501cb0e2e3468ea260ffe))
+
 ## [1.15.0](https://github.com/inference-gateway/opentask/compare/v1.14.1...v1.15.0) (2026-09-17)
 
 ### ✨ Features
