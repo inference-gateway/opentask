@@ -24,6 +24,7 @@ import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
 import { attachmentLine, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, prettyArgs, toolLabel } from "./shared/agui";
+import { parseTodos, todoSummary } from "./shared/todos";
 import { Markdown } from "./lib/markdown";
 import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
 import { caretPosition, type CaretPos } from "./lib/caret";
@@ -31,6 +32,7 @@ import { getTrigger } from "./lib/dom";
 import { replaceRange } from "./lib/insert";
 import { approvalShortcut } from "./lib/utils";
 import { SkillMenu } from "@/ui/SkillMenu";
+import { TodoPanel } from "@/ui/TodoPanel";
 
 // Hover-reveal copy-to-clipboard under a chat bubble, desktop-app style.
 function CopyButton({ text }: { text: string }) {
@@ -390,7 +392,9 @@ function SidePanel() {
             <p className="max-w-[220px] text-xs">Pick a conversation above to resume, or send a message to start a new one.</p>
           </div>
         )}
-        {messages.map((m, i) => (
+        {messages.map((m, i) => {
+          const todos = parseTodos(m.content, m.args);
+          return (
           <div key={i} className={m.role === "user" ? "group flex justify-end" : "group flex justify-start"}>
             {m.role === "tool" ? (
               <details className="max-w-[85%] rounded-2xl border border-border/60 bg-background/60 font-mono text-xs text-muted-foreground open:w-full">
@@ -402,11 +406,24 @@ function SidePanel() {
                   ) : (
                     <span className="text-red-500">✗</span>
                   )}
-                  <span className="truncate">{toolLabel(m.content, m.args)}</span>
+                  <span className="truncate">{todos ? `${m.content} ${todoSummary(todos)}` : toolLabel(m.content, m.args)}</span>
                 </summary>
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">
-                  {m.args ? prettyArgs(m.args) : m.content}
-                </pre>
+                {todos ? (
+                  <div className="max-h-64 space-y-1.5 overflow-auto border-t border-border/60 px-3 py-2">
+                    {todos.map((t, ti) => (
+                      <div key={ti} className="flex items-start gap-1.5">
+                        <span className={t.status === "completed" ? "text-emerald-500" : t.status === "in_progress" ? "text-indigo-500" : undefined}>
+                          {t.status === "completed" ? "✓" : t.status === "in_progress" ? "◐" : "○"}
+                        </span>
+                        <span className={t.status === "completed" ? "line-through" : t.status === "in_progress" ? "text-foreground" : undefined}>{t.content}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">
+                    {m.args ? prettyArgs(m.args) : m.content}
+                  </pre>
+                )}
                 {m.result && (
                   <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-foreground/80">
                     {m.result}
@@ -431,7 +448,8 @@ function SidePanel() {
               </div>
             )}
           </div>
-        ))}
+              );
+        })}
         <div ref={endRef} />
       </div>
       {!atBottom && (
@@ -489,6 +507,12 @@ function SidePanel() {
       )}
 
       <div className="border-t border-border/60 bg-background/80 p-3 backdrop-blur-sm">
+        <TodoPanel
+          key={activeConversationId ?? "new"}
+          messages={messages}
+          canSend={connected && !running}
+          onSend={(content) => portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage)}
+        />
         <div
           className={
           "rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20" +
