@@ -27,6 +27,15 @@ Manual testing: `task build`, reload the unpacked `dist/` in `chrome://extension
 
 TypeScript/TSX with ES modules, two-space indentation, double quotes, semicolons. Strict types; avoid `any` when a message/view/storage shape can be expressed. `camelCase` for functions and variables, `PascalCase` for components and types, lowercase filenames for utilities. Keep browser-privileged API and cross-origin fetch logic in the background worker, not UI components. No formatter or linter — rely on `tsc` and match existing files.
 
+Code readability:
+
+- Write self-explanatory code: clear names and small, single-purpose functions carry the intent.
+  If a block needs a comment to be understood, extract it into a well-named function or variable.
+- No inline comments inside function bodies.
+- Doc comments on functions, types, and modules are at most 5 lines: what it does and why, not how.
+- Tool directives are not comments and stay where the tool needs them (lint suppressions, build
+  tags, compiler pragmas, code generation markers).
+
 ## Testing
 
 `bun:test`, files named `test/*.test.ts`. jsdom's `window`/`document`/`Event` are preloaded globally by `bunfig.toml` → `test/setup.ts`, which deliberately does not expose `location` — stub it in tests instead of the real DOM. Cover matching, trigger boundaries, DOM helpers, and other pure behavior; name tests by observable outcome. No coverage threshold — cover regressions and edge cases introduced by each change.
