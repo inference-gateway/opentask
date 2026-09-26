@@ -1,63 +1,64 @@
 # Privacy Policy
 
-**OpenTask** is a browser extension that surfaces a repository's
-skills and common bot directives inside GitHub's issue/PR comment box. It has **no
-backend server**, sends **no telemetry or analytics**, and collects **no personal
-data**. This document describes every piece of data the extension touches.
+**OpenTask** is a browser extension that surfaces a repository's skills and
+common bot directives inside GitHub's issue/PR comment box, installs and manages
+the OpenTask agent workflow (skills, A2A agents, task dispatch), can provision a
+RunPod GPU for self-hosted models, and pairs with your locally running `infer`
+CLI to drive browser automation from a side panel. It has **no backend server**,
+sends **no telemetry or analytics**, and collects **no personal data**. This
+document describes every piece of data the extension touches.
 
 ## What is stored locally
 
 All data lives in your browser via `chrome.storage.local` (local to this machine -
-it is **never** synced to a cloud account and never leaves your device except as
-described under [Network requests](#network-requests)). The extension uses exactly
-three storage keys:
+it is **never** synced to a cloud account). The extension stores:
 
 | Key | Contents | Set by |
 | --- | --- | --- |
-| `pat` | Your optional GitHub personal access token (only if you enter one). | Options page |
 | `prompts` | Your editable quick-prompts list (`{ id, label, description, insert }`). | Options page |
+| `instructions`, `refinePrompt`, `permissions`, `refine`, `init`, `timeout`, `debug`, `reviewInline`, `visionModel`, `imageModel`, `plugins`, `dependencies`, `theme`, `bot` | Extension settings: agent instructions and permissions, refine/init prompts, job timeout, model hints, infer-action plugins, GitHub App bot config, and the UI theme. | Options page |
+| `selected-agents` | The A2A agents you include when installing the workflow. | Agents panel |
+| `runpod-key` | Your RunPod API key (only if you enter one in Settings). | Options page (Orchestrator tab) |
+| `bridge-port`, `bridge-token` | The local `infer` CLI bridge's port and shared token. | Options page (Orchestrator tab) |
+| `gpu-state` | The provisioned GPU pod's status, pod id, model, endpoint URL, and the pod's generated API key. | Automatically, after a GPU deploy |
 | `skills:{owner}/{repo}` | A per-repository cache of skill folder names, valid for 10 minutes. | Automatically, after a skills lookup |
+| `skills-catalog`, `agents-catalog` | Short-lived caches of the skills and agents registries, valid for 10 minutes. | Automatically, after a catalog lookup |
 
 Nothing else is persisted. There are no cookies, no `localStorage`, no
 `storage.sync`, and no first-party server that receives any of this.
 
 ## Network requests
 
-The extension makes **one kind of external request**, and only to GitHub:
+The extension only contacts the endpoints below, and only when you use the
+matching feature:
 
-```
-GET https://api.github.com/repos/{owner}/{repo}/contents/.agents/skills
-```
-
-- `{owner}/{repo}` is derived from the GitHub page you are viewing - you never type it.
-- The request has **no body**; it only reads the list of skill folders.
-- If (and only if) you have saved a personal access token, it is sent as an
-  `Authorization: Bearer <token>` header so the request can see **private** repos.
-  Without a token, requests are unauthenticated and only see public repos.
-- These requests go to GitHub and are therefore subject to
+- **GitHub REST API** - GitHub data (skill listings, workflow check/install,
+  skills registry, repo languages, issue creation, workflow dispatches) is
+  fetched by running `gh api` commands **on your own machine**, executed by the
+  local `infer` CLI over the bridge. The extension stores **no GitHub token**
+  and attaches none; requests are authenticated with your existing `gh` login
+  and are therefore subject to
   [GitHub's Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+- **RunPod REST API** (`https://rest.runpod.io/v1`) - creating, checking, and
+  deleting the GPU pod you deploy. Requests carry your RunPod API key, sent as
+  `Authorization: Bearer` by the extension itself.
+- **Agents catalog** - a JSON fetch from
+  `https://cdn.jsdelivr.net/gh/inference-gateway/agents@main/catalog.json`
+  (public data, no credentials).
+- **Local CLI bridge** - a WebSocket to `ws://127.0.0.1:<port>/ws` on your own
+  machine (default port `52789`), authenticated with the shared token you set in
+  Settings. This carries the side panel's chat with the CLI and the browser-use
+  commands you send it. Nothing here leaves your device.
 
-No other host is ever contacted. There is no analytics, tracking, error-reporting,
-or beacon traffic of any kind.
-
-## The GitHub token
-
-The personal access token is **optional** and only needed to list skills in private
-repositories. Recommendation: a fine-grained token scoped to `Contents: read`.
-
-- It is stored only in `chrome.storage.local` on this machine.
-- It is used only to authenticate the GitHub Contents request above.
-- It is never logged, never shown in error messages, and never sent anywhere other
-  than `api.github.com`.
+There is no analytics, tracking, error-reporting, or beacon traffic of any kind.
 
 ## How to delete your data
 
-- **Remove the token:** open the extension's **Options** page and click **Remove
-  token**. This deletes the `pat` key immediately. (Saving with the token field
-  blank does the same.)
 - **Remove everything:** uninstall the extension, or open `chrome://extensions`,
-  find the extension, and use **Details → Clear data**. This wipes the token,
-  quick prompts, and all cached skill listings.
+  find the extension, and use **Details → Clear data**. This wipes all settings,
+  keys, and caches listed above.
+- **Remove individual secrets:** open **Options → Orchestrator** and clear the
+  RunPod API key, CLI bridge port, or shared token fields.
 
 ## Permissions
 

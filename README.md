@@ -49,10 +49,12 @@ Firefox, and Safari.
   `.agents/skills/` via the GitHub Contents API, cached per repo.
 - 🤝 **Non-Intrusive**: Never touches GitHub's native `@` / `#` / `:` completion;
   insertions fire an `input` event so draft-autosave and preview stay in sync.
-- 🌐 **Multi-Browser Ready**: One `dist/` bundle; only `chrome.storage` is used, so
-  a port is a manifest tweak, not a rewrite.
-- 🔒 **Private-Repo Support**: Optional fine-grained PAT (`Contents: read`), stored
-  in extension storage. Supports per-owner tokens for multi-org setups.
+- 🌐 **Multi-Browser Ready**: One `dist/` bundle; browser differences (background
+  worker vs scripts, side panel, notifications) are absorbed by per-browser manifest
+  overrides and `build.ts`, not code forks.
+- 🔒 **Private-Repo Support**: GitHub API calls run as `gh api` commands on your
+  machine via the CLI bridge with your existing `gh` login, so private repos work
+  without the extension storing any token.
 - 🚀 **One-Click Agent Install**: Open any GitHub repo and use the **Tasks** tab in
   the repo navigation to install the OpenTask Agent workflow via a pull request.
   Requires a PAT with `Contents: write`, `Pull requests: write`, and `Workflows: write`.
@@ -94,9 +96,10 @@ Firefox, and Safari.
 ## Overview
 
 On the first `!`, the extension resolves `owner/repo` from the page URL and calls the
-GitHub **Contents API** (`GET /repos/{owner}/{repo}/contents/.agents/skills`) from the
-background service worker, caching the result per repo for 10 minutes. Repos with no
-skills directory simply show nothing - native completion is untouched.
+GitHub **Contents API** (`GET /repos/{owner}/{repo}/contents/.agents/skills`) as a
+`gh api` command run on your machine by the connected `infer` CLI, caching the result
+per repo for 10 minutes. Repos with no skills directory simply show nothing - native
+completion is untouched.
 
 The quick-prompts palette is a self-contained popup opened by a keyboard shortcut or a
 `⚡` button injected into the comment toolbar. Both surfaces share the same insertion
@@ -158,23 +161,14 @@ bun run build      # outputs dist/
 
 Right-click the extension → **Options** (or the Details page → *Extension options*):
 
-### Accounts
+### GitHub App bot
 
-Manage per-owner tokens and bot configurations. Each account pairs a GitHub owner
-(user or org) with a PAT and an optional GitHub App bot. The account whose owner
-matches the repo's owner is used automatically.
-
-- **Owner**: your GitHub username or an organization. Populated from GitHub once
-  you enter a token.
-- **Personal access token**: required to install the OpenTask Agent workflow, send
-  tasks, and list skills in **private** repos. Use a fine-grained token with
-  `Contents: write`, `Pull requests: write`, `Workflows: write`, `Issues: write`,
-  and `Actions: write`. Stored in this browser's extension storage.
-- **Custom bot (GitHub App)**: when enabled, the generated workflow authenticates as
-  your GitHub App instead of `github-actions[bot]`. Create an App via the provided
-  link, then enter its Client ID and the name of the repo secret holding its private
-  key. The App needs `Contents: write`, `Issues: write`, `Pull requests: write`,
-  `Actions: write`, and `Workflows: write`.
+Optionally run the agent as your own GitHub App instead of `github-actions[bot]`:
+enable it in the options' **Workflow** tab and enter the App's Client ID and the
+name of the repo secret holding its private key. The App needs `Contents: write`,
+`Issues: write`, `Pull requests: write`, `Actions: write`, and `Workflows: write`.
+GitHub credentials are not configured in the extension - GitHub API calls run as
+`gh api` commands on your machine through the CLI bridge.
 
 ### Quick prompts
 
@@ -280,27 +274,39 @@ Choose how the options page and toolbar popup are displayed: **System default**,
 
 ## Privacy
 
-Everything the extension stores (your optional token, quick prompts, and a short
-per-repo skill cache) stays in this browser's local storage - nothing is synced or
-sent to any server. The only network call is a single GitHub Contents API request to
-list a repo's skills; there is **no backend and no telemetry**. See
-[PRIVACY.md](PRIVACY.md) for the full data-flow breakdown and how to delete stored
+Everything the extension stores (settings, the RunPod API key, the CLI bridge
+port and token, GPU pod state, selected agents, and short-lived caches) stays in
+this browser's local storage - nothing is synced, and there is **no backend and
+no telemetry**. The extension talks to four kinds of endpoints, only when you use
+the matching feature:
+
+- **GitHub API** - fetched by running `gh api` commands on your machine via the
+  local `infer` CLI bridge, so the extension stores no GitHub token.
+- **RunPod REST API** (`https://rest.runpod.io/v1`) - pod provisioning, with your
+  stored RunPod API key.
+- **Agents catalog** - a JSON fetch from `cdn.jsdelivr.net`.
+- **Local CLI bridge** - a WebSocket to `ws://127.0.0.1:<port>/ws` on your
+  machine.
+
+See [PRIVACY.md](PRIVACY.md) for the full data-flow breakdown and how to delete stored
 data; per-permission justifications for the store listing live in
 [docs/store/privacy-declarations.md](docs/store/privacy-declarations.md).
 
 ## Multi-Browser Support
 
-The same `dist/` is the whole extension, and the only privileged API used is
-`chrome.storage` (present on Chrome/Edge/Firefox). Per-browser notes:
+The same `dist/` is the whole extension. Its browser API surface is `chrome.storage`
+plus `tabs`, `scripting`, `sidePanel`, `windows`, `action`, `notifications`, and
+`alarms` (used by the browser-use bridge in the side panel and the popup).
+Per-browser notes:
 
-| Browser      | What's needed                                                            |
-| ------------ | ------------------------------------------------------------------------ |
-| Chrome, Edge | Works as-is (`background.service_worker`). Chrome Web Store and Edge Add-ons use the same `dist/` ZIP. |
-| Firefox 109+ | Build with `task build:firefox` (applies `manifest.firefox.json` overrides: `background.scripts` + `browser_specific_settings.gecko.id`). |
-| Safari 16.4+ | Build with `task build:safari`, then wrap with `xcrun safari-web-extension-converter` on macOS. See [`docs/store/safari-listing.md`](docs/store/safari-listing.md) for the full packaging and App Store release guide. |
+| Browser      | What's needed                                                            |                                                                                                                                              
+| ------------ | ------------------------------------------------------------------------ |                                                                                                                                              
+| Chrome, Edge | Works as-is (`background.service_worker` + side panel). Chrome Web Store and Edge Add-ons use the same `dist/` ZIP. |                                                                                              
+| Firefox 109+ | Build with `task build:firefox`: `manifest.firefox.json` overrides `background.scripts` + `browser_specific_settings.gecko.id` and replaces `permissions` (no `sidePanel`/`notifications` - Firefox lacks those APIs), and `build.ts` deletes the Chrome-only `side_panel` key. |                                                                                      
+| Safari 16.4+ | Build with `task build:safari`, then wrap with `xcrun safari-web-extension-converter` on macOS. `manifest.safari.json` replaces `permissions` (no `sidePanel`/`notifications`), and `build.ts` deletes the `side_panel` key. See [`docs/store/safari-listing.md`](docs/store/safari-listing.md) for the full packaging and App Store release guide. |
 
-If the API surface ever grows beyond `chrome.storage`, drop in Mozilla's single-file
-`webextension-polyfill` and alias `browser` → `chrome`.
+If a port needs the Promise-based `browser.*` namespace, drop in Mozilla's
+single-file `webextension-polyfill` and alias `browser` → `chrome`.
 
 ## Development
 
