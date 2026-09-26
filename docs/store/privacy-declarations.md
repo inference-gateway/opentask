@@ -6,22 +6,20 @@ apply identically to Chrome Web Store, Microsoft Edge Add-ons, and Firefox Add-o
 
 ## Single purpose
 
-> Automates AI-coding-agent workflows on GitHub. It adds skill tab-completion and a
-> quick-prompts palette to GitHub's comment boxes, injects a repo navigation bar
-> (Tasks / Skills / Agents / Init) that installs and manages the OpenTask agent
-> workflow, skills, and A2A agents, dispatches and refines agent tasks, can provision
-> a RunPod GPU for self-hosted models, and pairs with the user's locally running
-> `infer` CLI to drive browser automation from a side panel.
+> Adds AI-agent tooling to GitHub's issue and pull request pages: skill
+> tab-completion and a quick-prompts palette in the comment boxes, Tasks/Skills/Init
+> panels in the repository navigation, a Refine button on issues, and a side panel
+> (Chrome/Edge) that pairs with a local `infer` CLI to drive browser-use
+> automation, with optional RunPod GPU provisioning for self-hosted models.
 
 ## Permission justifications
 
 ### `storage`
-> Stores the user's settings on their own device: extension options (quick prompts,
-> agent/workflow settings, theme), the RunPod API key (`runpod-key`), the local CLI
-> bridge port and shared token (`bridge-port`, `bridge-token`), GPU pod state
-> including its generated API key (`gpu-state`), selected agents (`selected-agents`),
-> and short-lived caches of the skills/agents catalogs and per-repository skill
-> listings. Nothing is synced or sent to a server.
+> Stores the user's settings on their own device: the editable quick-prompts list,
+> orchestrator and agent settings (including an optional RunPod API key the user
+> enters and local bridge port/token settings), and short-lived caches (a 10-minute
+> per-repository skill cache and the agents catalog). Nothing is synced or sent to
+> a server by the extension.
 
 ### `activeTab`
 > Grants the browser-use bridge access to the tab the user targets from the side
@@ -56,52 +54,44 @@ apply identically to Chrome Web Store, Microsoft Edge Add-ons, and Firefox Add-o
 > panel.
 
 ### Host permission - `https://api.github.com/*`
-> The extension makes no direct request to this host and stores no GitHub token.
-> All GitHub REST calls (skills listing, workflow install, issue creation, task
-> dispatch) run as `gh api` commands on the user's own machine, executed by the
-> local `infer` CLI through the bridge, so requests are authenticated with the
-> user's existing `gh` login. The host permission is declared for the GitHub REST
-> API surface the background worker targets; no request is sent from the extension
-> to `api.github.com` today.
+> Grants access to GitHub's REST API for listing a repository's skills and
+> installing/managing its agent workflow. Requests run through the user's
+> connected `infer` CLI (`gh api` on the CLI host), so the extension itself never
+> stores or sends a GitHub token or credential.
 
 ### Host permission - `https://rest.runpod.io/*`
-> Lets the user provision and manage a self-hosted GPU pod (create, check status,
-> delete) for serving their own models. Requests carry the user's RunPod API key,
-> entered in Settings and stored only on the user's device.
+> Only used if the user configures their own RunPod API key (Options page,
+> Orchestrator tab): it provisions and queries a self-hosted GPU pod that serves a
+> llama.cpp OpenAI-compatible model endpoint. Without a RunPod key this host is
+> never contacted.
 
 ### Host permissions - `http://*/*`, `https://*/*`, `<all_urls>`
-> The browser-use bridge can be asked, from the side panel, to open, read, and
-> interact with any tab the user directs it to, including http(s) pages. The broad
-> host access is what lets `scripting` inject the helper scripts and
-> `tabs.captureVisibleTab` take screenshots in the tab being controlled. Page
-> content is read or modified only when the user sends a command for that tab; it
-> is relayed only to the user's own locally running CLI.
+> Used by the browser-use bridge: the user's locally connected `infer` CLI agent
+> can navigate, read, and act in the tabs the user directs it to, and capture
+> screenshots, from the side panel. Page data from these tabs goes only to the
+> user's own local CLI bridge on localhost, not to the developer or any server.
 
 ### Content-script host access - `https://github.com/*`
 > The content script runs on github.com to detect the issue/PR comment textarea,
-> render the completion dropdown and prompts palette, insert text at the caret, and
-> inject the Tasks/Skills/Agents/Init repo navigation. It reads only the focused
+> render the completion dropdown and prompts palette, inject the repo-nav items and
+> the issue Refine button, and insert text at the caret. It reads only the focused
 > comment box's value/caret and the page path (to resolve `owner/repo`); it does
-> not read other page content, cookies, or credentials.
+> not read cookies or credentials.
 
 ## Remote code
 
 > **No.** The extension executes no remotely hosted code. All logic ships in the
-> package; fetched resources are data only (JSON catalogs and API responses),
-> never code.
+> package; network calls fetch JSON data (skill listings, the agents catalog,
+> RunPod pod state), never code.
 
 ## Data usage disclosures
 
 - **Data collected:** none is transmitted to the developer. There is no backend
-  server, no analytics, and no telemetry. Requests go to the hosts listed above
-  (RunPod, a public JSON catalog) and to the user's own locally running `infer`
-  CLI over `ws://127.0.0.1:<port>/ws`; GitHub calls run as `gh api` commands on
-  the user's machine, authenticated with the user's own `gh` login.
-- **Local storage:** settings, the RunPod API key (`runpod-key`), the CLI bridge
-  port/token (`bridge-port`, `bridge-token`), GPU pod state including its
-  generated API key (`gpu-state`), selected agents (`selected-agents`), and
-  short-lived catalog/skill caches - all in `chrome.storage.local` on the user's
-  device only.
+  server, no analytics, and no telemetry.
+- **Settings and API keys:** stored locally in `chrome.storage.local` on the
+  user's device only. This includes an optional RunPod API key the user enters;
+  the extension holds no GitHub credential (GitHub calls run through the user's
+  own `gh` CLI on the connected CLI host).
 - **Not sold or transferred** to third parties.
 - **Not used** for anything unrelated to the single purpose above.
 - **No creditworthiness / lending** use.

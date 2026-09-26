@@ -52,19 +52,21 @@ Firefox, and Safari.
 - 🌐 **Multi-Browser Ready**: One `dist/` bundle; browser differences (background
   worker vs scripts, side panel, notifications) are absorbed by per-browser manifest
   overrides and `build.ts`, not code forks.
-- 🔒 **Private-Repo Support**: GitHub API calls run as `gh api` commands on your
-  machine via the CLI bridge with your existing `gh` login, so private repos work
-  without the extension storing any token.
-- 🚀 **One-Click Agent Install**: Open any GitHub repo and use the **Tasks** tab in
-  the repo navigation to install the OpenTask Agent workflow via a pull request.
-  Requires a PAT with `Contents: write`, `Pull requests: write`, and `Workflows: write`.
+- 🔒 **Private-Repo Support**: The extension stores no GitHub credential. Every
+  GitHub call runs `gh api` on the host of the connected infer CLI, so private repos
+  work with the `gh` login that CLI already has.
+- 🚀 **Agent Install**: Install or update the OpenTask Agent workflow from
+  **Options → Workflows → Install workflow**. It lists your repos through the
+  connected CLI's `gh` auth and sends `/install-opentask owner/repo` into the CLI
+  chat; you approve the push and pull request in the side panel.
 - 🧩 **Skills Install/Uninstall**: In the repo's **Skills** tab (repo nav), a
   searchable, multi-select list of the [Inference Gateway skills registry](https://github.com/inference-gateway/skills).
   Skills matching the repo's top languages are suggested first; applying opens a single PR
   that adds/removes skill folders under `.agents/skills/`.
-- 🤖 **Agents Panel**: The **Agents** tab (repo nav) lets you select A2A agents from
-  the [agents registry](https://github.com/inference-gateway/agents) to include in the
-  workflow. Selected agents are spun up alongside the OpenTask agent at runtime.
+- 🤖 **Agent Selection**: Pick A2A agents from the
+  [agents registry](https://github.com/inference-gateway/agents) in
+  **Options → Agents** to include in the workflow. Selected agents are spun up
+  alongside the OpenTask agent at runtime.
 - 📝 **Free-Text Tasks**: The **Tasks** tab sends a task to the agent. Leave **Create a
   GitHub issue** checked to open an `@opentask` issue, or uncheck it to run the task directly
   via `workflow_dispatch` (infer-action's `direct-prompt`) with no public issue.
@@ -95,21 +97,22 @@ Firefox, and Safari.
 
 ## Overview
 
-On the first `!`, the extension resolves `owner/repo` from the page URL and calls the
-GitHub **Contents API** (`GET /repos/{owner}/{repo}/contents/.agents/skills`) as a
-`gh api` command run on your machine by the connected `infer` CLI, caching the result
-per repo for 10 minutes. Repos with no skills directory simply show nothing - native
-completion is untouched.
+On the first `!`, the extension resolves `owner/repo` from the page URL and asks the
+background service worker to run
+`gh api repos/{owner}/{repo}/contents/.agents/skills` on the CLI host over the
+[CLI bridge](#cli-bridge), caching the result per repo for 10 minutes. The list also
+includes the skills of enabled plugins. Repos with no skills directory simply show
+nothing - native completion is untouched.
 
 The quick-prompts palette is a self-contained popup opened by a keyboard shortcut or a
 `⚡` button injected into the comment toolbar. Both surfaces share the same insertion
 path, which writes through the native textarea setter so React-controlled composers and
 GitHub's own draft/preview state stay consistent.
 
-The **Tasks**, **Skills**, **Agents**, and **Init** tabs are injected into GitHub's
-repo navigation bar by the content script. Each opens a popover panel that communicates
-with the background service worker to install workflows, manage skills, select agents,
-or scaffold project files.
+The **Tasks**, **Skills**, and **Init** tabs are injected into GitHub's repo
+navigation bar by the content script. Each opens a popover panel that communicates
+with the background service worker to send tasks, manage skills, or scaffold project
+files. Agent selection lives in the options page (**Options → Agents**).
 
 ## Installation
 
@@ -137,20 +140,26 @@ bun run build      # outputs dist/
 
 ## Usage
 
+> **Prerequisite:** most features - skill listing, Send/Run task, Skills apply, Init,
+> Refine, and installing the workflow - need the [CLI bridge](#cli-bridge). Set it up
+> under **Options → Orchestrator → CLI Bridge**, then click **Connect** in the side
+> panel.
+
 - **Skills**: type `!` at the start of a word to open the dropdown. Arrow keys
   navigate, `Tab` / `Enter` inserts `/`, `Esc` closes.
 - **Quick prompts**: press `Ctrl/Cmd+Shift+P` (or click the `⚡` toolbar button) to
   open the palette, filter, and `Enter` to insert the selected template at the caret.
-- **Install the agent**: navigate to any GitHub repo and click the **Tasks** tab in
-  the repo navigation bar. Pick a model and click **Install** to open a PR that adds
-  the OpenTask Agent workflow.
+- **Install the agent**: open **Options → Workflows → Install workflow**, pick an
+  owner and repository, and click **Install** to open a PR that adds the OpenTask
+  Agent workflow. The run streams in the side panel, where you approve the push and
+  the pull request.
 - **Send a task**: in the **Tasks** tab, type a prompt and choose whether to create a
   GitHub issue or dispatch the workflow directly.
 - **Manage skills**: the **Skills** tab shows the skills registry, filtered by the
   repo's languages. Check skills to install and uncheck to remove, then click **Apply**
   to open a PR.
-- **Select agents**: the **Agents** tab lists available A2A agents from the registry.
-  Check the ones you want included in the workflow, then re-install to bake them in.
+- **Select agents**: in **Options → Agents**, check the A2A agents you want included
+  in the workflow, then re-install to bake them in.
 - **Init a project**: the **Init** tab dispatches the workflow to generate an
   `AGENTS.md` and open a PR. Configure extras (githooks, symlinks) in Settings.
 - **Refine an issue**: on issue pages, a **Refine** button appears in the header
@@ -159,28 +168,31 @@ bun run build      # outputs dist/
 
 ## Configuration
 
-Right-click the extension → **Options** (or the Details page → *Extension options*):
+Right-click the extension → **Options** (or the Details page → *Extension options*).
+Settings are grouped into six tabs: **Orchestrator**, **Agents**, **Prompts**,
+**Workflows**, **Dependencies**, and **Appearance**.
 
-### GitHub App bot
+### CLI bridge
 
-Optionally run the agent as your own GitHub App instead of `github-actions[bot]`:
-enable it in the options' **Workflow** tab and enter the App's Client ID and the
-name of the repo secret holding its private key. The App needs `Contents: write`,
-`Issues: write`, `Pull requests: write`, `Actions: write`, and `Workflows: write`.
-GitHub credentials are not configured in the extension - GitHub API calls run as
-`gh api` commands on your machine through the CLI bridge.
+The extension holds no GitHub token: every GitHub call runs `gh api` on the host of
+the connected [infer](https://github.com/inference-gateway) CLI with its existing
+`gh` login, so private repos work without any credential stored in the browser. The
+bridge also powers skill listing, Send/Run task, Skills apply, Init, Refine, and
+installing the workflow - without it, those features fail with *"Connect the infer
+CLI to use GitHub features"*.
+
+Under **Options → Orchestrator → CLI Bridge**:
+
+- **CLI port**: the port the CLI's browser-use server listens on (default `52789`).
+- **Shared token**: copy `extension.token` from `~/.infer/browser_use.yaml`
+  (`infer init` seeds one).
+
+Then open the side panel and click **Connect**.
 
 ### Quick prompts
 
 A JSON array of `{ id, label, description, insert }` objects shown in the palette.
 Editable, with a *Reset to defaults* button.
-
-### Install models
-
-A JSON array of `{ model, keyInput, secret }` objects offered in the Tasks tab's
-model dropdown. The first entry is the default. `keyInput` is the infer-action
-provider-key input (e.g. `anthropic-api-key`) and `secret` is the repo secret it
-reads. Add custom models here.
 
 ### Self-hosted GPU models (RunPod)
 
@@ -218,9 +230,9 @@ add them under the repo's **Settings → Secrets and variables → Actions**:
 
 `DEFAULT_MODEL` is the model used for every run that does not name one explicitly -
 issue-triggered runs, **Refine**, and **Init**. Only **Run task** can override it, via
-the Tasks-tab model dropdown, which also lists the running llama.cpp model; leave that
-dropdown on *Repository default* to use `DEFAULT_MODEL` there too. Then **re-install the
-workflow** so it wires the `LLAMACPP_*` secrets onto infer-action.
+the Tasks-tab model dropdown; it offers a curated list of hosted models, the running
+llama.cpp model when one is up, and *Repository default (DEFAULT_MODEL)*. Then
+**re-install the workflow** so it wires the `LLAMACPP_*` secrets onto infer-action.
 
 > **Each redeploy is a new pod** with a new URL and token - update `LLAMACPP_API_URL`
 > and `LLAMACPP_API_KEY` again from the popup. **Deprovision** from the popup terminates
@@ -255,8 +267,18 @@ OpenTask Agent workflow to be installed on the repo.
 - **Symlink `CLAUDE.md` → `AGENTS.md`**
 - **Symlink `.claude/skills` → `.agents/skills`**
 
-### Workflow
+### Workflows
 
+- **Install workflow**: pick an owner and repository (listed from the connected CLI's
+  `gh api user/repos`) and click **Install**. The CLI's agent adds or updates
+  `.github/workflows/tasks.yml` and opens a pull request; approve the push and PR in
+  the side panel. Re-installing updates the same open PR and preserves
+  repo-specific customizations.
+- **Custom bot (GitHub App)**: when enabled, the generated workflow authenticates as
+  your GitHub App instead of `github-actions[bot]`. Create an App via the provided
+  link, then enter its Client ID and the name of the repo secret holding its private
+  key. The App needs `Contents: write`, `Issues: write`, `Pull requests: write`,
+  `Actions: write`, and `Workflows: write`.
 - **Timeout (minutes)**: per-run job timeout for the generated workflow (default 25).
   Applies to newly installed workflows; re-run **Install** on a repo to update an
   existing one.
@@ -274,21 +296,11 @@ Choose how the options page and toolbar popup are displayed: **System default**,
 
 ## Privacy
 
-Everything the extension stores (settings, the RunPod API key, the CLI bridge
-port and token, GPU pod state, selected agents, and short-lived caches) stays in
-this browser's local storage - nothing is synced, and there is **no backend and
-no telemetry**. The extension talks to four kinds of endpoints, only when you use
-the matching feature:
-
-- **GitHub API** - fetched by running `gh api` commands on your machine via the
-  local `infer` CLI bridge, so the extension stores no GitHub token.
-- **RunPod REST API** (`https://rest.runpod.io/v1`) - pod provisioning, with your
-  stored RunPod API key.
-- **Agents catalog** - a JSON fetch from `cdn.jsdelivr.net`.
-- **Local CLI bridge** - a WebSocket to `ws://127.0.0.1:<port>/ws` on your
-  machine.
-
-See [PRIVACY.md](PRIVACY.md) for the full data-flow breakdown and how to delete stored
+Everything the extension stores (your settings, the CLI bridge port and shared token,
+and a short per-repo skill cache) stays in this browser's local storage - nothing is
+synced or sent to a first-party server. GitHub calls run as `gh api` on the CLI host,
+and the bridge talks only to the local CLI; there is **no backend and no telemetry**. See
+[PRIVACY.md](PRIVACY.md) for the full data-flow breakdown and how to delete stored
 data; per-permission justifications for the store listing live in
 [docs/store/privacy-declarations.md](docs/store/privacy-declarations.md).
 
@@ -321,10 +333,11 @@ task check          # typecheck, test, and build
 ```
 
 Layout: `src/content.ts` is the imperative controller (DOM detection, caret math,
-insertion, keyboard, repo-nav injection); `src/ui/*` is the React view (skill menu,
-palette, Tasks/Skills/Agents/Init panels); `src/background.ts` is the service worker
-that fetches and caches skills, manages workflows, and handles the skills/agents
-registries.
+insertion, keyboard, repo-nav injection of the Tasks/Skills/Init tabs); `src/ui/*`
+holds the comment-box surfaces (skill menu, palette, Tasks/Skills/Init panels);
+`src/options.tsx` and `src/ui/options/*` are the settings tabs; `src/background.ts`
+is the service worker that fetches and caches skills, manages workflows, and proxies
+every GitHub call through the CLI bridge (`src/lib/bridge.ts`).
 
 To produce a store ZIP:
 
