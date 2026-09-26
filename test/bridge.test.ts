@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, parseTodos, reduceAgui, runningFromEvent, stripAnsi, todoSummary, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 import { handleFrame, panelState, runCommand } from "../src/lib/bridge";
 
 describe("reduceAgui", () => {
@@ -138,46 +138,6 @@ describe("toolLabel", () => {
 
   test("falls back to raw args when not valid JSON", () => {
     expect(toolLabel("Write", '{"file_path":')).toBe('Write({"file_path":)');
-  });
-});
-
-describe("parseTodos", () => {
-  const todoArgs = JSON.stringify({
-    todos: [
-      { content: "branch", status: "completed" },
-      { content: "render visual", status: "in_progress" },
-      { content: "tests", status: "pending" },
-    ],
-  });
-
-  test("parses TodoWrite args into items with status", () => {
-    expect(parseTodos("TodoWrite", todoArgs)).toEqual([
-      { text: "branch", status: "completed" },
-      { text: "render visual", status: "in_progress" },
-      { text: "tests", status: "pending" },
-    ]);
-  });
-
-  test("tolerates common text field names and a bare array; unknown status reads pending", () => {
-    expect(parseTodos("TodoWrite", '[{"text":"a"},{"subject":"b","status":"completed"},{"task":"c","status":"weird"}]')).toEqual([
-      { text: "a", status: "pending" },
-      { text: "b", status: "completed" },
-      { text: "c", status: "pending" },
-    ]);
-  });
-
-  test("falls back on partial JSON, a wrong shape, or a non-todo tool", () => {
-    expect(parseTodos("TodoWrite", '{"todos":[{"content":"a"')).toBeUndefined();
-    expect(parseTodos("TodoWrite", '{"command":"ls"}')).toBeUndefined();
-    expect(parseTodos("TodoWrite", '{"todos":[]}')).toBeUndefined();
-    expect(parseTodos("TodoWrite", '{"todos":["plain"]}')).toBeUndefined();
-    expect(parseTodos("Bash", todoArgs)).toBeUndefined();
-    expect(parseTodos("TodoWrite")).toBeUndefined();
-  });
-
-  test("todoSummary counts done and names the in-progress item", () => {
-    expect(todoSummary(parseTodos("TodoWrite", todoArgs)!)).toBe("1/3 done · render visual");
-    expect(todoSummary([{ text: "a", status: "completed" }, { text: "b", status: "completed" }])).toBe("2/2 done");
   });
 });
 

@@ -91,41 +91,6 @@ export function toolLabel(name: string, args?: string): string {
   }
 }
 
-// A todo item parsed out of a todo-list tool call's args.
-export type Todo = { text: string; status: "pending" | "in_progress" | "completed" };
-
-// Parses a todo-list tool call's args JSON: `{"todos":[…]}` (or a bare array)
-// whose items carry text under content/text/subject/task and a status of
-// completed/in_progress (anything else reads as pending). Returns undefined —
-// the caller falls back to the plain pill — for a non-todo tool, unparseable
-// (mid-stream partial) args, or a non-todo shape.
-export function parseTodos(name: string, args?: string): Todo[] | undefined {
-  if (!args || !name.toLowerCase().includes("todo")) return undefined;
-  let o: unknown;
-  try {
-    o = JSON.parse(args);
-  } catch {
-    return undefined;
-  }
-  const list = Array.isArray(o) ? o : (o as { todos?: unknown } | null)?.todos;
-  if (!Array.isArray(list)) return undefined;
-  const todos = list.flatMap((raw): Todo[] => {
-    const t = raw as { content?: unknown; text?: unknown; subject?: unknown; task?: unknown; status?: unknown };
-    const text = [t?.content, t?.text, t?.subject, t?.task].find((v) => typeof v === "string" && v !== "");
-    if (typeof text !== "string") return [];
-    const status = t?.status === "completed" ? "completed" : t?.status === "in_progress" ? "in_progress" : "pending";
-    return [{ text, status }];
-  });
-  return todos.length > 0 ? todos : undefined;
-}
-
-// One-line collapsed summary for a todo list: "2/5 done · <in-progress item>".
-export function todoSummary(todos: Todo[]): string {
-  const done = todos.filter((t) => t.status === "completed").length;
-  const current = todos.find((t) => t.status === "in_progress");
-  return `${done}/${todos.length} done` + (current ? ` · ${current.text}` : "");
-}
-
 // snapshotToMessages rebuilds the panel transcript from a conversation_snapshot
 // frame: assistant `tool_calls` become tool rows (name + args + id), and tool
 // entries attach their text as that row's result instead of a separate bubble.

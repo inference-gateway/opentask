@@ -23,7 +23,8 @@ import { ArrowDown, Check, Copy, Paperclip, Plus, SquarePen, X } from "lucide-re
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
-import { attachmentLine, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, parseTodos, prettyArgs, todoSummary, toolLabel } from "./shared/agui";
+import { attachmentLine, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, prettyArgs, toolLabel } from "./shared/agui";
+import { parseTodos, todoSummary } from "./shared/todos";
 import { Markdown } from "./lib/markdown";
 import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
 import { caretPosition, type CaretPos } from "./lib/caret";
@@ -31,6 +32,7 @@ import { getTrigger } from "./lib/dom";
 import { replaceRange } from "./lib/insert";
 import { approvalShortcut } from "./lib/utils";
 import { SkillMenu } from "@/ui/SkillMenu";
+import { TodoPanel } from "@/ui/TodoPanel";
 
 // Hover-reveal copy-to-clipboard under a chat bubble, desktop-app style.
 function CopyButton({ text }: { text: string }) {
@@ -413,7 +415,7 @@ function SidePanel() {
                         <span className={t.status === "completed" ? "text-emerald-500" : t.status === "in_progress" ? "text-indigo-500" : undefined}>
                           {t.status === "completed" ? "✓" : t.status === "in_progress" ? "◐" : "○"}
                         </span>
-                        <span className={t.status === "completed" ? "line-through" : t.status === "in_progress" ? "text-foreground" : undefined}>{t.text}</span>
+                        <span className={t.status === "completed" ? "line-through" : t.status === "in_progress" ? "text-foreground" : undefined}>{t.content}</span>
                       </div>
                     ))}
                   </div>
@@ -505,6 +507,12 @@ function SidePanel() {
       )}
 
       <div className="border-t border-border/60 bg-background/80 p-3 backdrop-blur-sm">
+        <TodoPanel
+          key={activeConversationId ?? "new"}
+          messages={messages}
+          canSend={connected && !running}
+          onSend={(content) => portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage)}
+        />
         <div
           className={
           "rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20" +
