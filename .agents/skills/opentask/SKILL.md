@@ -3,7 +3,7 @@ name: opentask
 description: >
   Drive OpenTask - the inference-gateway Manifest V3 browser extension (`inference-gateway/opentask`) that surfaces a
   repo's skills and `@opentask` agent directives inside GitHub's comment box, issue/PR pages, and an injected repo-nav
-  bar (Tasks / Skills / Agents / Init tabs). Use when operating a browser on github.com to send the OpenTask agent a
+  bar (Tasks / Skills / Init tabs). Use when operating a browser on github.com to send the OpenTask agent a
   custom prompt (not just a saved template), install the agent workflow, refine an issue in place after research, or
   manage skills/agents - and, crucially, to decide when a plain `gh` CLI call is faster than driving the UI at all.
   Also use when authoring, installing, or updating the GitHub Actions workflow that runs the agent on long-horizon
@@ -38,7 +38,7 @@ Default to the CLI. Open the browser + OpenTask only when the surface has no
 scriptable equivalent or a human wants the inline helpers: the `!` skill
 autocomplete and quick-prompts palette (typing shortcuts), the Tasks-tab model
 picker and "no public issue" dispatch when you don't know the workflow's inputs,
-the one-click Skills/Agents/Init panels, the per-issue **Refine** button, and the
+the one-click Skills/Init panels, the per-issue **Refine** button, and the
 RunPod GPU popup.
 
 ## Launching the browser and using OpenTask
@@ -48,10 +48,11 @@ RunPod GPU popup.
    [latest release](https://github.com/inference-gateway/opentask/releases), unzip,
    open `chrome://extensions`, enable **Developer mode**, **Load unpacked**, select
    the extracted `dist/`.
-2. **Add an account** (once, for private repos and any write action). Right-click the
-   extension -> **Options** -> **Accounts**: enter a fine-grained PAT for the repo's
-   owner (`Contents`, `Pull requests`, `Workflows`, `Issues`, `Actions` = write).
-   The account whose owner matches the page's `owner/repo` is used automatically.
+2. **Connect the CLI bridge** (once, for private repos and any write action). Right-click the
+   extension -> **Options** -> **Orchestrator** -> **CLI Bridge**: set the CLI port (default
+   `52789`) and the shared token from `extension.token` in `~/.infer/browser_use.yaml`, then
+   click **Connect** in the side panel. GitHub calls run `gh api` on that CLI's host; the
+   extension stores no GitHub credential.
 3. **Open the GitHub page** for the target repo/issue/PR and use a surface:
    - **Skill autocomplete**: focus a comment box, type `!` at the start of a word ->
      a caret-anchored dropdown of the repo's skills. Arrows navigate, `Tab`/`Enter`
@@ -67,9 +68,6 @@ RunPod GPU popup.
      - **Skills** - multi-select the
        [skills registry](https://github.com/inference-gateway/skills) (repo languages
        suggested first); **Apply** opens one PR editing `.agents/skills/`.
-     - **Agents** - pick A2A agents from the
-       [agents registry](https://github.com/inference-gateway/agents); re-install to
-       bake them into the workflow.
      - **Init** - dispatch the workflow to scaffold `AGENTS.md` (+ optional githooks /
        symlinks) and open a PR.
 
@@ -101,8 +99,8 @@ agent research and fill it in.
    structured summary, and explicit acceptance criteria. Ambiguities land under an
    `## Open questions` section - answer them under each question and re-click Refine.
 
-Refine is an in-place edit only (no branch/commit/PR), so it needs the account's
-**Create GitHub issues** permission; **re-install the workflow** after enabling it.
+Refine is an in-place edit only (no branch/commit/PR), so it needs the **Create issues**
+permission in **Options -> Workflows**; **re-install the workflow** after enabling it.
 
 ## Authoring the GitHub Actions workflow
 
@@ -119,17 +117,18 @@ repository's languages and CI conventions, read
   them in Options does nothing until you re-run **Install** on the repo.
 - **Project board.** The installed workflow tells the agent to keep an issue's board
   Status in sync (In Progress -> Done), best-effort. Board writes need a token with
-  `Projects: read and write` - enable the **GitHub App** account option, since the
-  default `GITHUB_TOKEN` can't reach Projects v2; otherwise board updates are skipped
-  silently.
+  `Projects: read and write` - enable the **Custom bot (GitHub App)** option in
+  **Options -> Workflows**, since the default `GITHUB_TOKEN` can't reach Projects v2;
+  otherwise board updates are skipped silently.
 - **Self-hosted GPU (RunPod).** The popup's **GPU** section (appears once a RunPod key
   is set in Options -> Orchestrator) provisions a llama.cpp OpenAI-compatible pod and
   hands you `LLAMACPP_API_URL` / `LLAMACPP_API_KEY` / `DEFAULT_MODEL` to add under the
   repo's Actions secrets, then re-install. Each redeploy is a new URL+token;
   **Deprovision** to stop billing. This one genuinely needs the browser.
-- **Privacy / no backend.** The only network call the extension makes on its own is a
-  single GitHub Contents API request to list a repo's skills (cached ~10 min per
-  repo); tokens and prompts stay in this browser's local storage.
+- **Privacy / no backend.** The extension stores no GitHub credential - GitHub calls
+  run `gh api` on the connected infer CLI's host over the local CLI bridge. Other
+  network traffic is limited to the agents catalog on jsDelivr and, if configured,
+  the RunPod REST API; settings and prompts stay in this browser's local storage.
 - **Composer support.** v1 targets the classic `<textarea>` comment box; the newer
   React/ProseMirror composer on some 2024+ pages isn't wired yet - fall back to `gh`
   there.
