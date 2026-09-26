@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.1](https://github.com/inference-gateway/opentask/compare/v1.16.0...v1.16.1) (2026-09-26)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#189](https://github.com/inference-gateway/opentask/issues/189)) ([78bbe2f](https://github.com/inference-gateway/opentask/commit/78bbe2f5ab044764368232347a8a00efa1d6841c))
+
+### 📚 Documentation
+
+* **agents:** add code readability guidelines ([#191](https://github.com/inference-gateway/opentask/issues/191)) ([b5393b1](https://github.com/inference-gateway/opentask/commit/b5393b10af947f5ccae7a3ef4a0404aec5a2fcca))
+* **agents:** add code readability guidelines ([#192](https://github.com/inference-gateway/opentask/issues/192)) ([6849f8c](https://github.com/inference-gateway/opentask/commit/6849f8cb55918caf5d4c0ac85ade54cac8486b46))
+* drop the remaining PAT-era GitHub access copy (skill doc, agent guidelines) ([#204](https://github.com/inference-gateway/opentask/issues/204)) ([e83f145](https://github.com/inference-gateway/opentask/commit/e83f145229d75cc7167cfe7e1b6302295398499e))
+* **privacy:** align privacy docs with current permissions and network calls ([#201](https://github.com/inference-gateway/opentask/issues/201)) ([28c708f](https://github.com/inference-gateway/opentask/commit/28c708f8f6e2fea74dd73435de0fc3ce1d0e13df)), closes [#198](https://github.com/inference-gateway/opentask/issues/198) [#199](https://github.com/inference-gateway/opentask/issues/199)
+* **readme:** fix release ZIP install step, board-status behavior, and roadmap ([#202](https://github.com/inference-gateway/opentask/issues/202)) ([06cf226](https://github.com/inference-gateway/opentask/commit/06cf22638d23a16c68a93adaeeb9afcdeea5fc3d))
+* **readme:** replace PAT-era GitHub docs with the CLI bridge model ([#198](https://github.com/inference-gateway/opentask/issues/198)) ([832dc2f](https://github.com/inference-gateway/opentask/commit/832dc2fdaf94b2cc1ac1a23325a959315fe00aa7))
+* **store:** align Safari guide with build, release, and bundle-identifier setup ([#203](https://github.com/inference-gateway/opentask/issues/203)) ([1551788](https://github.com/inference-gateway/opentask/commit/15517886652cb3b374eb1168e5c77a136b85e786))
+* **store:** align store listings and privacy docs with the actual permissions and features ([#199](https://github.com/inference-gateway/opentask/issues/199)) ([254c7a3](https://github.com/inference-gateway/opentask/commit/254c7a305e725ba3a1ab3132dfc430d5fddc478f))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.208.0 -> v0.208.2 ([#190](https://github.com/inference-gateway/opentask/issues/190)) ([4f3f4e4](https://github.com/inference-gateway/opentask/commit/4f3f4e4b2ac5d200e874098ddc9e2c54f61f9816))
+
 ## [1.16.0](https://github.com/inference-gateway/opentask/compare/v1.15.0...v1.16.0) (2026-09-26)
 
 ### ✨ Features
