@@ -1,7 +1,6 @@
 # Repository Guidelines
 
-Chrome-first Manifest V3 browser extension built with Bun, TypeScript, and React. It surfaces repo skills and `@opentask` directives inside GitHub's comment box and injects a repo-nav bar (Tasks / Skills / Agents / Init). README.md covers features and configuration; this file covers how to work on the code. `CLAUDE.md` is a symlink to it — edit here only.
-
+Chrome-first Manifest V3 browser extension built with Bun, TypeScript, and React. It surfaces repo skills and `@opentask` directives inside GitHub's comment box and injects a repo-nav bar (Tasks / Skills / Agents / Init). README.md covers features and configuration; this file covers how to work on the code.
 ## Commands
 
 - `flox activate` — enter the pinned Bun + go-task environment.
@@ -32,7 +31,8 @@ Code readability:
 - Write self-explanatory code: clear names and small, single-purpose functions carry the intent.
   If a block needs a comment to be understood, extract it into a well-named function or variable.
 - No inline comments inside function bodies.
-- Doc comments on functions, types, and modules are at most 5 lines: what it does and why, not how.
+- Doc comments on functions and types are at most 5 lines: what it does and why, not how.
+- No comments above modules, packages, or files.
 - Tool directives are not comments and stay where the tool needs them (lint suppressions, build
   tags, compiler pragmas, code generation markers).
 
