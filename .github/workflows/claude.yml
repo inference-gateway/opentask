@@ -14,10 +14,20 @@ on:
         required: true
         type: string
       browser:
-        description: 'Install Chromium + enable the browser MCP (mcp__playwright) for this run'
+        description: 'Enable the browser MCP (mcp__playwright) for this run'
         required: false
         type: boolean
         default: false
+      browser_engine:
+        description: 'Browser backend: chromium | firefox | webkit (installed via Playwright) or lightpanda (CDP container, faster, partial Web API coverage)'
+        required: false
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - lightpanda
+        default: chromium
       effort:
         description: 'Claude effort level'
         required: false
@@ -34,10 +44,12 @@ on:
         required: false
         type: choice
         options:
-          - claude-opus-4-8
+          - claude-opus-5
+          - claude-opus-5-5
+          - claude-fable-5-1
           - claude-fable-5
           - claude-sonnet-5
-        default: claude-opus-4-8
+        default: claude-opus-5-5
   issue_comment:
     types:
       - created
@@ -52,8 +64,7 @@ on:
     types:
       - submitted
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   claude:
@@ -75,7 +86,8 @@ jobs:
       plugins: |
         DietrichGebert/ponytail
       browser: ${{ inputs.browser || false }}
+      browser_engine: ${{ inputs.browser_engine || 'chromium' }}
       effort: ${{ inputs.effort || 'medium' }}
-      model: ${{ inputs.model || 'claude-opus-4-8' }}
+      model: ${{ inputs.model || 'claude-opus-5' }}
       prompt: ${{ inputs.prompt }}
     secrets: inherit
