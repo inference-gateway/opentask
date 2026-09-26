@@ -37,7 +37,7 @@ Run Apple's converter tool on the `dist/` directory:
 
 ```bash
 xcrun safari-web-extension-converter dist/ \
-  --bundle-identifier com.inferencegateway.browser-extension \
+  --bundle-identifier com.inference-gateway.opentask \
   --project-location ../safari-extension \
   --no-open
 ```
@@ -90,9 +90,9 @@ safari-extension/
 
 Open the project in Xcode and verify the bundle identifier:
 
-- **macOS target**: `com.inferencegateway.browser-extension.mac`
-- **iOS target**: `com.inferencegateway.browser-extension.ios`
-- **Shared Extension target**: `com.inferencegateway.browser-extension`
+- **macOS target**: `com.inference-gateway.opentask.mac`
+- **iOS target**: `com.inference-gateway.opentask.ios`
+- **Shared Extension target**: `com.inference-gateway.opentask`
 
 These are set automatically by the converter from the `--bundle-identifier` flag.
 
@@ -169,7 +169,7 @@ for full MV3 compatibility.
 5. Sign with your distribution certificate and upload.
 6. In [App Store Connect](https://appstoreconnect.apple.com), create a new
    **macOS App** entry:
-   - **Bundle ID**: `com.inferencegateway.browser-extension.mac`
+   - **Bundle ID**: `com.inference-gateway.opentask.mac`
    - **SKU**: `OPENTASK_MAC_001`
    - **Review information**: See [Store listing assets](#store-listing-assets)
      below.
@@ -182,7 +182,7 @@ for full MV3 compatibility.
 2. Choose **Product → Archive**.
 3. Distribute via **App Store Connect** → **Upload**.
 4. In App Store Connect, create a new **iOS App** entry:
-   - **Bundle ID**: `com.inferencegateway.browser-extension.ios`
+   - **Bundle ID**: `com.inference-gateway.opentask.ios`
    - **SKU**: `OPENTASK_IOS_001`
 
 ### Version alignment
@@ -266,7 +266,7 @@ task build:safari
 
 # 2. Re-run the converter (overwrites the Xcode project's Resources)
 xcrun safari-web-extension-converter dist/ \
-  --bundle-identifier com.inferencegateway.browser-extension \
+  --bundle-identifier com.inference-gateway.opentask \
   --project-location ../safari-extension \
   --no-open
 
