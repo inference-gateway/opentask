@@ -74,10 +74,12 @@ Firefox, and Safari.
   Settings) include a `.githooks/pre-commit` hook, a `CLAUDE.md` → `AGENTS.md` symlink,
   and a `.claude/skills` → `.agents/skills` symlink.
 - 📋 **Project Board Tracking**: The installed workflow tells the agent to keep an issue's
-  project-board Status in sync (In Progress on start, Done on completion), best-effort and
-  board-agnostic. Board writes need a token with `Projects: read and write` - enable the
-  GitHub App option, since the default `GITHUB_TOKEN` can't reach Projects v2; without it
-  the agent skips board updates silently.
+  project-board Status in sync: set the In Progress-like option before changing anything, then
+  the QA-like option once the pull request is opened (fall back to Done only when no QA-like
+  option exists), and never set Done - that happens at merge. Best-effort and board-agnostic.
+  This text is the editable "System instructions" default in **Options → Prompts**. Board writes
+  need a token with `Projects: read and write` - enable the GitHub App option, since the default
+  `GITHUB_TOKEN` can't reach Projects v2; without it the agent skips board updates silently.
 - 🤝 **GitHub App Bot**: Run the agent as your own GitHub App instead of
   `github-actions[bot]`. When configured, the workflow mints an installation token via
   `actions/create-github-app-token` and checks out + comments as the App, so its
@@ -122,7 +124,7 @@ files. Agent selection lives in the options page (**Options → Agents**).
 1. Download the `browser-extension.zip` from the [latest release](https://github.com/inference-gateway/opentask/releases).
 2. Open `chrome://extensions` (or `edge://extensions`).
 3. Enable **Developer mode**.
-4. **Load unpacked** and select the `dist/` folder inside the extracted ZIP.
+4. **Load unpacked** and select the extracted ZIP folder itself - the files sit at the archive root, there is no `dist/` folder inside.
 5. Open any GitHub issue/PR, focus the comment box, and type `!`.
 
 **Manual (unpacked)** for development or self-building:
@@ -355,7 +357,7 @@ release workflow.
 - Skill descriptions in the dropdown (would cost one API call per skill; names only
   for now, one call per repo).
 - An org-wide skill catalog (v1 is per-repo).
-- A packaged icon set, a build-time watch mode, and CI.
+- A build-time watch mode.
 
 ## Contributing
 
