@@ -7,8 +7,12 @@ submit to the Mac App Store and iOS App Store.
 The extension uses **no separate Safari implementation** - the same `dist/`
 bundle built by `task build:safari` is wrapped by Apple's
 `safari-web-extension-converter` into a native Xcode project. Only the manifest
-gets a Safari-specific override (`manifest.safari.json`) that adds
-`browser_specific_settings.safari`.
+is Safari-specific: `build.ts` shallow-merges `manifest.safari.json` over
+`manifest.json`, which adds `browser_specific_settings.safari` and replaces
+`permissions` with the narrower Safari set (`storage`, `activeTab`, `tabs`,
+`scripting`, `alarms` - no `sidePanel` or `notifications`), then deletes the
+`side_panel` key. The side panel (and the CLI-bridge chat UI it hosts) is not
+part of the Safari build.
 
 ---
 
@@ -33,7 +37,7 @@ Run Apple's converter tool on the `dist/` directory:
 
 ```bash
 xcrun safari-web-extension-converter dist/ \
-  --bundle-identifier com.inferencegateway.opentask \
+  --bundle-identifier com.inferencegateway.browser-extension \
   --project-location ../safari-extension \
   --no-open
 ```
@@ -57,11 +61,16 @@ safari-extension/
 │   └── Info.plist
 ├── Shared (Extension)/
 │   ├── Resources/
-│   │   ├── manifest.json       # converted from dist/
-│   │   ├── background.js       # copied from dist/
+│   │   ├── manifest.json        # converted from dist/
+│   │   ├── background.js         # copied from dist/
 │   │   ├── content.js           # copied from dist/
+│   │   ├── options.js           # copied from dist/
+│   │   ├── popup.js             # copied from dist/
+│   │   ├── sidepanel.js         # copied from dist/
 │   │   ├── options.html         # copied from dist/
 │   │   ├── popup.html           # copied from dist/
+│   │   ├── sidepanel.html       # copied from dist/
+│   │   ├── options.css          # Tailwind output from build.ts
 │   │   ├── styles.css           # copied from dist/
 │   │   └── icons/               # copied from dist/
 │   └── safari-web-extension.swift
@@ -81,9 +90,9 @@ safari-extension/
 
 Open the project in Xcode and verify the bundle identifier:
 
-- **macOS target**: `com.inferencegateway.opentask.mac`
-- **iOS target**: `com.inferencegateway.opentask.ios`
-- **Shared Extension target**: `com.inferencegateway.opentask`
+- **macOS target**: `com.inferencegateway.browser-extension.mac`
+- **iOS target**: `com.inferencegateway.browser-extension.ios`
+- **Shared Extension target**: `com.inferencegateway.browser-extension`
 
 These are set automatically by the converter from the `--bundle-identifier` flag.
 
@@ -160,7 +169,7 @@ for full MV3 compatibility.
 5. Sign with your distribution certificate and upload.
 6. In [App Store Connect](https://appstoreconnect.apple.com), create a new
    **macOS App** entry:
-   - **Bundle ID**: `com.inferencegateway.opentask.mac`
+   - **Bundle ID**: `com.inferencegateway.browser-extension.mac`
    - **SKU**: `OPENTASK_MAC_001`
    - **Review information**: See [Store listing assets](#store-listing-assets)
      below.
@@ -173,17 +182,21 @@ for full MV3 compatibility.
 2. Choose **Product → Archive**.
 3. Distribute via **App Store Connect** → **Upload**.
 4. In App Store Connect, create a new **iOS App** entry:
-   - **Bundle ID**: `com.inferencegateway.opentask.ios`
+   - **Bundle ID**: `com.inferencegateway.browser-extension.ios`
    - **SKU**: `OPENTASK_IOS_001`
 
 ### Version alignment
 
 Keep the Safari extension version in sync with the Chrome/Edge/Firefox releases.
 The version is read from `manifest.json` in `Shared (Extension)/Resources/`.
-When bumping the extension version:
+Never bump the version by hand - semantic-release writes each release version
+into `manifest.json` and `package.json` (the `@semantic-release/exec` prepare
+step in `.releaserc.yaml`). To update the Safari build after a release:
 
-1. Update `manifest.json` (and `manifest.safari.json` if needed).
-2. Rebuild with `task build:safari`.
+1. Check out the release tag (e.g. `git checkout v1.16.0`).
+2. Build with `task build:safari` - `build.ts` shallow-merges
+   `manifest.safari.json` over `manifest.json`, so the merged manifest already
+   carries the released version.
 3. Re-run the converter or copy the updated `manifest.json` into the Xcode
    project.
 4. Update the Xcode project's marketing version to match.
@@ -253,7 +266,7 @@ task build:safari
 
 # 2. Re-run the converter (overwrites the Xcode project's Resources)
 xcrun safari-web-extension-converter dist/ \
-  --bundle-identifier com.inferencegateway.opentask \
+  --bundle-identifier com.inferencegateway.browser-extension \
   --project-location ../safari-extension \
   --no-open
 
