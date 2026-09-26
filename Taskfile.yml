@@ -69,7 +69,7 @@ tasks:
     cmds:
       - echo "See docs/store/safari-listing.md for the full Safari packaging guide"
       - echo "Run the following on macOS with Xcode installed:"
-      - echo "  xcrun safari-web-extension-converter dist/ --bundle-identifier com.inferencegateway.browser-extension --project-location ../safari-extension --no-open"
+      - echo "  xcrun safari-web-extension-converter dist/ --bundle-identifier com.inference-gateway.opentask --project-location ../safari-extension --no-open"
 
   check:
     desc: Run all CI checks
