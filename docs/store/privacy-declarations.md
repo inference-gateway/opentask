@@ -21,6 +21,38 @@ apply identically to Chrome Web Store, Microsoft Edge Add-ons, and Firefox Add-o
 > per-repository skill cache and the agents catalog). Nothing is synced or sent to
 > a server by the extension.
 
+### `activeTab`
+> Grants the browser-use bridge access to the tab the user targets from the side
+> panel (reading the visible page, capturing a screenshot) and lets the popup open
+> the side panel on the current window. Access applies only to the tab the user is
+> acting on.
+
+### `tabs`
+> Lets the bridge open, focus, inspect, and switch between tabs on the user's behalf
+> (browser-use commands from the side panel) and focus the right window when an
+> approval notification is clicked. Tab URLs are read only to execute the user's
+> requested commands; they are not collected.
+
+### `scripting`
+> Injects helper scripts into tabs the user targets through the bridge, so the AI
+> agent can read page state (interactive fields, field types) and interact with
+> forms on the user's behalf. Only the user's approved commands are executed.
+
+### `sidePanel`
+> Opens the extension's side panel - the chat/browser-use UI paired with the local
+> `infer` CLI - from the popup, from the approval notification, and from bridge
+> commands.
+
+### `alarms`
+> A one-minute recurring alarm redials the local CLI bridge WebSocket when the
+> service worker has been suspended, so an open side panel reconnects on its own.
+
+### `notifications`
+> Shows a system notification when the AI agent asks the user to approve a tool
+> call from the side panel, so the request can be reviewed without watching the
+> panel. The notification carries the tool name only; clicking it focuses the
+> panel.
+
 ### Host permission - `https://api.github.com/*`
 > Grants access to GitHub's REST API for listing a repository's skills and
 > installing/managing its agent workflow. Requests run through the user's

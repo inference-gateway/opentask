@@ -49,8 +49,9 @@ Firefox, and Safari.
   `.agents/skills/` via the GitHub Contents API, cached per repo.
 - 🤝 **Non-Intrusive**: Never touches GitHub's native `@` / `#` / `:` completion;
   insertions fire an `input` event so draft-autosave and preview stay in sync.
-- 🌐 **Multi-Browser Ready**: One `dist/` bundle; only `chrome.storage` is used, so
-  a port is a manifest tweak, not a rewrite.
+- 🌐 **Multi-Browser Ready**: One `dist/` bundle; browser differences (background
+  worker vs scripts, side panel, notifications) are absorbed by per-browser manifest
+  overrides and `build.ts`, not code forks.
 - 🔒 **Private-Repo Support**: The extension stores no GitHub credential. Every
   GitHub call runs `gh api` on the host of the connected infer CLI, so private repos
   work with the `gh` login that CLI already has.
@@ -307,17 +308,19 @@ data; per-permission justifications for the store listing live in
 
 ## Multi-Browser Support
 
-The same `dist/` is the whole extension, and the only privileged API used is
-`chrome.storage` (present on Chrome/Edge/Firefox). Per-browser notes:
+The same `dist/` is the whole extension. Its browser API surface is `chrome.storage`
+plus `tabs`, `scripting`, `sidePanel`, `windows`, `action`, `notifications`, and
+`alarms` (used by the browser-use bridge in the side panel and the popup).
+Per-browser notes:
 
-| Browser      | What's needed                                                            |
-| ------------ | ------------------------------------------------------------------------ |
-| Chrome, Edge | Works as-is (`background.service_worker`). Chrome Web Store and Edge Add-ons use the same `dist/` ZIP. |
-| Firefox 109+ | Build with `task build:firefox` (applies `manifest.firefox.json` overrides: `background.scripts` + `browser_specific_settings.gecko.id`). |
-| Safari 16.4+ | Build with `task build:safari`, then wrap with `xcrun safari-web-extension-converter` on macOS. See [`docs/store/safari-listing.md`](docs/store/safari-listing.md) for the full packaging and App Store release guide. |
+| Browser      | What's needed                                                            |                                                                                                                                              
+| ------------ | ------------------------------------------------------------------------ |                                                                                                                                              
+| Chrome, Edge | Works as-is (`background.service_worker` + side panel). Chrome Web Store and Edge Add-ons use the same `dist/` ZIP. |                                                                                              
+| Firefox 109+ | Build with `task build:firefox`: `manifest.firefox.json` overrides `background.scripts` + `browser_specific_settings.gecko.id` and replaces `permissions` (no `sidePanel`/`notifications` - Firefox lacks those APIs), and `build.ts` deletes the Chrome-only `side_panel` key. |                                                                                      
+| Safari 16.4+ | Build with `task build:safari`, then wrap with `xcrun safari-web-extension-converter` on macOS. `manifest.safari.json` replaces `permissions` (no `sidePanel`/`notifications`), and `build.ts` deletes the `side_panel` key. See [`docs/store/safari-listing.md`](docs/store/safari-listing.md) for the full packaging and App Store release guide. |
 
-If the API surface ever grows beyond `chrome.storage`, drop in Mozilla's single-file
-`webextension-polyfill` and alias `browser` → `chrome`.
+If a port needs the Promise-based `browser.*` namespace, drop in Mozilla's
+single-file `webextension-polyfill` and alias `browser` → `chrome`.
 
 ## Development
 
