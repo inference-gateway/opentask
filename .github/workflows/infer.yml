@@ -1,0 +1,85 @@
+---
+name: Infer
+
+# Thin caller for the org-wide reusable @infer workflow.
+# Source of truth: inference-gateway/.github/.github/workflows/infer.yml
+# Inputs are managed centrally in inference-gateway/.github/repos.yaml (the entry's orchestrators.infer block).
+# Do not hand-edit setup here; change the reusable workflow or repos.yaml instead.
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Free-text task for infer (deepseek) to work on in this repo'
+        required: true
+        type: string
+      browser:
+        description: 'Run the browser-agent A2A container for this run'
+        required: false
+        type: boolean
+        default: false
+      browser_engine:
+        description: 'Browser engine: chromium | firefox | webkit or lightpanda (fastest, no graphical rendering, partial Web API coverage)'
+        required: false
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - lightpanda
+        default: chromium
+      review_inline:
+        description: 'Post review-mode findings as inline PR review comments instead of one conversation comment'
+        required: false
+        type: boolean
+        default: false
+      model:
+        description: 'Model as provider/model (empty = this repo default from repos.yaml)'
+        required: false
+        type: string
+        default: ''
+  issues:
+    types:
+      - opened
+      - edited
+  issue_comment:
+    types:
+      - created
+  pull_request_review_comment:
+    types:
+      - created
+  pull_request_review:
+    types:
+      - submitted
+
+permissions: {}
+
+jobs:
+  infer:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.sender.type != 'Bot' &&
+        !endsWith(github.actor, '[bot]') &&
+        (
+          (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@infer')) ||
+          (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@infer')) ||
+          (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@infer')) ||
+          (github.event_name == 'issues' && (contains(github.event.issue.body, '@infer') || contains(github.event.issue.title, '@infer')))
+        )
+      )
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    uses: inference-gateway/.github/.github/workflows/infer.yml@main
+    with:
+      language: "bun"
+      plugins: |
+        DietrichGebert/ponytail
+      browser: ${{ inputs.browser || false }}
+      browser_engine: ${{ inputs.browser_engine || 'chromium' }}
+      review_inline: ${{ inputs.review_inline || false }}
+      model: ${{ inputs.model || 'ollama_cloud/glm-5.3-flash' }}
+      prompt: ${{ inputs.prompt }}
+    secrets: inherit
