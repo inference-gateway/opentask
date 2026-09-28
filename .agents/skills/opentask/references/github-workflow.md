@@ -80,6 +80,10 @@ CLI's baseline allows only reads, and everything you append the agent can
 execute unattended. So the right list is exactly the deterministic commands
 the repository already runs - nothing broader.
 
+The one fixed entry: always start the list with `task( .*)?`. The CLI's
+baseline does not allow `task`, and every OpenTask workflow gives the agent
+the Taskfile runner, so add it to an existing list when it is missing.
+
 Read the repo's task-runner files to find them: `Taskfile.yml`,
 `package.json` `scripts`, `Makefile`, `justfile`, and the CI workflow's `run:`
 steps. Those name the build/test/lint/format commands the project considers
@@ -89,17 +93,19 @@ invoke, per language:
 
 | Language        | Typical append entries                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------- |
-| any with runner | `task( .*)?` / `make( .*)?` / `just( .*)?` - only the runner the repo actually has        |
+| every repo      | `task( .*)?` - always the first entry                                                     |
+| other runner    | `make( .*)?` / `just( .*)?` - only the runner the repo actually has                       |
 | Go              | `go( .*)?,gofmt( .*)?,golangci-lint( .*)?`                                                |
 | Rust            | `cargo( .*)?,rustc( .*)?,rustfmt( .*)?,rustup( .*)?`                                      |
 | Node/TypeScript | `node( .*)?,npm( .*)?,pnpm( .*)?,npx( .*)?`                                               |
 | Bun             | `bun install( .*)?,bun add( .*)?,bun run( .*)?,bun test( .*)?,bun build( .*)?,bunx( .*)?` |
 | Python          | `python( .*)?,python3( .*)?,uv( .*)?`                                                     |
 
-Trim the table to what the repo uses (a pnpm-only repo does not need `npm`;
-a repo with no Makefile gets no `make`). Each entry is a Go regex anchored to
-the whole command, so include arguments explicitly - `cargo` alone matches
-only the bare word; write `cargo( .*)?`. The list splits on `,` and newlines.
+Trim the rest of the table to what the repo uses (a pnpm-only repo does not
+need `npm`, and a repo with no Makefile gets no `make`). Each entry is a Go
+regex anchored to the whole command, so include arguments explicitly - `cargo`
+alone matches only the bare word; write `cargo( .*)?`. The list splits on `,`
+and newlines.
 
 ## Updating an existing workflow
 
@@ -119,7 +125,8 @@ So apply **only** additive, infer-action-related changes:
 - Adapt to the repository's languages when the current file misses them
   (see "Adapt to the repository" above): add `languages:`/`apt:` values,
   setup steps, and the allow-list entries the repo's own scripts show are
-  needed. Add - never replace the existing `bash-allow-append` entries.
+  needed, plus a leading `task( .*)?` when the list lacks it. Add - never
+  replace the existing `bash-allow-append` entries.
 - Never remove or rewrite anything repo-specific. When unsure whether a line
   is repo-specific, keep it.
 
