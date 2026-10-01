@@ -25,12 +25,14 @@ export function OrchestratorTab({
   const [showKey, setShowKey] = useState(false);
   const [bridgePort, setBridgePort] = useState("");
   const [bridgeToken, setBridgeToken] = useState("");
+  const [bridgeProjectDir, setBridgeProjectDir] = useState("");
   const [showBridgeToken, setShowBridgeToken] = useState(false);
 
   useEffect(() => {
     void storage.get<string>("runpod-key").then((k) => setRunpodKey(k ?? ""));
     void storage.get<string>("bridge-port").then((p) => setBridgePort(p ?? ""));
     void storage.get<string>("bridge-token").then((t) => setBridgeToken(t ?? ""));
+    void storage.get<string>("bridge-project-dir").then((d) => setBridgeProjectDir(d ?? ""));
   }, []);
 
   return (
@@ -128,13 +130,14 @@ export function OrchestratorTab({
         title="CLI Bridge"
         description={
           <>
-            Let the infer CLI drive this browser and mirror its conversation into the side panel.
-            The token comes from <code>extension.token</code> in <code>~/.infer/browser_use.yaml</code>{" "}
-            (<code>infer init</code> seeds one).
+            Connect the side panel to <code>infer daemon</code>, which also drives this browser. The port and
+            token come from <code>binding</code> in <code>~/.infer/daemon.yaml</code> or{" "}
+            <code>extension</code> in <code>~/.infer/browser_use.yaml</code> (<code>infer init</code> seeds a token).
+            Conversations open in the project directory.
           </>
         }
       >
-        <Label htmlFor="bridge-port">CLI port</Label>
+        <Label htmlFor="bridge-port">Daemon port</Label>
         <Input
           id="bridge-port"
           className="w-32"
@@ -163,6 +166,17 @@ export function OrchestratorTab({
             {showBridgeToken ? "Hide" : "Show"}
           </Button>
         </div>
+        <Label htmlFor="bridge-project-dir">Project directory</Label>
+        <Input
+          id="bridge-project-dir"
+          placeholder="/absolute/path/to/project"
+          autoComplete="off"
+          value={bridgeProjectDir}
+          onChange={(e) => {
+            setBridgeProjectDir(e.target.value);
+            void storage.set("bridge-project-dir", e.target.value);
+          }}
+        />
       </Section>
     </>
   );

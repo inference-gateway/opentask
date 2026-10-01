@@ -1,6 +1,18 @@
-// Pure helpers for the CLI browser-bridge (issue #141). The wire contract lives in
-// inference-gateway/cli docs/browser-extension-protocol.md; unknown frame/event
-// types must be ignored.
+// Pure helpers for the infer daemon binding. The wire contract is the Daemon
+// Binding Protocol (inference-gateway/cli docs/browser-extension-protocol.md):
+// a frame with an uppercase type is a standard AG-UI 1.0 event, validated here
+// with the upstream schemas; unknown frame types must be ignored.
+import { EventSchema } from "@ag-ui/core/schemas";
+import type { Event, Interrupt, Message } from "@ag-ui/core";
+
+export const PROTOCOL_VERSION = 2;
+
+// Validates one wire frame as an AG-UI event with the upstream schema, or
+// undefined for an app frame or a malformed event.
+export function parseEvent(frame: Record<string, unknown>): Event | undefined {
+  const r = EventSchema.safeParse(frame);
+  return r.success ? r.data : undefined;
+}
 
 // `args` accumulates the tool call's TOOL_CALL_ARGS deltas (raw JSON) for the
 // tool role; `id` is its toolCallId and `ok`/`error` arrive with
@@ -62,18 +74,16 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   }
 }
 
-// Per-turn busy flag from the AG-UI stream. Over the bridge, RUN_STARTED/
-// RUN_FINISHED bracket the whole connection (not a turn), so they can't drive
-// the loader. Key off turn-level events instead: a tool call means work is
-// running (stays true through a long tool execution that emits nothing), and an
-// assistant message ending winds the turn down - a following tool call re-arms it.
-// selfToolIds are tool calls the extension itself issued over the bridge
-// (callTool): no agent turn follows them, so they must not arm the loader.
-export function runningFromEvent(current: boolean, event: unknown, selfToolIds?: Pick<Set<string>, "has">): boolean {
-  const e = event as { type?: unknown; toolCallId?: unknown } | null;
-  if (typeof e?.toolCallId === "string" && selfToolIds?.has(e.toolCallId)) return current;
-  if (e?.type === "TOOL_CALL_START") return true;
-  if (e?.type === "TEXT_MESSAGE_END") return false;
+// Per-turn busy flag from the AG-UI stream: each agent turn is one run, so
+// RUN_STARTED arms the loader and the run's terminal event clears it. A
+// RUN_ERROR without a runId is a routing error that ends no run. selfRunIds are
+// the extension's own tool_request ids, which never carry an agent turn.
+export function runningFromEvent(current: boolean, event: unknown, selfRunIds?: Pick<Set<string>, "has">): boolean {
+  const e = event as { type?: unknown; runId?: unknown } | null;
+  if (typeof e?.runId === "string" && selfRunIds?.has(e.runId)) return current;
+  if (e?.type === "RUN_STARTED") return true;
+  if (e?.type === "RUN_FINISHED") return false;
+  if (e?.type === "RUN_ERROR") return typeof e.runId === "string" ? false : current;
   return current;
 }
 
@@ -91,42 +101,70 @@ export function toolLabel(name: string, args?: string): string {
   }
 }
 
-// snapshotToMessages rebuilds the panel transcript from a conversation_snapshot
-// frame: assistant `tool_calls` become tool rows (name + args + id), and tool
-// entries attach their text as that row's result instead of a separate bubble.
-// `tool_results` (id -> success) sets ok. Entries without a role are dropped.
-export function snapshotToMessages(frame: Record<string, unknown>): Msg[] {
-  const list = Array.isArray(frame.messages) ? (frame.messages as unknown[]) : [];
-  const results = (frame.tool_results ?? {}) as Record<string, unknown>;
+// snapshotToMessages rebuilds the panel transcript from a MESSAGES_SNAPSHOT:
+// assistant toolCalls become tool rows (name + args + id), and a tool message
+// attaches its content as that row's result, with `error` marking it failed.
+export function snapshotToMessages(list: Message[]): Msg[] {
   const out: Msg[] = [];
-  for (const raw of list) {
-    const m = raw as {
-      role?: unknown; content?: unknown; tool_call_id?: unknown;
-      tool_calls?: { id?: unknown; function?: { name?: unknown; arguments?: unknown } }[];
-    } | null;
-    if (!m || typeof m.role !== "string") continue;
+  for (const m of list) {
     const content = typeof m.content === "string" ? m.content : "";
-    if (m.role === "tool" && typeof m.tool_call_id === "string") {
-      const row = out.find((o) => o.role === "tool" && o.id === m.tool_call_id);
+    if (m.role === "tool") {
+      const row = out.find((o) => o.role === "tool" && o.id === m.toolCallId);
       if (row) {
         row.result = content;
+        row.ok = !m.error;
+        row.error = m.error ?? undefined;
         continue;
       }
     }
     if (content) out.push({ role: m.role, content });
-    for (const tc of Array.isArray(m.tool_calls) ? m.tool_calls : []) {
-      const id = typeof tc?.id === "string" ? tc.id : undefined;
-      const ok = id !== undefined && typeof results[id] === "boolean" ? (results[id] as boolean) : undefined;
-      out.push({
-        role: "tool",
-        content: typeof tc?.function?.name === "string" ? tc.function.name : "tool",
-        args: typeof tc?.function?.arguments === "string" ? tc.function.arguments : "",
-        id,
-        ok,
-      });
+    if (m.role !== "assistant") continue;
+    for (const tc of m.toolCalls ?? []) {
+      out.push({ role: "tool", content: tc.function.name, args: tc.function.arguments, id: tc.id });
     }
   }
   return out;
+}
+
+// A question the AskUserQuestion tool asked, read from the tool call's args.
+export type Question = { header: string; question: string; options: { label: string; description: string }[]; multiSelect: boolean };
+export type Answer = { header: string; question: string; selectedLabels: string[]; otherText: string };
+
+// Parses the AskUserQuestion tool call's args JSON into the questions its
+// input_required interrupt waits on. [] when the args are not that shape.
+export function parseQuestions(args?: string): Question[] {
+  let o: { questions?: unknown };
+  try {
+    o = JSON.parse(args ?? "");
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(o?.questions)) return [];
+  return o.questions.flatMap((raw): Question[] => {
+    const q = raw as { header?: unknown; question?: unknown; options?: unknown; multiSelect?: unknown } | null;
+    if (typeof q?.question !== "string") return [];
+    const options = (Array.isArray(q.options) ? q.options : []).flatMap((opt): Question["options"] => {
+      const o = opt as { label?: unknown; description?: unknown } | null;
+      return typeof o?.label === "string" ? [{ label: o.label, description: typeof o.description === "string" ? o.description : "" }] : [];
+    });
+    return [{ header: typeof q.header === "string" ? q.header : "", question: q.question, options, multiSelect: q.multiSelect === true }];
+  });
+}
+
+// What the panel renders for one open interrupt of the run: an approval prompt
+// for a tool call (name and args from the tool row the run streamed), or the
+// questions of an AskUserQuestion form.
+export type PendingInterrupt =
+  | { id: string; reason: "tool_call"; toolName: string; toolArgs: string }
+  | { id: string; reason: "input_required"; questions: Question[] };
+
+export function pendingInterrupts(interrupts: Interrupt[], messages: Msg[]): PendingInterrupt[] {
+  return interrupts.flatMap((it): PendingInterrupt[] => {
+    const row = messages.find((m) => m.role === "tool" && m.id === (it.toolCallId ?? it.id));
+    if (it.reason === "input_required") return [{ id: it.id, reason: "input_required", questions: parseQuestions(row?.args) }];
+    if (it.reason === "tool_call") return [{ id: it.id, reason: "tool_call", toolName: row?.content ?? "", toolArgs: row?.args ?? "" }];
+    return [];
+  });
 }
 
 // prettyArgs pretty-prints a tool's raw JSON args for the expanded pill,
@@ -227,18 +265,19 @@ export function parseSkills(frame: Record<string, unknown>): PanelSkill[] {
 }
 
 // SW <-> side-panel Port protocol ("bridge-panel").
-export type PendingApproval = { requestId: string; toolName: string; toolArgs: string };
+// An approval prompt: a tool_call interrupt of the run, or the CUSTOM
+// approval_request of a panel-initiated tool_request (which runs outside any
+// run and so cannot suspend one).
+export type PendingApproval = { id: string; source: "interrupt" | "tool_request"; toolName: string; toolArgs: string };
+export type PendingQuestion = { id: string; questions: Question[] };
 
 // A file the user attached in the composer: raw base64 (no data-URL prefix),
-// its original filename and mime type. Field names mirror the CLI's
-// ImageAttachment JSON (data/mime_type/filename) so the user_message wire
-// frame's optional `attachments` array maps straight into UserInputEvent.Images.
-// CLIs older than the attachments contract ignore the unknown field, so the
-// message content also names each attachment (attachmentLine).
+// its original filename and mime type. It travels as an image content part of
+// the run_agent_input user message.
 export type Attachment = { filename: string; mime_type: string; data: string };
 
 // Per-file raw-byte cap (10 MB) and attachment count cap, so one dropped
-// screenshot can't blow the single WS text frame user_message travels in.
+// screenshot can't blow the single WS text frame run_agent_input travels in.
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 export const MAX_ATTACHMENTS = 10;
 
@@ -259,23 +298,13 @@ export function parseAttachments(value: unknown): Attachment[] {
   return out;
 }
 
-// The message-content footer naming each attachment, so an agent whose CLI
-// ignores the attachments field still learns what was attached and can ask
-// for a path. Empty string when there are none.
-export function attachmentLine(attachments: Attachment[]): string {
-  if (attachments.length === 0) return "";
-  return `[attached: ${attachments.map((a) => `${a.filename} (${a.mime_type})`).join(", ")}]`;
-}
-
-// Parses an approval_request wire frame into a PendingApproval, or undefined
-// when it lacks a usable request id (nothing to answer).
-export function approvalFromFrame(frame: Record<string, unknown>): PendingApproval | undefined {
-  if (typeof frame.request_id !== "string" || frame.request_id === "") return undefined;
-  return {
-    requestId: frame.request_id,
-    toolName: typeof frame.tool_name === "string" ? frame.tool_name : "",
-    toolArgs: typeof frame.tool_args === "string" ? frame.tool_args : "",
-  };
+// The user message of a run_agent_input: a plain string without attachments,
+// else content parts in the CLI's shape (text, then one image part per file).
+export function userMessageContent(text: string, attachments: Attachment[]): string | Record<string, unknown>[] {
+  if (attachments.length === 0) return text;
+  const parts: Record<string, unknown>[] = text ? [{ type: "text", text }] : [];
+  for (const a of attachments) parts.push({ type: "image", mimeType: a.mime_type, data: a.data, filename: a.filename });
+  return parts;
 }
 
 export type PanelState = {
@@ -296,7 +325,12 @@ export type PanelState = {
   // the CLI's agent mode as its allowlist key: "standard" | "plan" | "auto".
   mode?: string;
   activeConversationId?: string;
+  // the daemon answered the hello with another protocol version: show "update infer".
+  updateRequired: boolean;
+  // the absolute project dir the panel opens threads in (Options -> CLI Bridge).
+  projectDir?: string;
   pendingApproval?: PendingApproval;
+  pendingQuestion?: PendingQuestion;
 };
 export type PanelConnect = { type: "connect" };
 export type PanelDisconnect = { type: "disconnect" };
@@ -306,8 +340,5 @@ export type PanelSelectModel = { type: "select_model"; model: string };
 export type PanelSetMode = { type: "set_mode"; mode: string };
 export type PanelListConversations = { type: "list_conversations" };
 export type PanelResumeConversation = { type: "resume_conversation"; id: string };
-export type PanelApproval = {
-  type: "approval_response";
-  requestId: string;
-  action: "approve" | "reject";
-};
+export type PanelApproval = { type: "approval_response"; id: string; approved: boolean };
+export type PanelQuestionResponse = { type: "question_response"; id: string; answers?: Answer[] };

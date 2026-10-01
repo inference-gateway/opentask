@@ -177,19 +177,23 @@ Settings are grouped into six tabs: **Orchestrator**, **Agents**, **Prompts**,
 ### CLI bridge
 
 The extension holds no GitHub token: every GitHub call runs `gh api` on the host of
-the connected [infer](https://github.com/inference-gateway) CLI with its existing
-`gh` login, so private repos work without any credential stored in the browser. The
-bridge also powers skill listing, Send/Run task, Skills apply, Init, Refine, and
-installing the workflow - without it, those features fail with *"Connect the infer
-CLI to use GitHub features"*.
+the connected [infer daemon](https://github.com/inference-gateway/cli/blob/main/docs/daemon.md)
+with its existing `gh` login, so private repos work without any credential stored in
+the browser. The daemon also powers the chat panel, skill listing, Send/Run task,
+Skills apply, Init, Refine, and installing the workflow - without it, those features
+fail with *"Connect the infer daemon to use GitHub features"*.
 
 Under **Options → Orchestrator → CLI Bridge**:
 
-- **CLI port**: the port the CLI's browser-use server listens on (default `52789`).
-- **Shared token**: copy `extension.token` from `~/.infer/browser_use.yaml`
-  (`infer init` seeds one).
+- **Daemon port**: the port the daemon's binding listens on (default `52789`).
+- **Shared token**: copy `binding.token` from `~/.infer/daemon.yaml` or
+  `extension.token` from `~/.infer/browser_use.yaml` (`infer init` seeds one).
+- **Project directory**: the absolute path the panel's conversations run in, since
+  one daemon serves every project.
 
-Then open the side panel and click **Connect**.
+Then open the side panel and click **Connect**. The panel speaks protocol version 2
+of the daemon binding and shows an "update infer" notice when the daemon answers
+with another version.
 
 ### Quick prompts
 
