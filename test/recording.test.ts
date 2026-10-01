@@ -13,9 +13,8 @@ import {
   createRecordingBox,
   formatElapsed,
   frameToolsCommand,
-  frameToolsReleaseCommand,
-  frameToolsSizeCommand,
-  isFrameToolStale,
+  frameToolsStatus,
+  frameToolsStatusCommand,
   normalizeRecordCap,
   paintRecordingOverlay,
   recordingBitrate,
@@ -146,91 +145,74 @@ describe("recordingFooter", () => {
   });
 });
 
-const INSTALLER_URL = "https://raw.githubusercontent.com/inference-gateway/binaries/main/install.sh";
-
-// Runs a frame-tools command against a throwaway HOME with a stub curl that serves a
-// fake installer logging how it was invoked, so a test sees what the host would fetch
-// and run without touching the network. A failing stub exits like `curl -f` does.
-function runFrameTools(command: string, opts: { installed?: boolean; curlFails?: boolean } = {}) {
+// Runs a frame-tools command with a stub `infer` on PATH that logs how it was
+// invoked, so a test sees what the host would run through the real CLI without
+// touching it. A failing stub stands in for an install the CLI cannot complete.
+function runFrameTools(command: string, opts: { inferFails?: boolean } = {}) {
   const root = mkdtempSync("/tmp/ot-frame-tools-");
-  const home = join(root, "home");
   const stubs = join(root, "stubs");
   const log = join(root, "calls.log");
-  mkdirSync(join(home, ".infer/bin/tools"), { recursive: true });
   mkdirSync(stubs, { recursive: true });
   writeFileSync(log, "");
   writeFileSync(
-    join(stubs, "curl"),
+    join(stubs, "infer"),
     `#!/bin/sh
-for arg; do url="$arg"; done
-echo "curl $url" >> "$LOG"
-${opts.curlFails ? "exit 22" : `echo 'echo "installer $0 $*" >> "$LOG"'`}
+echo "infer $*" >> "$LOG"
+${opts.inferFails ? "exit 1" : "exit 0"}
 `,
   );
-  chmodSync(join(stubs, "curl"), 0o755);
-  if (opts.installed) writeFileSync(join(home, ".infer/bin/tools/ffmpeg"), "binary");
+  chmodSync(join(stubs, "infer"), 0o755);
   const result = spawnSync("sh", ["-c", command], {
     encoding: "utf8",
-    env: { ...process.env, HOME: home, PATH: `${stubs}:${process.env.PATH}`, LOG: log },
+    env: { ...process.env, PATH: `${stubs}:${process.env.PATH}`, LOG: log },
   });
   const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
   rmSync(root, { recursive: true, force: true });
   return { status: result.status, stdout: result.stdout, calls };
 }
 
-describe("frameToolsSizeCommand", () => {
-  test("prints the installed ffmpeg's byte size", () => {
-    const { status, stdout } = runFrameTools(frameToolsSizeCommand(), { installed: true });
-    expect(status).toBe(0);
-    expect(stdout.trim().split(/\s+/)[0]).toBe(String("binary".length));
-  });
-
-  test("fails when ffmpeg is missing", () => {
-    expect(runFrameTools(frameToolsSizeCommand()).status).not.toBe(0);
+describe("frameToolsStatusCommand", () => {
+  test("is the single read-only status check the CLI allowlists", () => {
+    expect(frameToolsStatusCommand()).toBe("infer binaries status ffmpeg");
+    expect(frameToolsStatusCommand()).not.toMatch(/\n|\$\(|&&|;/);
   });
 });
 
-describe("frameToolsReleaseCommand", () => {
-  test("is a single read-only gh release query, as the CLI's allowlist requires", () => {
-    expect(frameToolsReleaseCommand()).toMatch(/^gh release view -R inference-gateway\/binaries /);
-    expect(frameToolsReleaseCommand()).not.toMatch(/\n|\$\(|&&|;/);
-  });
-});
+describe("frameToolsStatus", () => {
+  const row = (status: string) => `ffmpeg       ${status}  /Users/me/.infer/bin/tools/ffmpeg`;
 
-describe("isFrameToolStale", () => {
-  const release = "9724000\n41981928\n34108336\n14383616\n";
-
-  test("is current when the installed size matches a latest build", () => {
-    expect(isFrameToolStale(" 9724000 /Users/me/.infer/bin/tools/ffmpeg\n", release)).toBe(false);
+  test("reads the status word from the CLI's row", () => {
+    expect(frameToolsStatus(row("current"))).toBe("current");
+    expect(frameToolsStatus(`piper       current  /Users/me/.infer/bin/tools/piper\n${row("missing")}`)).toBe("missing");
   });
 
-  test("is stale when the installed size matches no latest build", () => {
-    expect(isFrameToolStale(" 2875456 /Users/me/.infer/bin/tools/ffmpeg\n", release)).toBe(true);
+  test("reads a stale row past ANSI colors and the CLI's error footer", () => {
+    const stale = `\x1b[33m${row("stale")}\x1b[0m\n2 of 3 binaries are not current; run \`infer binaries install\`.\n`;
+    expect(frameToolsStatus(stale)).toBe("stale");
   });
 
-  test("counts unreadable output on either side as current", () => {
-    expect(isFrameToolStale("", release)).toBe(false);
-    expect(isFrameToolStale("wc: ffmpeg: No such file", release)).toBe(false);
-    expect(isFrameToolStale(" 2875456 ffmpeg", "")).toBe(false);
-    expect(isFrameToolStale(" 2875456 ffmpeg", "HTTP 404: Not Found")).toBe(false);
+  test("reports nothing readable when the check went wrong", () => {
+    expect(frameToolsStatus("")).toBeUndefined();
+    expect(frameToolsStatus("command not allowed: infer binaries status ffmpeg")).toBeUndefined();
+    expect(frameToolsStatus(row("weird"))).toBeUndefined();
   });
 });
 
 describe("frameToolsCommand", () => {
-  test("runs the binaries installer for ffmpeg", () => {
+  test("runs the CLI installer for ffmpeg", () => {
     const { status, calls } = runFrameTools(frameToolsCommand());
     expect(status).toBe(0);
-    expect(calls).toEqual([`curl ${INSTALLER_URL}`, "installer install.sh ffmpeg"]);
+    expect(calls).toEqual(["infer binaries install ffmpeg"]);
   });
 
   test("opens with a comment telling the approver what it downloads and why", () => {
     expect(frameToolsCommand().split("\n")[0]).toMatch(/^# opentask: download the latest ffmpeg .* extract frames from your recording$/);
   });
 
-  test("fails when the installer cannot be fetched", () => {
-    const { status, calls } = runFrameTools(frameToolsCommand(), { curlFails: true });
+  test("fails when the CLI cannot install", () => {
+    const { status, calls } = runFrameTools(frameToolsCommand(), { inferFails: true });
     expect(status).not.toBe(0);
-    expect(calls).toEqual([`curl ${INSTALLER_URL}`]);
+    expect(calls).toEqual(["infer binaries install ffmpeg"]);
   });
 });
 

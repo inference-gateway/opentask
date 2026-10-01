@@ -233,14 +233,13 @@ names the path to the agent -> the agent extracts frames with the bundled `ffmpe
 whether to save the flow as a skill, and writes it only once you say so. Audio capture is
 deliberately out of scope.
 
-The prompt names the extractor the CLI ships (`~/.infer/bin/tools/ffmpeg`); because the CLI
-only auto-downloads the *speech* binaries, the extension checks it with approval-free
-commands (`wc -c` on the binary, `gh release view` for the latest release's build sizes) and,
-only when it is missing or stale, installs it through the connected CLI with the
-[`inference-gateway/binaries`](https://github.com/inference-gateway/binaries) `install.sh` -
-the platform build, verified against the release checksums. A send carrying a recording waits
-for that install (a Bash approval in the panel, headed `# opentask: download the latest ffmpeg
-...`) and reports in the composer if a first install failed; a denied upgrade keeps the old copy.
+The prompt names the extractor the CLI ships (`~/.infer/bin/tools/ffmpeg`); the CLI owns that
+tool, so the extension checks it with the approval-free `infer binaries status ffmpeg` (a
+sha256 match against the release) and, only when it is missing or stale, installs it through
+the connected CLI with `infer binaries install ffmpeg` - the platform build, verified against
+the release checksums. A send carrying a recording waits for that install (a Bash approval in
+the panel, headed `# opentask: download the latest ffmpeg ...`) and reports in the composer if
+a first install failed; a denied upgrade keeps the old copy.
 
 ### Self-hosted GPU models (RunPod)
 
