@@ -42,10 +42,10 @@ delete the file the CLI wrote.
 
 The prompt the extension puts in the composer names the frame extractor the agent
 should use, `~/.infer/bin/tools/ffmpeg`. If your CLI has not downloaded it (it only
-auto-downloads the *speech* binaries), the extension asks the same local CLI to
-install it on the first capture, or to upgrade a copy whose size matches none of the latest
-release's builds (checked with `gh release view` through that CLI): that repository's `install.sh` is fetched from
-`raw.githubusercontent.com` and fetches the platform build from
+auto-downloads the *speech* binaries), the extension checks it with `infer binaries
+status ffmpeg` through that CLI (approval-free; a sha256 match against the release) and,
+when it reports missing or stale, installs it through the same CLI with `infer binaries
+install ffmpeg`: the CLI fetches the platform build from
 [`inference-gateway/binaries`](https://github.com/inference-gateway/binaries) into
 `~/.infer/bin/tools/` on your machine, checked against the release checksums. The
 extension fetches no script or binary itself and sees none of their bytes.

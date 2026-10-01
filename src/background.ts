@@ -5,7 +5,7 @@ import type { BotConfig, Permissions, PluginOption, DependenciesConfig } from ".
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
-import { createRecordingBox, frameToolsCommand, frameToolsReleaseCommand, frameToolsSizeCommand, isFrameToolStale, normalizeRecordCap, paintRecordingOverlay, supportsTabCapture, type RecordState } from "./shared/recording";
+import { createRecordingBox, frameToolsCommand, frameToolsStatus, frameToolsStatusCommand, normalizeRecordCap, paintRecordingOverlay, supportsTabCapture, type RecordState } from "./shared/recording";
 import type { Attachment } from "./shared/agui";
 import type { RecordStopResponse, RecordTakeResponse, RecordToolsResponse } from "./shared/messages";
 import { initBridge, callTool, sendUserMessage, startNewSession, CLI_DOWN } from "./lib/bridge";
@@ -757,19 +757,17 @@ function ensureFrameTools(): Promise<RecordToolsResponse> {
   });
 }
 
-// Checks with approval-free commands first, so only a host whose ffmpeg is missing or
-// stale sees the install prompt. A stale ffmpeg still extracts frames, so a denied or
-// failed upgrade keeps it instead of failing the send.
+// The CLI owns these tools, so its read-only `binaries status` check (sha256-based and
+// on the default Bash allowlist) decides who sees the install prompt: a current ffmpeg
+// never prompts, a missing one must install, and a stale one still extracts frames, so
+// a denied or failed upgrade keeps it instead of failing the send. A check that says
+// nothing readable falls back to trying the install, which then reports the real cause.
 async function installFrameTools(): Promise<RecordToolsResponse> {
-  const local = await callTool("Bash", { command: frameToolsSizeCommand() });
-  if (!local.success) return runFrameToolsInstall();
-  if (await frameToolStale(local.output)) await runFrameToolsInstall().catch(() => undefined);
+  const status = await callTool("Bash", { command: frameToolsStatusCommand() });
+  if (status.success) return { ok: true };
+  if (frameToolsStatus(status.output) !== "stale") return runFrameToolsInstall();
+  await runFrameToolsInstall().catch(() => undefined);
   return { ok: true };
-}
-
-async function frameToolStale(localWc: string): Promise<boolean> {
-  const latest = await callTool("Bash", { command: frameToolsReleaseCommand() }).catch(() => undefined);
-  return latest?.success === true && isFrameToolStale(localWc, latest.output);
 }
 
 async function runFrameToolsInstall(): Promise<RecordToolsResponse> {

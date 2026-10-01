@@ -104,40 +104,39 @@ export function recordingFooter(text: string, recording: Attachment | undefined)
 }
 
 const FFMPEG = "~/.infer/bin/tools/ffmpeg";
-const INSTALL_SH = "https://raw.githubusercontent.com/inference-gateway/binaries/main/install.sh";
 
-// Shell that prints the byte size of the frame extractor recordingLine names, and fails
-// when it is missing. `wc` and the release query below are on the CLI's default Bash
-// allowlist, so checking a present ffmpeg never puts a prompt in front of the user.
-export function frameToolsSizeCommand(): string {
-  return `wc -c ${FFMPEG}`;
+export type FrameToolStatus = "missing" | "stale" | "current";
+
+// Shell that asks the CLI - which owns these tools - how the frame extractor
+// recordingLine names is doing: one row naming it `missing`, `stale` or `current`
+// (a sha256 match against the binary's release), and a non-zero exit when it is not
+// current. `infer binaries status` is on the CLI's default Bash allowlist, so
+// checking a present ffmpeg never puts a prompt in front of the user.
+export function frameToolsStatusCommand(): string {
+  return "infer binaries status ffmpeg";
 }
 
-// Shell that prints the byte sizes of the latest release's ffmpeg builds, one per line.
-export function frameToolsReleaseCommand(): string {
-  return `gh release view -R inference-gateway/binaries --json assets --jq '.assets[] | select(.name | startswith("ffmpeg-")) | .size'`;
+// The status word the status command reports for ffmpeg, or undefined when its rows
+// say nothing about it (a failed check, not a verdict). ANSI-stripped first, since
+// colors may ride along whenever the CLI thinks it is on a terminal.
+export function frameToolsStatus(output: string): FrameToolStatus | undefined {
+  const clean = output.replace(/\x1b\[[0-9;]*m/g, "");
+  const word = clean
+    .split("\n")
+    .map((row) => row.trim())
+    .find((row) => row.startsWith("ffmpeg "))
+    ?.split(/\s+/)[1];
+  return word === "missing" || word === "stale" || word === "current" ? word : undefined;
 }
 
-// Whether the installed ffmpeg (`wc -c` output) matches none of the latest release's
-// builds. Unreadable output on either side counts as current, so a failed check never
-// replaces a working binary.
-// ponytail: compares sizes, not hashes (hashing isn't approval-free); install.sh
-// verifies the sha256 of what it downloads.
-export function isFrameToolStale(localWc: string, releaseSizes: string): boolean {
-  const local = localWc.trim().split(/\s+/)[0];
-  const latest = releaseSizes.split("\n").map((s) => s.trim()).filter((s) => /^\d+$/.test(s));
-  return /^\d+$/.test(local) && latest.length > 0 && !latest.includes(local);
-}
-
-// Shell that installs that extractor: the CLI only auto-downloads the speech
-// binaries, so the extension runs inference-gateway/binaries' installer, which picks
-// this host's build, verifies it against the release checksums, and uses gh if authed.
-// Fetched before it runs, so a failed download fails the command instead of piping
-// an empty script into a shell that would exit 0.
+// Shell that installs that extractor through the CLI that owns it: it picks this
+// host's build, verifies it against the release checksums, and uses gh if authed.
+// Installing lives off the allowlist, so a missing or stale ffmpeg prompts exactly
+// once, with the comment heading the approval card.
 export function frameToolsCommand(): string {
   return [
     `# opentask: download the latest ffmpeg to ${FFMPEG} so the agent can extract frames from your recording`,
-    `script=$(curl -fsSL ${INSTALL_SH}) && sh -c "$script" install.sh ffmpeg`,
+    "infer binaries install ffmpeg",
   ].join("\n");
 }
 
