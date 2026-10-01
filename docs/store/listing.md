@@ -20,6 +20,8 @@ OpenTask adds these productivity tools to GitHub's comment boxes, repository nav
 
 **Browser-use side panel.** Pairs with a local `infer` CLI over a localhost WebSocket so your agent can drive browser automation - navigating tabs, extracting content, capturing screenshots - with your approval.
 
+**Tab recording.** Click Record tab in the extension popup or side panel to capture the current tab (video only, 10 fps) and hand the clip to the composer with your next message, so the agent can watch the demonstrated flow and distill it into a reusable skill. The recording hard-stops at a configurable cap (default 60 s, bounded 5-300 s) and is sized to stay under GitHub's 10 MB attachment limit; it stays on your machine - the capture is offered to the composer, and your own `infer` CLI writes the file when the message is sent.
+
 **Self-hosted GPU models (optional).** Provision a RunPod GPU pod that serves a llama.cpp OpenAI-compatible endpoint, using your own RunPod API key and the RunPod REST API.
 
 **Privacy-first.** No telemetry, no analytics, and no backend of our own; settings stay in your browser's local storage. Network calls go to: the local CLI bridge over localhost (GitHub API requests run through `gh` on the CLI host, so the extension never holds a GitHub token), the agents catalog on jsdelivr, and - only when you configure them - the RunPod REST API for GPU provisioning and the sites your agent automates from the side panel (the reason for the broad host permissions).
@@ -39,7 +41,13 @@ Capture these screenshots at 1280x800 on a GitHub issue or PR page:
 3. Press Ctrl+Shift+P (or Cmd+Shift+P on Mac) - the quick-prompts palette should open as a centered overlay. Type to filter, Enter to insert.
 4. Click the lightning bolt button in the comment toolbar - the same palette opens.
 5. Right-click the extension icon -> Options (or chrome://extensions -> Details -> Extension options). The options page opens on the Workflows tab with tabs for Orchestrator, Agents, Prompts, Workflows, Dependencies, and Appearance. The editable quick-prompts JSON editor is under Prompts; Save and Reset to defaults buttons sit at the bottom of the page.
-6. Verify the manifest requests the permissions that power the features above: `storage` (settings), `activeTab`, `tabs`, and `scripting` (browser-use automation driven by the CLI bridge), `sidePanel` (the side panel UI), `alarms` (reconnecting the local CLI bridge), `notifications` (agent approval prompts); host permissions for `https://api.github.com/*` (GitHub API access via the CLI's `gh`), `https://rest.runpod.io/*` (optional GPU provisioning), and `http://*/*`, `https://*/*`, `<all_urls>` (the tabs your agent automates); and a content-script match on `https://github.com/*`.
+6. Verify the manifest requests the permissions that power the features above: `storage` (settings), `activeTab`, `tabs`, and `scripting` (browser-use automation driven by the CLI bridge), `sidePanel` (the side panel UI), `alarms` (reconnecting the local CLI bridge), `notifications` (agent approval prompts), `tabCapture` (the Record tab control captures the current tab on the user's explicit click), and `offscreen` (the invisible recorder document that runs MediaRecorder for that capture and closes when it finishes); host permissions for `https://api.github.com/*` (GitHub API access via the CLI's `gh`), `https://rest.runpod.io/*` (optional GPU provisioning), and `http://*/*`, `https://*/*`, `<all_urls>` (the tabs your agent automates); and a content-script match on `https://github.com/*`.
+
+## Privacy tab declarations
+
+The Privacy tab's permission fields take the copy-paste answers from [`docs/store/privacy-declarations.md`](./privacy-declarations.md). The tab-recording release adds two entries - `tabCapture` (the Record tab control) and `offscreen` (the invisible recorder document that runs MediaRecorder) - alongside the existing answers for `storage`, `activeTab`, `tabs`, `scripting`, `sidePanel`, `alarms`, and `notifications`.
+
+The manifest pins `minimum_chrome_version` to 116, Chrome's floor for the promise-based `tabCapture.getMediaStreamId` and `chrome.offscreen` APIs the recording uses. Both Chromium stores accept the key - Edge uploads the same Chrome manifest and sets its store floor independently - and current Chrome and Edge builds are well past 116, so the release ZIP `browser-extension.zip` (attached to the GitHub release) passes store package validation as is.
 
 ## URLs for the listing
 
