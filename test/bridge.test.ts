@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { approvalFromFrame, snapshotToMessages, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseFrame, parseHistory, reduceAgui, runningFromEvent, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
-import { handleFrame, panelState, runCommand } from "../src/lib/bridge";
+import { backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseEvent, parseFrame, parseHistory, parseQuestions, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { __reset, __setSocket, callTool, handleFrame, panelState, runCommand, sendUserMessage } from "../src/lib/bridge";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -102,26 +102,26 @@ describe("reduceAgui", () => {
 });
 
 describe("runningFromEvent", () => {
-  test("a tool call marks busy, an assistant message ending winds down", () => {
-    expect(runningFromEvent(false, { type: "TOOL_CALL_START" })).toBe(true);
-    expect(runningFromEvent(true, { type: "TEXT_MESSAGE_END" })).toBe(false);
+  test("a run arms the loader and its terminal event clears it", () => {
+    expect(runningFromEvent(false, { type: "RUN_STARTED", runId: "r1" })).toBe(true);
+    expect(runningFromEvent(true, { type: "RUN_FINISHED", runId: "r1" })).toBe(false);
+    expect(runningFromEvent(true, { type: "RUN_ERROR", runId: "r1", message: "x" })).toBe(false);
   });
 
-  test("connection-level RUN events never touch the flag", () => {
-    expect(runningFromEvent(false, { type: "RUN_STARTED" })).toBe(false);
-    expect(runningFromEvent(true, { type: "RUN_FINISHED" })).toBe(true);
-    expect(runningFromEvent(true, { type: "RUN_ERROR" })).toBe(true);
+  test("a RUN_ERROR without a runId is a routing error that ends no run", () => {
+    expect(runningFromEvent(true, { type: "RUN_ERROR", message: "no thread" })).toBe(true);
+    expect(runningFromEvent(false, { type: "RUN_ERROR", message: "no thread" })).toBe(false);
   });
 
-  test("extension-initiated tool calls never arm the loader", () => {
+  test("runs carrying the extension's own tool_request id never arm the loader", () => {
     const self = new Set(["ext-1"]);
-    expect(runningFromEvent(false, { type: "TOOL_CALL_START", toolCallId: "ext-1" }, self)).toBe(false);
-    expect(runningFromEvent(false, { type: "TOOL_CALL_START", toolCallId: "agent-1" }, self)).toBe(true);
+    expect(runningFromEvent(false, { type: "RUN_STARTED", runId: "ext-1" }, self)).toBe(false);
+    expect(runningFromEvent(false, { type: "RUN_STARTED", runId: "agent-1" }, self)).toBe(true);
   });
 
-  test("streaming and malformed events preserve the current flag", () => {
-    expect(runningFromEvent(true, { type: "TEXT_MESSAGE_CONTENT", delta: "x" })).toBe(true);
-    expect(runningFromEvent(true, { type: "TOOL_CALL_ARGS", delta: "{" })).toBe(true);
+  test("streaming and tool events preserve the current flag", () => {
+    expect(runningFromEvent(true, { type: "TEXT_MESSAGE_END" })).toBe(true);
+    expect(runningFromEvent(false, { type: "TOOL_CALL_START" })).toBe(false);
     expect(runningFromEvent(true, null)).toBe(true);
   });
 });
@@ -183,9 +183,9 @@ describe("isClearCommand", () => {
 
 describe("parseFrame", () => {
   test("parses a JSON object frame", () => {
-    expect(parseFrame('{"type":"browser_hello_ack","protocol_version":1}')).toEqual({
+    expect(parseFrame('{"type":"browser_hello_ack","protocol_version":2}')).toEqual({
       type: "browser_hello_ack",
-      protocol_version: 1,
+      protocol_version: 2,
     });
   });
 
@@ -198,21 +198,52 @@ describe("parseFrame", () => {
   });
 });
 
-describe("approvalFromFrame", () => {
-  test("maps a full approval_request frame", () => {
-    expect(
-      approvalFromFrame({ type: "approval_request", request_id: "r1", tool_name: "Bash", tool_args: '{"command":"ls"}' }),
-    ).toEqual({ requestId: "r1", toolName: "Bash", toolArgs: '{"command":"ls"}' });
+describe("parseEvent", () => {
+  test("accepts the standard events the CLI writes", () => {
+    const ev = parseEvent({ type: "RUN_FINISHED", threadId: "t", runId: "r", outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] } });
+    expect(String(ev?.type)).toBe("RUN_FINISHED");
+    expect(String(parseEvent({ type: "CUSTOM", name: "approval_request", value: { tool_call_id: "x" } })?.type)).toBe("CUSTOM");
   });
 
-  test("defaults missing name/args to empty strings", () => {
-    expect(approvalFromFrame({ request_id: "r2" })).toEqual({ requestId: "r2", toolName: "", toolArgs: "" });
+  test("rejects app frames and malformed events", () => {
+    expect(parseEvent({ type: "conversations", conversations: [] })).toBeUndefined();
+    expect(parseEvent({ type: "RUN_STARTED" })).toBeUndefined();
+  });
+});
+
+describe("parseQuestions", () => {
+  test("reads the AskUserQuestion args", () => {
+    const args = JSON.stringify({ questions: [{ header: "Lib", question: "Which?", options: [{ label: "a", description: "first" }, { label: "b" }], multiSelect: true }] });
+    expect(parseQuestions(args)).toEqual([{ header: "Lib", question: "Which?", options: [{ label: "a", description: "first" }, { label: "b", description: "" }], multiSelect: true }]);
   });
 
-  test("returns undefined without a usable request id", () => {
-    expect(approvalFromFrame({ tool_name: "Bash" })).toBeUndefined();
-    expect(approvalFromFrame({ request_id: "" })).toBeUndefined();
-    expect(approvalFromFrame({ request_id: 5 })).toBeUndefined();
+  test("is empty for other args or junk", () => {
+    expect(parseQuestions('{"command":"ls"}')).toEqual([]);
+    expect(parseQuestions("{")).toEqual([]);
+    expect(parseQuestions(undefined)).toEqual([]);
+  });
+});
+
+describe("pendingInterrupts", () => {
+  const rows: Msg[] = [
+    { role: "tool", content: "Bash", args: '{"command":"ls"}', id: "c1" },
+    { role: "tool", content: "AskUserQuestion", args: JSON.stringify({ questions: [{ question: "Which?", options: [{ label: "a" }] }] }), id: "q1" },
+  ];
+
+  test("an approval takes name and args from the run's tool row", () => {
+    expect(pendingInterrupts([{ id: "c1", reason: "tool_call", toolCallId: "c1" }], rows)).toEqual([
+      { id: "c1", reason: "tool_call", toolName: "Bash", toolArgs: '{"command":"ls"}' },
+    ]);
+  });
+
+  test("a question takes its questions from the AskUserQuestion row", () => {
+    const [q] = pendingInterrupts([{ id: "q1", reason: "input_required", responseSchema: {} }], rows);
+    expect(q).toMatchObject({ id: "q1", reason: "input_required" });
+    expect(q.reason === "input_required" && q.questions[0].question).toBe("Which?");
+  });
+
+  test("unknown reasons are dropped", () => {
+    expect(pendingInterrupts([{ id: "z", reason: "other" }], rows)).toEqual([]);
   });
 });
 
@@ -255,26 +286,28 @@ describe("stripAnsi", () => {
 });
 
 describe("snapshotToMessages", () => {
-  test("rebuilds tool rows from assistant tool_calls and attaches tool entries as results", () => {
-    const msgs = snapshotToMessages({
-      messages: [
-        { role: "user", content: "ls please" },
-        { role: "assistant", content: "", tool_calls: [{ id: "t1", function: { name: "Bash", arguments: "{\"command\":\"ls\"}" } }] },
-        { role: "tool", content: "a.txt\nb.txt", tool_call_id: "t1" },
-        { role: "assistant", content: "Two files." },
-      ],
-      tool_results: { t1: true },
-    });
+  test("rebuilds tool rows from assistant toolCalls and attaches tool messages as results", () => {
+    const msgs = snapshotToMessages([
+      { id: "1", role: "user", content: "ls please" },
+      { id: "2", role: "assistant", content: "", toolCalls: [{ id: "t1", type: "function", function: { name: "Bash", arguments: "{\"command\":\"ls\"}" } }] },
+      { id: "3", role: "tool", content: "a.txt\nb.txt", toolCallId: "t1" },
+      { id: "4", role: "assistant", content: "Two files." },
+    ]);
     expect(msgs).toEqual([
       { role: "user", content: "ls please" },
-      { role: "tool", content: "Bash", args: "{\"command\":\"ls\"}", id: "t1", ok: true, result: "a.txt\nb.txt" },
+      { role: "tool", content: "Bash", args: "{\"command\":\"ls\"}", id: "t1", ok: true, error: undefined, result: "a.txt\nb.txt" },
       { role: "assistant", content: "Two files." },
     ]);
   });
 
-  test("keeps orphan tool entries and drops roleless garbage", () => {
-    const msgs = snapshotToMessages({ messages: [{ role: "tool", content: "Performed read", tool_call_id: "zzz" }, { content: "x" }, null] });
-    expect(msgs).toEqual([{ role: "tool", content: "Performed read" }]);
+  test("a tool message with error marks its row failed, an orphan one is kept as text", () => {
+    const msgs = snapshotToMessages([
+      { id: "2", role: "assistant", content: "", toolCalls: [{ id: "t1", type: "function", function: { name: "Bash", arguments: "{}" } }] },
+      { id: "3", role: "tool", content: "boom", toolCallId: "t1", error: "exit 1" },
+      { id: "5", role: "tool", content: "Performed read", toolCallId: "zzz" },
+    ]);
+    expect(msgs[0]).toMatchObject({ content: "Bash", ok: false, error: "exit 1", result: "boom" });
+    expect(msgs[1]).toEqual({ role: "tool", content: "Performed read" });
   });
 });
 
@@ -363,37 +396,142 @@ describe("runCommand", () => {
   });
 });
 
-describe("handleFrame chat_event active conversation", () => {
-  const socket = {} as WebSocket;
+// A fake socket capturing the frames the bridge sends.
+function fakeSocket(sent: Record<string, unknown>[]): WebSocket {
+  return { readyState: 1, send: (data: string) => sent.push(JSON.parse(data)) } as unknown as WebSocket;
+}
 
-  test("RUN_STARTED adopts the threadId as the active conversation (issue #182)", async () => {
-    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "RUN_STARTED", threadId: "s1" } }));
-    expect(panelState().activeConversationId).toBe("s1");
+function stubChrome() {
+  (globalThis as Record<string, unknown>).chrome = {
+    windows: { getLastFocused: async () => undefined },
+    action: { setBadgeText: async () => undefined, setBadgeBackgroundColor: async () => undefined },
+    notifications: { create: async () => undefined, clear: async () => undefined },
+  };
+}
+
+async function frame(socket: WebSocket, f: Record<string, unknown>) {
+  await handleFrame(socket, JSON.stringify(f));
+}
+
+describe("handleFrame on the daemon binding", () => {
+  let sent: Record<string, unknown>[];
+  let socket: WebSocket;
+
+  beforeEach(() => {
+    stubChrome();
+    sent = [];
+    socket = fakeSocket(sent);
+    __reset({ projectDir: "/proj" });
+    __setSocket(socket);
   });
 
-  test("a RUN_STARTED without a threadId leaves the active conversation alone", async () => {
-    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "RUN_STARTED" } }));
-    expect(panelState().activeConversationId).toBe("s1");
+  test("the ack lists the project's data and a mismatched protocol version asks for an update", async () => {
+    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    expect(panelState().connected).toBe(true);
+    expect(panelState().updateRequired).toBe(false);
+    expect(sent.map((f) => f.type)).toEqual(["list_conversations", "list_skills", "list_models", "list_history"]);
+    expect(sent[0].project_dir).toBe("/proj");
+
+    await frame(socket, { type: "browser_hello_ack", protocol_version: 1 });
+    expect(panelState().updateRequired).toBe(true);
   });
 
-  test("a later run adopts its own threadId (new session after New chat)", async () => {
-    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "RUN_STARTED", threadId: "s2" } }));
-    expect(panelState().activeConversationId).toBe("s2");
+  test("the hello ack without a project dir sends nothing thread-bound", async () => {
+    __reset();
+    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    expect(sent).toEqual([]);
+    expect(panelState().projectDir).toBeUndefined();
   });
-});
 
-describe("handleFrame interrupted", () => {
-  const socket = {} as WebSocket;
+  test("RUN_STARTED adopts the threadId as the active conversation and the terminal event clears busy", async () => {
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
+    expect(panelState()).toMatchObject({ activeConversationId: "s1", running: true });
+    expect(sent.at(-1)).toMatchObject({ type: "list_conversations", project_dir: "/proj" });
+    await frame(socket, { type: "RUN_FINISHED", threadId: "s1", runId: "r1", outcome: { type: "cancelled" } });
+    expect(panelState().running).toBe(false);
+  });
 
-  test("an interrupted frame clears the running state", async () => {
-    await handleFrame(socket, JSON.stringify({ type: "chat_event", event: { type: "TOOL_CALL_START", toolCallName: "Bash" } }));
+  test("a prompt is a run_agent_input on the active thread, with attachments as content parts", async () => {
+    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r0" });
+    sent.length = 0;
+    expect(sendUserMessage("look", [{ filename: "a.png", mime_type: "image/png", data: "AAAA" }])).toBe(true);
+    expect(sent[0]).toMatchObject({ type: "run_agent_input", input: { threadId: "s1", messages: [{ role: "user" }] } });
+    const input = sent[0].input as { messages: { content: unknown }[]; runId: string };
+    expect(input.messages[0].content).toEqual([{ type: "text", text: "look" }, { type: "image", mimeType: "image/png", data: "AAAA", filename: "a.png" }]);
+    expect(input.runId).not.toBe("");
     expect(panelState().running).toBe(true);
-    await handleFrame(socket, JSON.stringify({ type: "interrupted" }));
+  });
+
+  test("a prompt without a thread opens a new session in the project first", async () => {
+    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    sent.length = 0;
+    sendUserMessage("hi");
+    expect(sent.map((f) => f.type)).toEqual(["new_session", "run_agent_input"]);
+    expect(sent[0].project_dir).toBe("/proj");
+  });
+
+  test("MESSAGES_SNAPSHOT replaces the transcript and ends busy", async () => {
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
+    await frame(socket, { type: "MESSAGES_SNAPSHOT", messages: [{ id: "1", role: "user", content: "hello" }] });
+    expect(panelState()).toMatchObject({ running: false, messages: [{ role: "user", content: "hello" }] });
+  });
+
+  test("an interrupt shows the approval and the answer is one resume covering it", async () => {
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
+    await frame(socket, { type: "TOOL_CALL_START", toolCallId: "c1", toolCallName: "Bash" });
+    await frame(socket, { type: "TOOL_CALL_ARGS", toolCallId: "c1", delta: '{"command":"ls"}' });
+    await frame(socket, { type: "RUN_FINISHED", threadId: "s1", runId: "r1", outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] } });
+    expect(panelState().pendingApproval).toEqual({ id: "c1", source: "interrupt", toolName: "Bash", toolArgs: '{"command":"ls"}' });
     expect(panelState().running).toBe(false);
   });
 
-  test("an interrupted frame while idle keeps running false", async () => {
-    await handleFrame(socket, JSON.stringify({ type: "interrupted" }));
+  test("a question interrupt shows the form built from the AskUserQuestion args", async () => {
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
+    await frame(socket, { type: "TOOL_CALL_START", toolCallId: "q1", toolCallName: "AskUserQuestion" });
+    await frame(socket, { type: "TOOL_CALL_ARGS", toolCallId: "q1", delta: JSON.stringify({ questions: [{ question: "Which?", options: [{ label: "a" }] }] }) });
+    await frame(socket, { type: "RUN_FINISHED", threadId: "s1", runId: "r1", outcome: { type: "interrupt", interrupts: [{ id: "q1", reason: "input_required", responseSchema: {} }] } });
+    expect(panelState().pendingQuestion).toMatchObject({ id: "q1", questions: [{ question: "Which?" }] });
+    expect(panelState().pendingApproval).toBeUndefined();
+  });
+
+  test("a RUN_STARTED after an interrupt clears a prompt another client answered", async () => {
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
+    await frame(socket, { type: "TOOL_CALL_START", toolCallId: "c1", toolCallName: "Bash" });
+    await frame(socket, { type: "RUN_FINISHED", threadId: "s1", runId: "r1", outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] } });
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r2" });
+    expect(panelState().pendingApproval).toBeUndefined();
+    expect(panelState().running).toBe(true);
+  });
+
+  test("a RUN_ERROR without a runId is shown as an error and ends no run", async () => {
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
+    await frame(socket, { type: "RUN_ERROR", message: "project_dir must be absolute" });
+    expect(panelState().running).toBe(true);
+    expect(panelState().messages.at(-1)).toEqual({ role: "assistant", content: "⚠ project_dir must be absolute" });
+  });
+
+  test("a run carrying the extension's own tool_request id never arms the loader", async () => {
+    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    const p = callTool("Bash", { command: "gh api user" });
+    const id = (sent.at(-1) as { id: string }).id;
+    await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: id });
     expect(panelState().running).toBe(false);
+    await frame(socket, { type: "tool_result", id, success: true, output: "ok", error: "" });
+    expect(await p).toEqual({ success: true, output: "ok", error: "" });
+  });
+
+  test("a panel tool_request's CUSTOM approval is shown and cleared by approval_resolved", async () => {
+    await frame(socket, { type: "CUSTOM", name: "approval_request", value: { tool_call_id: "t9", tool_name: "Bash", tool_args: "{}" } });
+    expect(panelState().pendingApproval).toEqual({ id: "t9", source: "tool_request", toolName: "Bash", toolArgs: "{}" });
+    await frame(socket, { type: "CUSTOM", name: "approval_resolved", value: { tool_call_id: "t9" } });
+    expect(panelState().pendingApproval).toBeUndefined();
+  });
+
+  test("old envelope frames are ignored", async () => {
+    await frame(socket, { type: "chat_event", event: { type: "RUN_STARTED", threadId: "s1", runId: "r1" } });
+    await frame(socket, { type: "interrupted" });
+    await frame(socket, { type: "conversation_snapshot", messages: [{ role: "user", content: "x" }] });
+    expect(panelState()).toMatchObject({ running: false, activeConversationId: undefined, messages: [] });
   });
 });

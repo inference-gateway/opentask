@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { attachmentLine, MAX_ATTACHMENTS, parseAttachments } from "../src/shared/agui";
+import { MAX_ATTACHMENTS, parseAttachments, userMessageContent } from "../src/shared/agui";
 
 const valid = { filename: "resume.pdf", mime_type: "application/pdf", data: "AAAA" };
 
@@ -40,14 +40,19 @@ describe("parseAttachments", () => {
   });
 });
 
-describe("attachmentLine", () => {
-  test("empty when nothing attached", () => {
-    expect(attachmentLine([])).toBe("");
+describe("userMessageContent", () => {
+  test("a plain string without attachments", () => {
+    expect(userMessageContent("hi", [])).toBe("hi");
   });
 
-  test("names each attachment with its mime type", () => {
-    expect(
-      attachmentLine([valid, { filename: "photo.png", mime_type: "image/png", data: "BBBB" }]),
-    ).toBe("[attached: resume.pdf (application/pdf), photo.png (image/png)]");
+  test("text and image parts in the CLI's shape", () => {
+    expect(userMessageContent("look", [{ filename: "photo.png", mime_type: "image/png", data: "BBBB" }])).toEqual([
+      { type: "text", text: "look" },
+      { type: "image", mimeType: "image/png", data: "BBBB", filename: "photo.png" },
+    ]);
+  });
+
+  test("no text part when the message is only files", () => {
+    expect(userMessageContent("", [valid])).toEqual([{ type: "image", mimeType: valid.mime_type, data: valid.data, filename: valid.filename }]);
   });
 });

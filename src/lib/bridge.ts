@@ -1,5 +1,6 @@
 import * as storage from "../shared/storage";
-import { approvalFromFrame, backoffMs, isClearCommand, isVisibleMessage, parseAttachments, parseConversations, parseFrame, parseHistory, parseSkills, reduceAgui, runningFromEvent, stripAnsi, type Attachment, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, snapshotToMessages } from "../shared/agui";
+import { backoffMs, isClearCommand, isVisibleMessage, parseAttachments, parseConversations, parseEvent, parseFrame, parseHistory, parseSkills, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, userMessageContent, PROTOCOL_VERSION, type Answer, type Attachment, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, type PendingInterrupt, type PendingQuestion } from "../shared/agui";
+import type { Event, Interrupt } from "@ag-ui/core";
 
 export const DEFAULT_PORT = "52789";
 
@@ -17,7 +18,14 @@ let cliModels: string[] = [];
 let currentModel: string | undefined;
 let mode: string | undefined;
 let activeConversationId: string | undefined;
-let pendingApproval: PendingApproval | undefined;
+let updateRequired = false;
+let projectDir: string | undefined;
+// The CUSTOM approval_request of a panel tool_request, outside any run.
+let toolRequestApproval: PendingApproval | undefined;
+// The open interrupts of the thread's suspended run, and the answers given so
+// far: one resume covering every interrupt goes out once all are answered.
+let interrupts: PendingInterrupt[] = [];
+const resumeEntries = new Map<string, Record<string, unknown>>();
 let controlledTabId: number | undefined;
 const panels = new Set<chrome.runtime.Port>();
 
@@ -53,7 +61,7 @@ function disconnect() {
   wantConnected = false;
   connected = false;
   running = false;
-  pendingApproval = undefined;
+  clearPrompts();
   const sock = ws;
   ws = undefined;
   sock?.close();
@@ -62,18 +70,37 @@ function disconnect() {
   broadcast();
 }
 
+function clearPrompts() {
+  toolRequestApproval = undefined;
+  interrupts = [];
+  resumeEntries.clear();
+}
+
+// The one approval prompt the panel shows: the first unanswered tool_call
+// interrupt, else a panel tool_request's approval.
+function pendingApproval(): PendingApproval | undefined {
+  for (const it of interrupts) {
+    if (it.reason === "tool_call" && !resumeEntries.has(it.id)) return { id: it.id, source: "interrupt", toolName: it.toolName, toolArgs: it.toolArgs };
+  }
+  return toolRequestApproval;
+}
+
+function pendingQuestion(): PendingQuestion | undefined {
+  for (const it of interrupts) {
+    if (it.reason === "input_required" && !resumeEntries.has(it.id)) return { id: it.id, questions: it.questions };
+  }
+  return undefined;
+}
+
 export function panelState(): PanelState {
   const clean = messages.map((m) => ({
     ...m,
     content: stripAnsi(m.content),
     ...(m.args !== undefined ? { args: stripAnsi(m.args) } : {}),
   }));
-  const approval = pendingApproval && {
-    ...pendingApproval,
-    toolName: stripAnsi(pendingApproval.toolName),
-    toolArgs: stripAnsi(pendingApproval.toolArgs),
-  };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, history, models: cliModels, currentModel, mode, activeConversationId, pendingApproval: approval };
+  const approval = pendingApproval();
+  const cleanApproval = approval && { ...approval, toolName: stripAnsi(approval.toolName), toolArgs: stripAnsi(approval.toolArgs) };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, history, models: cliModels, currentModel, mode, activeConversationId, updateRequired, projectDir, pendingApproval: cleanApproval, pendingQuestion: pendingQuestion() };
 }
 
 function broadcast() {
@@ -85,25 +112,58 @@ function send(frame: Record<string, unknown>) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
 }
 
-export const CLI_DOWN = "Connect the infer CLI to use GitHub features (Options -> Orchestrator -> CLI Bridge).";
+// Sends a frame scoped to the panel's project dir, which the daemon needs to
+// pick (or start) the thread's worker. Nothing goes out without one.
+function sendInProject(frame: Record<string, unknown>) {
+  if (projectDir) send({ ...frame, project_dir: projectDir });
+}
+
+function requestLists() {
+  for (const type of ["list_conversations", "list_skills", "list_models", "list_history"]) sendInProject({ type });
+}
+
+// Starts the thread's next run with the panel's message: the run_agent_input
+// carries only the new message, since the worker owns the history.
+function sendRunInput(content: string | Record<string, unknown>[]) {
+  send({
+    type: "run_agent_input",
+    input: {
+      threadId: activeConversationId ?? "",
+      runId: crypto.randomUUID(),
+      messages: [{ id: crypto.randomUUID(), role: "user", content }],
+    },
+  });
+}
+
+// Answers every open interrupt of the suspended run in one resume, once the
+// user has answered each of them.
+function sendResumeWhenComplete() {
+  if (interrupts.length === 0 || interrupts.some((it) => !resumeEntries.has(it.id))) return;
+  send({ type: "run_agent_input", input: { threadId: activeConversationId ?? "", runId: crypto.randomUUID(), messages: [], resume: [...resumeEntries.values()] } });
+  interrupts = [];
+  resumeEntries.clear();
+  clearApprovalAlert();
+}
+
+export const CLI_DOWN = "Connect the infer daemon to use GitHub features (Options -> Orchestrator -> CLI Bridge).";
 
 export type ToolResult = { success: boolean; output: string; error: string };
 
 const pendingTools = new Map<string, { resolve: (r: ToolResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
-// Tool-call ids issued by callTool, so their echoed AG-UI events don't arm the
-// panel loader. Entries clear on the call's TOOL_CALL_RESULT chat event.
+// tool_request ids issued by callTool, so a run carrying one never arms the
+// panel loader. Entries clear on the request's tool_result.
 const selfToolIds = new Set<string>();
 
 // Invoke a CLI tool over the bridge (tool_request/tool_result frames). The CLI
 // runs it through its normal tool pipeline, so an approval prompt may sit in
 // front of the result - hence the generous default timeout.
 export function callTool(toolName: string, args: object, timeoutMs = 120_000): Promise<ToolResult> {
-  if (!connected) return Promise.reject(new Error(CLI_DOWN));
+  if (!connected || !projectDir) return Promise.reject(new Error(CLI_DOWN));
   touch();
   const id = crypto.randomUUID();
   selfToolIds.add(id);
-  send({ type: "tool_request", id, tool_name: toolName, tool_args: JSON.stringify(args) });
+  sendInProject({ type: "tool_request", id, tool_name: toolName, tool_args: JSON.stringify(args) });
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingTools.delete(id);
@@ -152,28 +212,26 @@ function clearApprovalAlert() {
   void chrome.notifications.clear(APPROVAL_NOTIFICATION);
 }
 
-// Detach from the current CLI conversation and start fresh. The new_session
-// frame is handled synchronously in the CLI's read loop, so a user_message
-// sent right after is guaranteed to land in the new session (a "/clear" chat
-// message runs async CLI-side and would race it).
+// Open a fresh thread in the panel's project. The daemon answers with an empty
+// MESSAGES_SNAPSHOT and the first RUN_STARTED names the conversation id.
 export function startNewSession(): boolean {
-  if (!connected) return false;
-  send({ type: "new_session" });
+  if (!connected || !projectDir) return false;
+  sendInProject({ type: "new_session" });
   messages = [];
   running = false;
-  pendingApproval = undefined;
+  clearPrompts();
   activeConversationId = undefined;
   broadcast();
   return true;
 }
 
-// Send a prompt into the connected CLI's chat as a regular user message: the
-// turn streams back over chat_event frames and tool approvals surface in the
-// panel, exactly as if the user had typed it there.
-export function sendUserMessage(content: string): boolean {
+// Send a prompt into the connection's thread as the next run: the turn streams
+// back as AG-UI events and approvals surface in the panel as interrupts.
+export function sendUserMessage(content: string, attachments: Attachment[] = []): boolean {
   if (!connected) return false;
+  if (!activeConversationId && !startNewSession()) return false;
   touch();
-  send({ type: "user_message", content });
+  sendRunInput(userMessageContent(content, attachments));
   recordHistory(content);
   running = true;
   broadcast();
@@ -197,6 +255,7 @@ async function connect() {
   }
   const port = (await storage.get<string>("bridge-port"))?.trim() || DEFAULT_PORT;
   httpPort = port;
+  projectDir = (await storage.get<string>("bridge-project-dir"))?.trim() || undefined;
   if (!wantConnected) return;
 
   ws?.close();
@@ -213,6 +272,8 @@ async function connect() {
     socket.send(JSON.stringify({
       type: "browser_hello",
       token,
+      client: "extension",
+      protocol_version: PROTOCOL_VERSION,
       extension_version: chrome.runtime.getManifest().version,
     }));
   };
@@ -224,7 +285,7 @@ async function connect() {
     ws = undefined;
     connected = false;
     running = false;
-    pendingApproval = undefined;
+    clearPrompts();
     stopKeepalive();
     failPendingTools();
     broadcast();
@@ -241,16 +302,19 @@ function scheduleReconnect() {
 export async function handleFrame(socket: WebSocket, data: unknown) {
   const frame = parseFrame(data);
   if (!frame) return;
+  if (typeof frame.type === "string" && frame.type === frame.type.toUpperCase()) {
+    const event = parseEvent(frame);
+    if (event) handleEvent(event);
+    return;
+  }
   switch (frame.type) {
     case "browser_hello_ack":
       connected = true;
+      updateRequired = frame.protocol_version !== PROTOCOL_VERSION;
       attempt = 0;
       startKeepalive();
-      send({ type: "list_conversations" });
-      send({ type: "list_skills" });
-      send({ type: "list_models" });
-      send({ type: "list_history" });
-      if (activeConversationId) send({ type: "resume_conversation", id: activeConversationId });
+      requestLists();
+      if (activeConversationId) sendInProject({ type: "resume_conversation", id: activeConversationId });
       broadcast();
       return;
     case "conversations":
@@ -280,48 +344,11 @@ export async function handleFrame(socket: WebSocket, data: unknown) {
       if (ws === socket) send(result);
       return;
     }
-    case "conversation_snapshot": {
-      messages = snapshotToMessages(frame);
-      running = false;
-      broadcast();
-      return;
-    }
-    case "interrupted":
-      running = false;
-      broadcast();
-      return;
-    case "chat_event": {
-      touch();
-      const next = reduceAgui(messages, frame.event);
-      const nextRunning = runningFromEvent(running, frame.event, selfToolIds);
-      const ev = frame.event as { type?: unknown; toolCallId?: unknown; threadId?: unknown } | null;
-      if (ev?.type === "TOOL_CALL_RESULT" && typeof ev.toolCallId === "string") selfToolIds.delete(ev.toolCallId);
-      let idChanged = false;
-      if (ev?.type === "RUN_STARTED" && typeof ev.threadId === "string" && ev.threadId !== "" && ev.threadId !== activeConversationId) {
-        activeConversationId = ev.threadId;
-        send({ type: "list_conversations" });
-        idChanged = true;
-      }
-      if (next !== messages || nextRunning !== running || idChanged) {
-        messages = next;
-        running = nextRunning;
-        broadcast();
-      }
-      return;
-    }
-    case "approval_request": {
-      touch();
-      const req = approvalFromFrame(frame);
-      if (!req) return;
-      pendingApproval = req;
-      broadcast();
-      void alertApproval(req);
-      return;
-    }
     case "tool_result": {
       const pending = typeof frame.id === "string" ? pendingTools.get(frame.id) : undefined;
       if (!pending) return;
       pendingTools.delete(frame.id as string);
+      selfToolIds.delete(frame.id as string);
       clearTimeout(pending.timer);
       pending.resolve({
         success: frame.success === true,
@@ -330,17 +357,97 @@ export async function handleFrame(socket: WebSocket, data: unknown) {
       });
       return;
     }
-    case "approval_resolved": {
-      if (pendingApproval && pendingApproval.requestId === frame.request_id) {
-        pendingApproval = undefined;
-        clearApprovalAlert();
-        broadcast();
-      }
-      return;
-    }
     default:
       return;
   }
+}
+
+// Folds one AG-UI event of the thread into the panel state.
+function handleEvent(event: Event) {
+  touch();
+  const next = reduceAgui(messages, event);
+  const nextRunning = runningFromEvent(running, event, selfToolIds);
+  let changed = next !== messages || nextRunning !== running;
+  messages = next;
+  running = nextRunning;
+  switch (event.type) {
+    case "RUN_STARTED":
+      changed = true;
+      clearPrompts();
+      clearApprovalAlert();
+      if (event.threadId && event.threadId !== activeConversationId) {
+        activeConversationId = event.threadId;
+        sendInProject({ type: "list_conversations" });
+      }
+      break;
+    case "RUN_FINISHED":
+      changed = true;
+      if (event.outcome?.type === "interrupt") suspendOn(event.outcome.interrupts);
+      break;
+    case "RUN_ERROR":
+      changed = true;
+      messages = [...messages, { role: "assistant", content: `⚠ ${event.message}` }];
+      break;
+    case "MESSAGES_SNAPSHOT":
+      changed = true;
+      messages = snapshotToMessages(event.messages);
+      running = false;
+      break;
+    case "CUSTOM":
+      changed = handleCustom(event.name, event.value);
+      break;
+  }
+  if (changed) broadcast();
+}
+
+function suspendOn(open: Interrupt[]) {
+  interrupts = pendingInterrupts(open, messages);
+  resumeEntries.clear();
+  const approval = pendingApproval();
+  if (approval) void alertApproval(approval);
+}
+
+// The CUSTOM events left on the wire: a panel tool_request's approval, which
+// runs outside any run, and its resolution by another client.
+function handleCustom(name: string, value: unknown): boolean {
+  const v = value as { tool_call_id?: unknown; tool_name?: unknown; tool_args?: unknown } | null;
+  if (typeof v?.tool_call_id !== "string" || v.tool_call_id === "") return false;
+  if (name === "approval_request") {
+    toolRequestApproval = {
+      id: v.tool_call_id,
+      source: "tool_request",
+      toolName: typeof v.tool_name === "string" ? v.tool_name : "",
+      toolArgs: typeof v.tool_args === "string" ? v.tool_args : "",
+    };
+    void alertApproval(toolRequestApproval);
+    return true;
+  }
+  if (name === "approval_resolved" && toolRequestApproval?.id === v.tool_call_id) {
+    toolRequestApproval = undefined;
+    clearApprovalAlert();
+    return true;
+  }
+  return false;
+}
+
+// Routes the panel's answer to an approval prompt: a resume entry for a run
+// interrupt, or the approval_response frame for a panel tool_request.
+function answerApproval(id: string, approved: boolean) {
+  if (toolRequestApproval?.id === id) {
+    send({ type: "approval_response", tool_call_id: id, approved });
+    toolRequestApproval = undefined;
+    clearApprovalAlert();
+    return;
+  }
+  if (!interrupts.some((it) => it.id === id)) return;
+  resumeEntries.set(id, { interruptId: id, status: approved ? "resolved" : "cancelled" });
+  sendResumeWhenComplete();
+}
+
+function answerQuestion(id: string, answers?: Answer[]) {
+  if (!interrupts.some((it) => it.id === id)) return;
+  resumeEntries.set(id, answers ? { interruptId: id, status: "resolved", payload: { answers } } : { interruptId: id, status: "cancelled" });
+  sendResumeWhenComplete();
 }
 
 type BrowserCommand = {
@@ -520,6 +627,24 @@ function waitForLoad(tabId: number): Promise<void> {
   });
 }
 
+// Test seams: a fake socket to capture outbound frames, and a reset of the
+// module state between tests.
+export function __setSocket(sock: WebSocket | undefined) {
+  ws = sock;
+}
+
+export function __reset(opts: { projectDir?: string } = {}) {
+  connected = false;
+  wantConnected = false;
+  running = false;
+  messages = [];
+  activeConversationId = undefined;
+  updateRequired = false;
+  projectDir = opts.projectDir;
+  clearPrompts();
+  selfToolIds.clear();
+}
+
 export function initBridge() {
   chrome.notifications.onClicked.addListener((id) => {
     if (id !== APPROVAL_NOTIFICATION) return;
@@ -546,44 +671,38 @@ export function initBridge() {
         disconnect();
       }
       if (msg?.type === "list_conversations") {
-        send({ type: "list_conversations" });
+        sendInProject({ type: "list_conversations" });
       }
       if (msg?.type === "resume_conversation" && typeof msg.id === "string") {
         activeConversationId = msg.id;
-        send({ type: "resume_conversation", id: msg.id });
+        clearPrompts();
+        sendInProject({ type: "resume_conversation", id: msg.id });
         broadcast();
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         const content = msg.content.trim();
-        if (isClearCommand(content)) {
-          startNewSession();
-        } else {
-          const attachments: Attachment[] = parseAttachments(msg.attachments);
-          send(attachments.length ? { type: "user_message", content, attachments } : { type: "user_message", content });
-          recordHistory(content);
-          running = true;
-          broadcast();
-        }
+        if (isClearCommand(content)) startNewSession();
+        else sendUserMessage(content, parseAttachments(msg.attachments));
       }
       if (msg?.type === "select_model" && typeof msg.model === "string" && msg.model) {
-        send({ type: "select_model", model: msg.model });
+        sendInProject({ type: "select_model", model: msg.model });
         currentModel = msg.model;
         broadcast();
       }
       if (msg?.type === "set_mode" && typeof msg.mode === "string" && msg.mode) {
-        send({ type: "set_mode", mode: msg.mode });
+        sendInProject({ type: "set_mode", mode: msg.mode });
         mode = msg.mode;
         broadcast();
       }
       if (msg?.type === "interrupt") {
         send({ type: "interrupt" });
-        running = false;
+      }
+      if (msg?.type === "approval_response" && typeof msg.id === "string") {
+        answerApproval(msg.id, msg.approved === true);
         broadcast();
       }
-      if (msg?.type === "approval_response" && typeof msg.requestId === "string") {
-        send({ type: "approval_response", request_id: msg.requestId, action: msg.action });
-        if (pendingApproval?.requestId === msg.requestId) pendingApproval = undefined;
-        clearApprovalAlert();
+      if (msg?.type === "question_response" && typeof msg.id === "string") {
+        answerQuestion(msg.id, Array.isArray(msg.answers) ? (msg.answers as Answer[]) : undefined);
         broadcast();
       }
     });
@@ -596,7 +715,7 @@ export function initBridge() {
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && ("bridge-port" in changes || "bridge-token" in changes) && wantConnected) {
+    if (area === "local" && ("bridge-port" in changes || "bridge-token" in changes || "bridge-project-dir" in changes) && wantConnected) {
       connected = false;
       attempt = 0;
       void connect();

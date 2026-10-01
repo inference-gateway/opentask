@@ -10,6 +10,7 @@ import type {
   PanelConnect,
   PanelDisconnect,
   PanelListConversations,
+  PanelQuestionResponse,
   PanelResumeConversation,
   PanelSkill,
   PanelState,
@@ -18,12 +19,14 @@ import type {
   PanelSetMode,
   PanelUserMessage,
   PendingApproval,
+  PendingQuestion,
 } from "./shared/agui";
 import { ArrowDown, Check, Copy, Paperclip, Plus, SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
-import { attachmentLine, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, prettyArgs, toolLabel } from "./shared/agui";
+import { MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, prettyArgs, toolLabel } from "./shared/agui";
+import { QuestionForm } from "@/ui/QuestionForm";
 import { parseTodos, todoSummary } from "./shared/todos";
 import { Markdown } from "./lib/markdown";
 import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
@@ -64,6 +67,9 @@ function SidePanel() {
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
+  const [pendingQuestion, setPendingQuestion] = useState<PendingQuestion | undefined>(undefined);
+  const [updateRequired, setUpdateRequired] = useState(false);
+  const [projectDir, setProjectDir] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState<string | undefined>(undefined);
@@ -111,6 +117,9 @@ function SidePanel() {
         setMode(msg.mode);
         setActiveConversationId(msg.activeConversationId);
         setPendingApproval(msg.pendingApproval);
+        setPendingQuestion(msg.pendingQuestion);
+        setUpdateRequired(msg.updateRequired);
+        setProjectDir(msg.projectDir);
       });
       port.onDisconnect.addListener(() => {
         if (!closed) timer = setTimeout(dial, 1000);
@@ -196,11 +205,9 @@ function SidePanel() {
   function sendMessage() {
     const text = draft.trim();
     if (!text && !attachments.length) return;
-    const footer = attachmentLine(attachments);
-    const content = text && footer ? `${text}\n\n${footer}` : text || footer;
     portRef.current?.postMessage({
       type: "user_message",
-      content,
+      content: text || "See the attached files.",
       ...(attachments.length ? { attachments } : {}),
     } satisfies PanelUserMessage);
     setDraft("");
@@ -237,10 +244,16 @@ function SidePanel() {
     if (!pendingApproval) return;
     portRef.current?.postMessage({
       type: "approval_response",
-      requestId: pendingApproval.requestId,
-      action,
+      id: pendingApproval.id,
+      approved: action === "approve",
     } satisfies PanelApproval);
     setPendingApproval(undefined);
+  }
+
+  function respondQuestion(answers?: PanelQuestionResponse["answers"]) {
+    if (!pendingQuestion) return;
+    portRef.current?.postMessage({ type: "question_response", id: pendingQuestion.id, answers } satisfies PanelQuestionResponse);
+    setPendingQuestion(undefined);
   }
 
   // Window-level a/d while an approval is pending, matching the visible
@@ -363,11 +376,23 @@ function SidePanel() {
         </div>
       )}
 
+      {connected && updateRequired && (
+        <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          This panel speaks protocol version 2 and the daemon answered with another. Update infer and this extension to matching releases.
+        </div>
+      )}
+
+      {connected && !projectDir && (
+        <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          Set the project directory in Options → Orchestrator → CLI Bridge to open a conversation.
+        </div>
+      )}
+
       {!connected && (
         <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           <span className="flex-1">
-            Not connected to the infer CLI. Set the bridge port and token in Settings, make sure the
-            CLI is running, then connect.
+            Not connected to the infer daemon. Set the port, token and project directory in Options, make
+            sure <code>infer daemon</code> is running, then connect.
           </span>
           <Button size="sm" className="h-7 shrink-0 px-3 text-xs" disabled={connecting} onClick={connect}>
             {connecting ? "Connecting…" : "Connect"}
@@ -495,7 +520,11 @@ function SidePanel() {
         </div>
       )}
 
-      {connected && running && !pendingApproval && (
+      {pendingQuestion && !pendingApproval && (
+        <QuestionForm key={pendingQuestion.id} questions={pendingQuestion.questions} onSubmit={respondQuestion} onCancel={() => respondQuestion(undefined)} />
+      )}
+
+      {connected && running && !pendingApproval && !pendingQuestion && (
         <div className="flex items-center gap-2 border-t border-border/60 bg-background/60 px-4 py-2 text-xs text-muted-foreground">
           <span className="flex gap-1">
             <span className="size-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -675,7 +704,7 @@ function SidePanel() {
           ) : (
             <Button
               size="icon-sm"
-              disabled={!connected || (!draft.trim() && !attachments.length)}
+              disabled={!connected || !projectDir || (!draft.trim() && !attachments.length)}
               onClick={sendMessage}
               className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
               aria-label="Send message"
