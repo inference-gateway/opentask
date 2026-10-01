@@ -1,4 +1,5 @@
 import type { Permissions, RefineConfig, InitConfig } from "../../shared/models";
+import { RECORD_CAP_DEFAULT, RECORD_CAP_MAX, RECORD_CAP_MIN, normalizeRecordCap } from "../../shared/recording";
 import { Section, ToggleRow } from "./Section";
 import { Input } from "@/ui/components/input";
 import { Button } from "@/ui/components/button";
@@ -27,11 +28,13 @@ export function OrchestratorTab({
   const [bridgeToken, setBridgeToken] = useState("");
   const [bridgeProjectDir, setBridgeProjectDir] = useState("");
   const [showBridgeToken, setShowBridgeToken] = useState(false);
+  const [recordCap, setRecordCap] = useState(String(RECORD_CAP_DEFAULT));
 
   useEffect(() => {
     void storage.get<string>("runpod-key").then((k) => setRunpodKey(k ?? ""));
     void storage.get<string>("bridge-port").then((p) => setBridgePort(p ?? ""));
     void storage.get<string>("bridge-token").then((t) => setBridgeToken(t ?? ""));
+    void storage.get<unknown>("record-cap-seconds").then((v) => setRecordCap(String(normalizeRecordCap(v))));
     void storage.get<string>("bridge-project-dir").then((d) => setBridgeProjectDir(d ?? ""));
   }, []);
 
@@ -175,6 +178,32 @@ export function OrchestratorTab({
           onChange={(e) => {
             setBridgeProjectDir(e.target.value);
             void storage.set("bridge-project-dir", e.target.value);
+          }}
+        />
+      </Section>
+
+      <Section
+        title="Tab recording"
+        description={
+          <>
+            Record the current tab (Chrome and Edge only) and attach the saved file to a task so
+            the agent can distill the demonstrated flow into a skill. The recording hard-stops at
+            this cap and is sized to stay under GitHub's 10 MB attachment limit.
+          </>
+        }
+      >
+        <Label htmlFor="record-cap">Recording cap (seconds)</Label>
+        <Input
+          id="record-cap"
+          className="w-32"
+          type="number"
+          min={RECORD_CAP_MIN}
+          max={RECORD_CAP_MAX}
+          value={recordCap}
+          onChange={(e) => {
+            setRecordCap(e.target.value);
+            const n = Number(e.target.value);
+            if (Number.isFinite(n) && n > 0) void storage.set("record-cap-seconds", normalizeRecordCap(n));
           }}
         />
       </Section>

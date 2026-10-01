@@ -16,14 +16,39 @@ described under [Network requests](#network-requests)). The extension stores:
 
 | What | Contents |
 | --- | --- |
-| Your settings | The editable quick-prompts list, instruction/refine templates, orchestrator settings (permissions, plugins, dependencies, models, timeout), bridge port/token, and theme - configured from the Options page |
+| Your settings | The editable quick-prompts list, instruction/refine templates, orchestrator settings (permissions, plugins, dependencies, models, timeout, recording cap), bridge port/token, and theme - configured from the Options page |
 | Agent selection | The agents you pick from the agents catalog on the Agents tab |
 | Optional API keys | A RunPod API key, only if you enter one to self-host GPU models |
 | Caches | A per-repository cache of skill folder names (valid 10 minutes) and the agents catalog |
 
-Nothing is persisted outside `chrome.storage.local`. There are no cookies, no
-`localStorage`, no `storage.sync`, and no first-party server that receives any of
-this.
+Nothing is persisted outside `chrome.storage.local`, except the tab recordings you
+hand to the agent - the connected `infer` CLI writes those into its own scratch
+directory on your machine (see [Tab recordings](#tab-recordings)).
+There are no cookies, no `localStorage`, no `storage.sync`, and no first-party
+server that receives any of this.
+
+## Tab recordings
+
+When you click **Record tab** (Chrome and Edge only), the extension captures the
+tab you asked it to record - locally, on your machine - and offers the finished
+file to the side panel's composer as an attachment on your next message. Sending
+it hands the bytes to your own `infer` CLI, which writes them into its scratch
+directory on your machine so the agent it runs can inspect the capture. The
+extension never uploads the recording anywhere, and it leaves your device only
+through that local CLI. While a capture runs the extension draws a red outline on
+that tab, and Chrome shows its own recording indicator; the outline is part of the
+page, so it appears in the recording as well. The recording is deleted when you
+delete the file the CLI wrote.
+
+The prompt the extension puts in the composer names the frame extractor the agent
+should use, `~/.infer/bin/tools/ffmpeg`. If your CLI has not downloaded it (it only
+auto-downloads the *speech* binaries), the extension asks the same local CLI to
+install it on the first capture, or to upgrade a copy whose size matches none of the latest
+release's builds (checked with `gh release view` through that CLI): that repository's `install.sh` is fetched from
+`raw.githubusercontent.com` and fetches the platform build from
+[`inference-gateway/binaries`](https://github.com/inference-gateway/binaries) into
+`~/.infer/bin/tools/` on your machine, checked against the release checksums. The
+extension fetches no script or binary itself and sees none of their bytes.
 
 ## Network requests
 

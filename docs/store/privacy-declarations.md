@@ -53,6 +53,18 @@ apply identically to Chrome Web Store, Microsoft Edge Add-ons, and Firefox Add-o
 > panel. The notification carries the tool name only; clicking it focuses the
 > panel.
 
+### `tabCapture`
+> Records the current tab when the user clicks Record, at their explicit
+> request, to save a short screen capture the user can send to the agent so it
+> can distill a demonstrated workflow into a reusable skill. The recording stays
+> local: it is offered to the side panel's composer, and the user's own `infer`
+> CLI writes it on the user's machine when the message is sent.
+
+### `offscreen`
+> Hosts an invisible document that runs the MediaRecorder for the tab recording
+> above (service workers cannot process media streams). It exists only while a
+> recording runs or is being saved, then it is closed.
+
 ### Host permission - `https://api.github.com/*`
 > Grants access to GitHub's REST API for listing a repository's skills and
 > installing/managing its agent workflow. Requests run through the user's

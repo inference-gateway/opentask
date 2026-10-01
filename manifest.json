@@ -3,6 +3,7 @@
   "name": "OpenTask",
   "description": "Repo-skill tab-completion, quick-prompts, and browser-use automation for your AI coding agent.",
   "version": "1.16.1",
+  "minimum_chrome_version": "116",
   "permissions": [
     "storage",
     "activeTab",
@@ -10,7 +11,9 @@
     "scripting",
     "sidePanel",
     "alarms",
-    "notifications"
+    "notifications",
+    "tabCapture",
+    "offscreen"
   ],
   "host_permissions": [
     "https://api.github.com/*",

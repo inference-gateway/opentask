@@ -92,6 +92,12 @@ Firefox, and Safari.
 - 🧩 **Plugin Support**: Optional [infer-action plugins](https://github.com/inference-gateway/infer-action)
   extend the agent's capabilities. Toggle them on in Settings and re-install the workflow
   to bake them in.
+- ⏺️ **Tab Recording for skill authoring**: Click the record button beside the panel
+  title, or in the popup (Chrome/Edge only), perform the workflow you want to teach,
+  and the extension attaches the capture - mp4, webm fallback - to your next message,
+  hard-stopped at a configurable cap and sized to stay under GitHub's 10 MB attachment
+  limit. Your connected `infer` CLI writes it on your machine, the agent inspects the
+  frames and asks whether to save the flow as a skill under `.agents/skills/<name>/`.
 - 🔧 **Configurable Permissions**: Control what the agent may do at runtime: create PRs,
   create issues, and comment on issues/PRs. Unchecked capabilities stay blocked.
 - ⏱️ **Configurable Timeout**: Set the per-run job timeout for the generated workflow
@@ -157,6 +163,12 @@ bun run build      # outputs dist/
   the pull request.
 - **Send a task**: in the **Tasks** tab, type a prompt and choose whether to create a
   GitHub issue or dispatch the workflow directly.
+- **Record a workflow to turn into a skill**: click **Record tab** (popup or side panel,
+  Chrome/Edge only), perform the flow in the tab, then stop - or let it hard-stop at the
+  cap. The capture lands in the side panel's composer as an attachment together with the
+  prompt that asks the agent to distil it; send it and the connected CLI saves it on your
+  machine, and the agent inspects the frames, asks whether the flow is worth keeping, and
+  proposes the skill.
 - **Manage skills**: the **Skills** tab shows the skills registry, filtered by the
   repo's languages. Check skills to install and uncheck to remove, then click **Apply**
   to open a PR.
@@ -199,6 +211,36 @@ with another version.
 
 A JSON array of `{ id, label, description, insert }` objects shown in the palette.
 Editable, with a *Reset to defaults* button.
+
+### Tab recording
+
+The **record** button beside the panel title (and in the popup, Chrome and Edge only)
+captures the active tab at 10 fps into an `opentask-recording-*.mp4` file (webm fallback
+where mp4 muxing is unavailable), which the side panel offers as a composer attachment
+for your next message. It turns into a red stop button with the elapsed and remaining
+time while a capture runs, and the captured tab gets a red outline - the outline is page
+pixels, so it shows in the recording too. Under **Options → Orchestrator → Tab
+recording**:
+
+- **Recording cap (seconds)**: the hard stop for a recording (default 60, bounded to
+  5-300). The capture bitrate is derived from the cap so the file stays under GitHub's
+  10 MB attachment limit.
+
+The loop: record the flow -> the panel drops the capture into the composer with the prompt
+that asks the agent to distil it -> send it, and the connected `infer` CLI writes the file
+into its project scratch directory on your machine (`~/.infer/projects/<slug>/tmp/`) and
+names the path to the agent -> the agent extracts frames with the bundled `ffmpeg`, asks
+whether to save the flow as a skill, and writes it only once you say so. Audio capture is
+deliberately out of scope.
+
+The prompt names the extractor the CLI ships (`~/.infer/bin/tools/ffmpeg`); because the CLI
+only auto-downloads the *speech* binaries, the extension checks it with approval-free
+commands (`wc -c` on the binary, `gh release view` for the latest release's build sizes) and,
+only when it is missing or stale, installs it through the connected CLI with the
+[`inference-gateway/binaries`](https://github.com/inference-gateway/binaries) `install.sh` -
+the platform build, verified against the release checksums. A send carrying a recording waits
+for that install (a Bash approval in the panel, headed `# opentask: download the latest ffmpeg
+...`) and reports in the composer if a first install failed; a denied upgrade keeps the old copy.
 
 ### Self-hosted GPU models (RunPod)
 
@@ -314,14 +356,15 @@ data; per-permission justifications for the store listing live in
 
 The same `dist/` is the whole extension. Its browser API surface is `chrome.storage`
 plus `tabs`, `scripting`, `sidePanel`, `windows`, `action`, `notifications`, and
-`alarms` (used by the browser-use bridge in the side panel and the popup).
-Per-browser notes:
+`alarms` (used by the browser-use bridge in the side panel and the popup). Chrome and
+Edge builds additionally use `tabCapture` and `offscreen` for tab
+recording. Per-browser notes:
 
 | Browser      | What's needed                                                            |                                                                                                                                              
 | ------------ | ------------------------------------------------------------------------ |                                                                                                                                              
-| Chrome, Edge | Works as-is (`background.service_worker` + side panel). Chrome Web Store and Edge Add-ons use the same `dist/` ZIP. |                                                                                              
-| Firefox 109+ | Build with `task build:firefox`: `manifest.firefox.json` overrides `background.scripts` + `browser_specific_settings.gecko.id` and replaces `permissions` (no `sidePanel`/`notifications` - Firefox lacks those APIs), and `build.ts` deletes the Chrome-only `side_panel` key. |                                                                                      
-| Safari 16.4+ | Build with `task build:safari`, then wrap with `xcrun safari-web-extension-converter` on macOS. `manifest.safari.json` replaces `permissions` (no `sidePanel`/`notifications`), and `build.ts` deletes the `side_panel` key. See [`docs/store/safari-listing.md`](docs/store/safari-listing.md) for the full packaging and App Store release guide. |
+| Chrome, Edge | Works as-is (`background.service_worker` + side panel). Chrome Web Store and Edge Add-ons use the same `dist/` ZIP. Tab recording works here. |                                                                                              
+| Firefox 109+ | Build with `task build:firefox`: `manifest.firefox.json` overrides `background.scripts` + `browser_specific_settings.gecko.id` and replaces `permissions` (no `sidePanel`/`notifications` - Firefox lacks those APIs), and `build.ts` deletes the Chrome-only `side_panel` key. The Record button hides itself (no `tabCapture`). |                                                                                      
+| Safari 16.4+ | Build with `task build:safari`, then wrap with `xcrun safari-web-extension-converter` on macOS. `manifest.safari.json` replaces `permissions` (no `sidePanel`/`notifications`), and `build.ts` deletes the `side_panel` key. See [`docs/store/safari-listing.md`](docs/store/safari-listing.md) for the full packaging and App Store release guide. The Record button hides itself (no `tabCapture`). |
 
 If a port needs the Promise-based `browser.*` namespace, drop in Mozilla's
 single-file `webextension-polyfill` and alias `browser` → `chrome`.
@@ -343,7 +386,8 @@ insertion, keyboard, repo-nav injection of the Tasks/Skills/Init tabs); `src/ui/
 holds the comment-box surfaces (skill menu, palette, Tasks/Skills/Init panels);
 `src/options.tsx` and `src/ui/options/*` are the settings tabs; `src/background.ts`
 is the service worker that fetches and caches skills, manages workflows, and proxies
-every GitHub call through the CLI bridge (`src/lib/bridge.ts`).
+every GitHub call through the CLI bridge (`src/lib/bridge.ts`). Tab recording runs in
+`src/offscreen.ts`, an offscreen document the service worker supervises.
 
 To produce a store ZIP:
 

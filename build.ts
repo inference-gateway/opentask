@@ -8,7 +8,7 @@ await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 
 const result = await Bun.build({
-  entrypoints: ["src/content.ts", "src/background.ts", "src/options.tsx", "src/popup.tsx", "src/sidepanel.tsx"],
+  entrypoints: ["src/content.ts", "src/background.ts", "src/options.tsx", "src/popup.tsx", "src/sidepanel.tsx", "src/offscreen.ts"],
   outdir: "dist",
   target: "browser",
   minify: true,
@@ -45,6 +45,7 @@ await cp("src/styles.css", "dist/styles.css");
 await cp("src/options.html", "dist/options.html");
 await cp("src/popup.html", "dist/popup.html");
 await cp("src/sidepanel.html", "dist/sidepanel.html");
+await cp("src/offscreen.html", "dist/offscreen.html");
 await cp("src/icons", "dist/icons", { recursive: true });
 
 console.log("Built:", result.outputs.map((o) => o.path.replace(process.cwd() + "/", "")).join(", "));

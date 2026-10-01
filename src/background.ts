@@ -5,6 +5,9 @@ import type { BotConfig, Permissions, PluginOption, DependenciesConfig } from ".
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
 import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
+import { createRecordingBox, frameToolsCommand, frameToolsReleaseCommand, frameToolsSizeCommand, isFrameToolStale, normalizeRecordCap, paintRecordingOverlay, supportsTabCapture, type RecordState } from "./shared/recording";
+import type { Attachment } from "./shared/agui";
+import type { RecordStopResponse, RecordTakeResponse, RecordToolsResponse } from "./shared/messages";
 import { initBridge, callTool, sendUserMessage, startNewSession, CLI_DOWN } from "./lib/bridge";
 
 initBridge();
@@ -14,6 +17,11 @@ const TTL = 10 * 60 * 1000;
 const WORKFLOW_PATH = ".github/workflows/tasks.yml";
 const WORKFLOW_FILE = "tasks.yml";
 const SKILLS_BRANCH = "infer-skills-update";
+const RECORD_META_KEY = "record-meta";
+const RECORD_TAB_KEY = "record-tab";
+
+const heldRecording = createRecordingBox();
+let frameTools: Promise<RecordToolsResponse> | undefined;
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "check-install") {
@@ -99,6 +107,38 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .then((r) => sendResponse(r))
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
+  }
+  if (msg?.type === "record-start") {
+    recordStart(msg.streamId, msg.tabId)
+      .then((r) => sendResponse(r))
+      .catch((err) => sendResponse({ error: String(err) }));
+    return true;
+  }
+  if (msg?.type === "record-stop") {
+    recordStop()
+      .then((r) => sendResponse(r))
+      .catch((err) => sendResponse({ error: String(err) }));
+    return true;
+  }
+  if (msg?.type === "record-status") {
+    recordState()
+      .then((state) => sendResponse({ state }))
+      .catch(() => sendResponse({ state: { status: "idle" } satisfies RecordState }));
+    return true;
+  }
+  if (msg?.type === "record-take") {
+    const recording = heldRecording.take();
+    if (recording) void ensureFrameTools();
+    sendResponse(recording ? { recording } satisfies RecordTakeResponse : {});
+    return false;
+  }
+  if (msg?.type === "record-tools") {
+    ensureFrameTools().then((r) => sendResponse(r));
+    return true;
+  }
+  if (msg?.type === "record-saved") {
+    void holdRecording(msg.recording);
+    return false;
   }
   if (msg?.type !== "skills") return false;
   getSkills(msg.owner, msg.repo)
@@ -598,4 +638,162 @@ async function gpuStatus(): Promise<{ state: GpuState } | { error: string }> {
     return { state: idle };
   }
   return { state: { ...state, status: "provisioning" } };
+}
+
+// --- Tab recording (Chrome only) ---
+// The offscreen document owns the MediaRecorder; its "#recording" URL hash is
+// the authoritative state (it survives service-worker restarts) - the same
+// trick as Chrome's tab-capture sample. The UI mints the stream id on its own
+// click gesture, so startRecording/stopRecording below carry no gesture needs.
+
+async function ensureOffscreen(): Promise<void> {
+  const contexts = await chrome.runtime.getContexts({});
+  if (contexts.some((c) => c.contextType === chrome.runtime.ContextType.OFFSCREEN_DOCUMENT)) return;
+  await chrome.offscreen.createDocument({
+    url: "offscreen.html",
+    reasons: [chrome.offscreen.Reason.USER_MEDIA],
+    justification: "Record the current tab so the agent can distill a skill from the frames.",
+  });
+}
+
+// Closes the offscreen recorder page once a save is done; tolerates it already
+// being gone (a restart, a second stop click) without throwing.
+async function closeOffscreen(): Promise<void> {
+  if (!chrome.offscreen) return;
+  try {
+    const contexts = await chrome.runtime.getContexts({});
+    if (contexts.some((c) => c.contextType === chrome.runtime.ContextType.OFFSCREEN_DOCUMENT)) {
+      await chrome.offscreen.closeDocument();
+    }
+  } catch {
+    /* already gone */
+  }
+}
+
+async function isRecording(): Promise<boolean> {
+  const contexts = await chrome.runtime.getContexts({});
+  return contexts.some(
+    (c) => c.contextType === chrome.runtime.ContextType.OFFSCREEN_DOCUMENT && (c.documentUrl ?? "").endsWith("#recording"),
+  );
+}
+
+async function recordState(): Promise<RecordState> {
+  if (!(await isRecording())) return { status: "idle" };
+  const meta = (await chrome.storage.session.get(RECORD_META_KEY))[RECORD_META_KEY] as RecordState | undefined;
+  return { status: "recording", ...(meta ?? {}) };
+}
+
+// The offscreen listener responds asynchronously; right after createDocument it
+// may not be listening yet, so retry the send briefly.
+async function sendToOffscreen(msg: Record<string, unknown>): Promise<{ state?: RecordState; error?: string; recording?: Attachment } | undefined> {
+  let lastErr: unknown;
+  for (let i = 0; i < 5; i++) {
+    try {
+      return (await chrome.runtime.sendMessage(msg)) as { state?: RecordState; error?: string } | undefined;
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+  }
+  throw lastErr;
+}
+
+// Starts the offscreen recorder, then keeps the metadata the status poll reads and the
+// tab id the outline needs: offscreen documents cannot reach chrome.storage, so the
+// worker owns both.
+async function recordStart(streamId: string, tabId: number): Promise<RecordState | { error: string }> {
+  if (!supportsTabCapture()) return { error: "Tab recording needs Chrome or Edge." };
+  if (await isRecording()) return { error: "A recording is already running." };
+  const capSeconds = normalizeRecordCap(await storage.get<unknown>("record-cap-seconds"));
+  await ensureOffscreen();
+  const resp = await sendToOffscreen({ target: "offscreen", type: "start-recording", streamId, capSeconds });
+  if (!resp?.state) return { error: resp?.error ?? "Recording failed to start." };
+  await chrome.storage.session.set({ [RECORD_META_KEY]: resp.state, [RECORD_TAB_KEY]: tabId });
+  await markRecordingTab(tabId, true);
+  return resp.state;
+}
+
+// Stops the offscreen recorder and holds the capture it hands back until the panel
+// claims it, so a stop started from the popup still reaches the panel's composer.
+async function recordStop(): Promise<RecordStopResponse> {
+  if (!supportsTabCapture()) return { error: "Tab recording needs Chrome or Edge." };
+  if (!(await isRecording())) return { status: "idle" };
+  try {
+    const resp = await sendToOffscreen({ target: "offscreen", type: "stop-recording" });
+    if (resp?.error) return { error: resp.error };
+    if (resp?.recording) {
+        heldRecording.hold(resp.recording);
+        announceCapture();
+    }
+    return resp?.state ?? { status: "idle" };
+  } finally {
+    await clearRecording();
+  }
+}
+
+// A cap stop has no panel waiting on it, so its capture waits in the recording box
+// until the panel claims it; the outline and the offscreen recorder go right away.
+async function holdRecording(recording: Attachment): Promise<void> {
+  heldRecording.hold(recording);
+  announceCapture();
+  await clearRecording();
+}
+
+// The box is invisible to the panel, so a held capture is announced instead of
+// polled for; claiming stays the panel's move, which keeps the hand-over single
+// even when the panel also watched the recording end.
+function announceCapture(): void {
+  void chrome.runtime.sendMessage({ type: "record-available" }).catch(() => {});
+}
+
+// The frame extractor recordingLine points the agent at. Claiming a capture starts
+// this in the background and the first send waits on it, so the agent never reads a
+// recording against a missing ffmpeg; a failed attempt is retried on the next call.
+function ensureFrameTools(): Promise<RecordToolsResponse> {
+  frameTools ??= installFrameTools().catch((err) => ({ error: String(err) }));
+  return frameTools.then((r) => {
+      if ("error" in r) frameTools = undefined;
+      return r;
+  });
+}
+
+// Checks with approval-free commands first, so only a host whose ffmpeg is missing or
+// stale sees the install prompt. A stale ffmpeg still extracts frames, so a denied or
+// failed upgrade keeps it instead of failing the send.
+async function installFrameTools(): Promise<RecordToolsResponse> {
+  const local = await callTool("Bash", { command: frameToolsSizeCommand() });
+  if (!local.success) return runFrameToolsInstall();
+  if (await frameToolStale(local.output)) await runFrameToolsInstall().catch(() => undefined);
+  return { ok: true };
+}
+
+async function frameToolStale(localWc: string): Promise<boolean> {
+  const latest = await callTool("Bash", { command: frameToolsReleaseCommand() }).catch(() => undefined);
+  return latest?.success === true && isFrameToolStale(localWc, latest.output);
+}
+
+async function runFrameToolsInstall(): Promise<RecordToolsResponse> {
+  const r = await callTool("Bash", { command: frameToolsCommand() }, 310_000);
+  return r.success ? { ok: true } : { error: r.error || r.output || "Could not install the frame extractor." };
+}
+
+// Outlines the captured tab while it records; restricted pages and tabs that went away
+// just ignore the injection.
+async function markRecordingTab(tabId: number, on: boolean): Promise<void> {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, func: paintRecordingOverlay, args: [on] });
+  } catch {
+    /* not injectable */
+  }
+}
+
+// Clears what a finished recording left behind: the tab outline, the keys the status
+// poll reads, and the offscreen document the recorder ran in.
+// ponytail: a recorder that dies before reporting a save leaves the outline on that
+// page until it reloads.
+async function clearRecording(): Promise<void> {
+  const tabId = (await chrome.storage.session.get(RECORD_TAB_KEY))[RECORD_TAB_KEY] as number | undefined;
+  await chrome.storage.session.remove([RECORD_META_KEY, RECORD_TAB_KEY]);
+  if (tabId) await markRecordingTab(tabId, false);
+  await closeOffscreen();
 }
