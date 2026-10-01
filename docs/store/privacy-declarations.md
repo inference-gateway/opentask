@@ -2,7 +2,11 @@
 
 Reusable, copy-paste answers for the Web Store listing's **Privacy** tab. Keep these
 in sync with `manifest.json` and [`PRIVACY.md`](../../PRIVACY.md). These declarations
-apply identically to Chrome Web Store, Microsoft Edge Add-ons, and Firefox Add-ons.
+apply identically to Chrome Web Store, Microsoft Edge Add-ons, and Firefox Add-ons,
+except the `tabCapture` and `offscreen` entries: they apply only to the Chrome and
+Edge builds, whose manifests request them for tab recording - Firefox and Safari
+replace `permissions` wholesale, so their bundles never request those permissions and
+the Record control hides itself without `chrome.tabCapture`.
 
 ## Single purpose
 
