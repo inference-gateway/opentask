@@ -33,19 +33,26 @@ test("links are safe and only http(s) passes through", () => {
 test("renders http(s)/data images, rewrites artifact paths, drops unsafe src", () => {
   expect(html("![cat](https://x.com/c.png)")).toContain('<img');
   expect(html("![cat](https://x.com/c.png)")).toContain('src="https://x.com/c.png"');
-  expect(html("![cat](/Users/e/.infer/artifacts/u1/image-9.png)", "http://127.0.0.1:52789")).toContain(
-    'src="http://127.0.0.1:52789/artifacts/u1/image-9.png"',
+  expect(html("![cat](/Users/e/.infer/projects/my-proj/artifacts/u1/image-9.png)", "http://127.0.0.1:52789")).toContain(
+    'src="http://127.0.0.1:52789/artifacts/my-proj/u1/image-9.png"',
+  );
+  expect(html("![cat](~/.infer/projects/my-proj/artifacts/u1/image-9.png)", "http://127.0.0.1:52789")).toContain(
+    'src="http://127.0.0.1:52789/artifacts/my-proj/u1/image-9.png"',
   );
   expect(html("![x](javascript:alert(1))")).not.toContain("<img");
-  expect(html("![x](/Users/e/.infer/artifacts/u1/i.png)")).not.toContain("<img");
+  expect(html("![x](/Users/e/.infer/projects/my-proj/artifacts/u1/i.png)")).not.toContain("<img");
+  expect(html("![x](/Users/e/.infer/artifacts/u1/i.png)", "http://127.0.0.1:52789")).not.toContain("<img");
 });
 
-test("auto-embeds a bare artifact image path in inline code", () => {
-  const withBase = html("Saved to: `/Users/e/.infer/artifacts/u1/image-9.png`", "http://127.0.0.1:52789");
+test("auto-embeds a bare per-project artifact image path in inline code", () => {
+  const withBase = html("Saved to: `/Users/e/.infer/projects/my-proj/artifacts/u1/image-9.png`", "http://127.0.0.1:52789");
   expect(withBase).toContain("<img");
-  expect(withBase).toContain('src="http://127.0.0.1:52789/artifacts/u1/image-9.png"');
+  expect(withBase).toContain('src="http://127.0.0.1:52789/artifacts/my-proj/u1/image-9.png"');
 
-  const noBase = html("Saved to: `/Users/e/.infer/artifacts/u1/image-9.png`");
+  const tildeBase = html("Saved to: `~/.infer/projects/my-proj/artifacts/u1/image-9.png`", "http://127.0.0.1:52789");
+  expect(tildeBase).toContain('src="http://127.0.0.1:52789/artifacts/my-proj/u1/image-9.png"');
+
+  const noBase = html("Saved to: `/Users/e/.infer/projects/my-proj/artifacts/u1/image-9.png`");
   expect(noBase).not.toContain("<img");
   expect(noBase).toContain("<code");
 

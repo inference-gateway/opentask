@@ -7,19 +7,20 @@ import type { ReactNode } from "react";
 // and image URLs are vetted in the renderer before sanitization. Element styling
 // lives in src/ui/globals.css under `.md`.
 
-// The CLI saves generated images to ~/.infer/artifacts/<...> and only sends the
-// local path. An MV3 extension can't load a file path, so rewrite it onto the
-// bridge's HTTP artifact route; otherwise only http(s)/data:image URLs are allowed.
+// The CLI saves generated images to ~/.infer/projects/<slug>/artifacts/<...> and
+// only sends the local path. An MV3 extension can't load a local file path, so
+// rewrite it onto the daemon's per-project artifact route; otherwise only
+// http(s)/data:image URLs are allowed.
 let artifactBase = "";
 function resolveImg(url: string): string | undefined {
-  const art = /\/\.infer\/artifacts\/(.+)$/.exec(url);
-  const src = art && artifactBase ? `${artifactBase}/artifacts/${art[1]}` : url;
+  const art = /\/\.infer\/projects\/([^/]+)\/artifacts\/(.+)$/.exec(url);
+  const src = art && artifactBase ? `${artifactBase}/artifacts/${art[1]}/${art[2]}` : url;
   return /^https?:\/\//i.test(src) || /^data:image\//i.test(src) ? src : undefined;
 }
 
 // A bare artifact image path (what ImageGeneration prints) auto-previews as an
 // image, so the panel shows the result without the model wrapping it in ![](…).
-const ARTIFACT_IMG = /\/\.infer\/artifacts\/.+\.(?:png|jpe?g|gif|webp)$/i;
+const ARTIFACT_IMG = /\/\.infer\/projects\/[^/]+\/artifacts\/.+\.(?:png|jpe?g|gif|webp)$/i;
 function artifactImg(raw: string): string | undefined {
   const t = raw.trim();
   return ARTIFACT_IMG.test(t) ? resolveImg(t) : undefined;
