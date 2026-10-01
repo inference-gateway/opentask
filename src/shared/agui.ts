@@ -307,6 +307,17 @@ export function userMessageContent(text: string, attachments: Attachment[]): str
   return parts;
 }
 
+// What an approval card shows: a shell command as written, so its lines and a leading
+// `# ...` purpose comment read naturally, and any other call's raw JSON arguments.
+export function approvalDetail(approval: PendingApproval): string {
+  try {
+    const { command } = JSON.parse(approval.toolArgs) as { command?: unknown };
+    return typeof command === "string" ? command : approval.toolArgs;
+  } catch {
+    return approval.toolArgs;
+  }
+}
+
 export type PanelState = {
   type: "state";
   connected: boolean;

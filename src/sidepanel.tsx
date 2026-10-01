@@ -21,11 +21,14 @@ import type {
   PendingApproval,
   PendingQuestion,
 } from "./shared/agui";
+import { ask } from "./ui/ask";
 import { ArrowDown, Check, Copy, Paperclip, Plus, SquarePen, X } from "lucide-react";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { Textarea } from "@/ui/components/textarea";
-import { MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, prettyArgs, toolLabel } from "./shared/agui";
+import { approvalDetail, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, prettyArgs, toolLabel } from "./shared/agui";
+import { recordingFooter, recordingLine } from "./shared/recording";
+import type { RecordToolsResponse } from "./shared/messages";
 import { QuestionForm } from "@/ui/QuestionForm";
 import { parseTodos, todoSummary } from "./shared/todos";
 import { Markdown } from "./lib/markdown";
@@ -36,6 +39,7 @@ import { replaceRange } from "./lib/insert";
 import { approvalShortcut } from "./lib/utils";
 import { SkillMenu } from "@/ui/SkillMenu";
 import { TodoPanel } from "@/ui/TodoPanel";
+import { RecordButton } from "@/ui/RecordButton";
 
 // Hover-reveal copy-to-clipboard under a chat bubble, desktop-app style.
 function CopyButton({ text }: { text: string }) {
@@ -72,6 +76,7 @@ function SidePanel() {
   const [projectDir, setProjectDir] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [preparing, setPreparing] = useState(false);
   const [attachmentNotice, setAttachmentNotice] = useState<string | undefined>(undefined);
   const [dropActive, setDropActive] = useState(false);
   const [histIdx, setHistIdx] = useState(-1);
@@ -202,18 +207,46 @@ function SidePanel() {
     }
   }
 
-  function sendMessage() {
+  // A claimed capture lands in the composer as both an attachment and a ready
+  // prompt, so sending it takes no guessing about what to ask the agent for.
+  function addRecording(recording: Attachment) {
+    setAttachments((list) => [recording, ...list]);
+    setDraft((text) => (text.trim() ? text : recordingLine(recording.filename)));
+  }
+
+  // The worker installs the frame extractor the recording prompt names; a send that
+  // carries a capture waits for it and reports the reason when it could not.
+  function frameToolsReady(): Promise<string> {
+    return new Promise((resolve) =>
+      ask({ type: "record-tools" }, (resp) => {
+        const r = resp as RecordToolsResponse;
+        resolve("error" in r ? r.error : "");
+      }),
+    );
+  }
+
+  async function sendMessage() {
     const text = draft.trim();
     if (!text && !attachments.length) return;
-    portRef.current?.postMessage({
-      type: "user_message",
-      content: text || "See the attached files.",
-      ...(attachments.length ? { attachments } : {}),
-    } satisfies PanelUserMessage);
+    const recording = attachments.find((a) => a.mime_type.startsWith("video/"));
+    const footer = recordingFooter(text, recording);
+    const content = text && footer ? `${text}\n\n${footer}` : text || footer;
+    const carried = attachments;
     setDraft("");
     setAttachments([]);
     setHistIdx(-1);
     setAttachmentNotice(undefined);
+    if (recording) {
+      setPreparing(true);
+      const error = await frameToolsReady();
+      setPreparing(false);
+      if (error) setAttachmentNotice(error);
+    }
+    portRef.current?.postMessage({
+      type: "user_message",
+      content,
+      ...(carried.length ? { attachments: carried } : {}),
+    } satisfies PanelUserMessage);
   }
 
   function updateSkillMenu() {
@@ -277,6 +310,7 @@ function SidePanel() {
           ⌘
         </div>
         <span className="font-semibold tracking-tight">OpenTask</span>
+          <RecordButton onRecording={addRecording} />
         <span
           className={
             "ml-auto flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium " +
@@ -504,7 +538,7 @@ function SidePanel() {
             </div>
             {pendingApproval.toolArgs && (
               <pre className="mb-3 max-h-40 overflow-auto rounded-lg bg-muted/70 p-2 font-mono text-[0.8em] leading-relaxed">
-                {pendingApproval.toolArgs}
+                {approvalDetail(pendingApproval)}
               </pre>
             )}
             <div className="flex gap-2">
@@ -559,6 +593,7 @@ function SidePanel() {
           }}
         >
           {attachmentNotice && <div className="px-1 pt-1 text-xs text-red-500">{attachmentNotice}</div>}
+          {preparing && <div className="px-1 pt-1 text-xs text-muted-foreground">Preparing the frame extractor…</div>}
           {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 px-1 pt-1.5">
               {attachments.map((a, i) => {
@@ -688,7 +723,7 @@ function SidePanel() {
               }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage();
+                void sendMessage();
               }
             }}
           />
@@ -704,8 +739,8 @@ function SidePanel() {
           ) : (
             <Button
               size="icon-sm"
-              disabled={!connected || !projectDir || (!draft.trim() && !attachments.length)}
-              onClick={sendMessage}
+              disabled={!connected || !projectDir || preparing || (!draft.trim() && !attachments.length)}
+              onClick={() => void sendMessage()}
               className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
               aria-label="Send message"
             >

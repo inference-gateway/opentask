@@ -1,5 +1,7 @@
+import type { Attachment } from "./agui";
 import type { AgentManifest } from "./agents";
 import type { CatalogSkill } from "./skills";
+import type { RecordState } from "./recording";
 
 export type Skill = { name: string };
 
@@ -138,3 +140,26 @@ export type DeprovisionGPUResponse = { state: GpuState } | { error: string };
 
 export type GPUStatusRequest = { type: "gpu-status" };
 export type GPUStatusResponse = { state: GpuState } | { error: string };
+
+// --- Tab recording (Chrome only) ---
+
+// tabId lets the background outline the tab being captured (offscreen documents and
+// content scripts never see this message).
+export type RecordStartRequest = { type: "record-start"; streamId: string; tabId: number };
+export type RecordStartResponse = RecordState | { error: string };
+
+export type RecordStopRequest = { type: "record-stop" };
+export type RecordStopResponse = RecordState | { error: string };
+
+export type RecordStatusRequest = { type: "record-status" };
+export type RecordStatusResponse = { state: RecordState };
+
+// Claims the capture a cap auto-stop left with the worker - nobody was waiting on
+// that one, so the panel collects it on its next poll. Empty when there is none.
+export type RecordTakeRequest = { type: "record-take" };
+export type RecordTakeResponse = { recording?: Attachment };
+
+// The frame extractor the recording line names: the panel waits on this before
+// sending a capture, so the agent's first look at it cannot miss the binary.
+export type RecordToolsRequest = { type: "record-tools" };
+export type RecordToolsResponse = { ok: true } | { error: string };

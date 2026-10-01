@@ -6,6 +6,8 @@ import { GPU_TYPES, LLAMA_MODELS, isValidHf, type GpuState, type ProvisionGPURes
 import { ask } from "./ui/ask";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
+import { RecordButton } from "@/ui/RecordButton";
+import { supportsTabCapture } from "./shared/recording";
 
 // A "name = value" row with a click-to-copy button. secret masks the displayed value
 // (Copy still copies the real one).
@@ -94,6 +96,12 @@ function Popup() {
           with the infer CLI.
         </p>
       </div>
+
+      {supportsTabCapture() && (
+        <div className="flex justify-end border-t px-4 py-3">
+          <RecordButton />
+        </div>
+      )}
 
       {(hasKey || gpu.status !== "idle") && (
       <div className="border-t px-4 py-3">

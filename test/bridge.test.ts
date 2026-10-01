@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseEvent, parseFrame, parseHistory, parseQuestions, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
+import { approvalDetail, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseEvent, parseFrame, parseHistory, parseQuestions, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
 import { __reset, __setSocket, callTool, handleFrame, panelState, runCommand, sendUserMessage } from "../src/lib/bridge";
 
 describe("reduceAgui", () => {
@@ -195,6 +195,23 @@ describe("parseFrame", () => {
     expect(parseFrame('"str"')).toBeUndefined();
     expect(parseFrame("[1,2]")).toBeUndefined();
     expect(parseFrame("null")).toBeUndefined();
+  });
+});
+
+describe("approvalDetail", () => {
+  test("shows a shell command as written, lines and leading comment intact", () => {
+    const command = "# opentask: download ffmpeg\nsh install.sh ffmpeg";
+    expect(approvalDetail({ id: "r1", source: "interrupt", toolName: "Bash", toolArgs: JSON.stringify({ command }) })).toBe(command);
+  });
+
+  test("keeps other tools' arguments as raw JSON", () => {
+    const toolArgs = '{"file_path":"a.ts"}';
+    expect(approvalDetail({ id: "r1", source: "interrupt", toolName: "Read", toolArgs })).toBe(toolArgs);
+  });
+
+  test("falls back to the raw text when the arguments are not a JSON object", () => {
+    expect(approvalDetail({ id: "r1", source: "interrupt", toolName: "Bash", toolArgs: "null" })).toBe("null");
+    expect(approvalDetail({ id: "r1", source: "interrupt", toolName: "Bash", toolArgs: "{partial" })).toBe("{partial");
   });
 });
 
