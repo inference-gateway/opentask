@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { approvalDetail, backoffMs, isClearCommand, isVisibleMessage, parseConversations, parseEvent, parseFrame, parseHistory, parseQuestions, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
-import { __reset, __setSocket, callTool, handleFrame, panelState, runCommand, sendUserMessage } from "../src/lib/bridge";
+import { __reset, __setSocket, callTool, handleFrame, initBridge, panelState, runCommand, sendUserMessage } from "../src/lib/bridge";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -410,6 +410,52 @@ describe("runCommand", () => {
     const result = await runCommand({ type: "browser_command", id: "6", action: "click", selector: "#b" });
     expect(clicked).toBe(true);
     expect(result.error).toBe("");
+  });
+});
+
+// The Firefox/Safari background: no `notifications`, no `sidePanel`, and no side panel
+// to click Connect in.
+function stubNoPanelChrome(stored: Record<string, unknown>) {
+  (globalThis as Record<string, unknown>).chrome = {
+    runtime: { onConnect: { addListener: () => undefined }, getManifest: () => ({ version: "1.0.0" }) },
+    alarms: { create: () => undefined, onAlarm: { addListener: () => undefined } },
+    storage: { local: { get: async (k: string) => ({ [k]: stored[k] }) }, onChanged: { addListener: () => undefined } },
+  };
+}
+
+describe("initBridge without a side panel", () => {
+  const realWebSocket = globalThis.WebSocket;
+  let urls: string[];
+
+  beforeEach(() => {
+    urls = [];
+    class FakeSocket {
+      static OPEN = 1;
+      readyState = 0;
+      constructor(url: string) { urls.push(url); }
+      close() {}
+    }
+    (globalThis as Record<string, unknown>).WebSocket = FakeSocket;
+    __reset();
+  });
+
+  afterEach(() => {
+    (globalThis as Record<string, unknown>).WebSocket = realWebSocket;
+    __setSocket(undefined);
+  });
+
+  test("registers without chrome.notifications and dials the daemon from the stored token", async () => {
+    stubNoPanelChrome({ "bridge-token": "t0k", "bridge-port": "9999", "bridge-project-dir": "/proj" });
+    initBridge();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(urls).toEqual(["ws://127.0.0.1:9999/ws"]);
+  });
+
+  test("stays idle until a token is configured", async () => {
+    stubNoPanelChrome({});
+    initBridge();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(urls).toEqual([]);
   });
 });
 
