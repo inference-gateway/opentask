@@ -173,6 +173,7 @@ function Popup() {
       )}
 
       <div className="border-t px-4 py-2 flex items-center justify-between">
+        {chrome.sidePanel && (
         <a
           className="text-primary hover:underline cursor-pointer"
           href="#"
@@ -187,6 +188,7 @@ function Popup() {
         >
           Conversation
         </a>
+        )}
         <a
           className="text-primary hover:underline cursor-pointer"
           href="#"

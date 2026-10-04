@@ -199,7 +199,7 @@ async function alertApproval(req: PendingApproval) {
   }
   void chrome.action.setBadgeText({ text: "!" });
   void chrome.action.setBadgeBackgroundColor({ color: "#f59e0b" });
-  void chrome.notifications.create(APPROVAL_NOTIFICATION, {
+  void chrome.notifications?.create(APPROVAL_NOTIFICATION, {
     type: "basic",
     iconUrl: "icons/icon-128.png",
     title: "OpenTask: approval needed",
@@ -209,7 +209,7 @@ async function alertApproval(req: PendingApproval) {
 
 function clearApprovalAlert() {
   void chrome.action.setBadgeText({ text: "" });
-  void chrome.notifications.clear(APPROVAL_NOTIFICATION);
+  void chrome.notifications?.clear(APPROVAL_NOTIFICATION);
 }
 
 // Open a fresh thread in the panel's project. The daemon answers with an empty
@@ -292,6 +292,17 @@ async function connect() {
     scheduleReconnect();
   };
   socket.onerror = () => socket.close();
+}
+
+// Chrome dials on the side panel's Connect button. Firefox and Safari have no side
+// panel to click, so there a configured token is itself the request to connect.
+const noPanelSurface = () => !chrome.sidePanel;
+
+function requestConnect() {
+  wantConnected = true;
+  attempt = 0;
+  void connect();
+  broadcast();
 }
 
 function scheduleReconnect() {
@@ -646,7 +657,7 @@ export function __reset(opts: { projectDir?: string } = {}) {
 }
 
 export function initBridge() {
-  chrome.notifications.onClicked.addListener((id) => {
+  chrome.notifications?.onClicked.addListener((id) => {
     if (id !== APPROVAL_NOTIFICATION) return;
     clearApprovalAlert();
     void chrome.windows.getLastFocused().then((win) => {
@@ -662,10 +673,7 @@ export function initBridge() {
     port.onMessage.addListener((msg) => {
       touch();
       if (msg?.type === "connect") {
-        wantConnected = true;
-        attempt = 0;
-        void connect();
-        broadcast();
+        requestConnect();
       }
       if (msg?.type === "disconnect") {
         disconnect();
@@ -711,14 +719,17 @@ export function initBridge() {
 
   chrome.alarms.create("bridge-redial", { periodInMinutes: 1 });
   chrome.alarms.onAlarm.addListener((a) => {
-    if (a.name === "bridge-redial" && wantConnected && !connected) void connect();
+    if (a.name !== "bridge-redial" || connected) return;
+    if (wantConnected || noPanelSurface()) requestConnect();
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && ("bridge-port" in changes || "bridge-token" in changes || "bridge-project-dir" in changes) && wantConnected) {
-      connected = false;
-      attempt = 0;
-      void connect();
-    }
+    if (area !== "local") return;
+    if (!("bridge-port" in changes || "bridge-token" in changes || "bridge-project-dir" in changes)) return;
+    if (!wantConnected && !noPanelSurface()) return;
+    connected = false;
+    requestConnect();
   });
+
+  if (noPanelSurface()) requestConnect();
 }
