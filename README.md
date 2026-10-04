@@ -158,7 +158,8 @@ bun run build      # outputs dist/
 - **Quick prompts**: press `Ctrl/Cmd+Shift+P` (or click the `⚡` toolbar button) to
   open the palette, filter, and `Enter` to insert the selected template at the caret.
 - **Install the agent**: open **Options → Workflows → Install workflow**, pick an
-  owner and repository, and click **Install** to open a PR that adds the OpenTask
+  owner and repository, and click **Install** (the button reads **Reconcile** when the
+  repo already has `.github/workflows/tasks.yml`) to open a PR that adds the OpenTask
   Agent workflow. The run streams in the side panel, where you approve the push and
   the pull request.
 - **Send a task**: in the **Tasks** tab, type a prompt and choose whether to create a
@@ -217,8 +218,8 @@ Editable, with a *Reset to defaults* button.
 The **record** button beside the panel title (and in the popup, Chrome and Edge only)
 captures the active tab at 10 fps into an `opentask-recording-*.mp4` file (webm fallback
 where mp4 muxing is unavailable), which the side panel offers as a composer attachment
-for your next message. It turns into a red stop button with the elapsed and remaining
-time while a capture runs, and the captured tab gets a red outline - the outline is page
+for your next message. While a capture runs it shows the elapsed time over the cap (for
+example `0:12 / 1:00`) beside a **Stop** button, and the captured tab gets a red outline - the outline is page
 pixels, so it shows in the recording too. Under **Options → Orchestrator → Tab
 recording**:
 
@@ -317,7 +318,8 @@ OpenTask Agent workflow to be installed on the repo.
 ### Workflows
 
 - **Install workflow**: pick an owner and repository (listed from the connected CLI's
-  `gh api user/repos`) and click **Install**. The CLI's agent adds or updates
+  `gh api user/repos`) and click **Install** - or **Reconcile**, the label the button
+  takes when the repo already has `.github/workflows/tasks.yml`. The CLI's agent adds or updates
   `.github/workflows/tasks.yml` and opens a pull request; approve the push and PR in
   the side panel. Re-installing updates the same open PR and preserves
   repo-specific customizations.
@@ -397,8 +399,9 @@ task package:firefox   # builds with Firefox manifest, zips to firefox-extension
 task build:safari      # builds with Safari manifest; see docs/store/safari-listing.md for Xcode conversion
 ```
 
-The ZIPs are also built and attached automatically to every GitHub Release by the
-release workflow.
+Every GitHub Release carries the Chrome ZIP (`browser-extension.zip`), its `.sha256`,
+and `CHANGELOG.md`. The Edge and Firefox ZIPs are not attached - build them locally
+with `task package:edge` / `task package:firefox`.
 
 ## Roadmap
 
