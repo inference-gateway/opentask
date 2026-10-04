@@ -91,7 +91,7 @@ function Popup() {
     <div className="w-72 bg-background text-foreground text-sm">
       <div className="p-4">
         <p className="text-muted-foreground leading-relaxed">
-          Install the agent from a repository's <strong className="text-foreground">Tasks</strong> tab,
+          Install the agent from <strong className="text-foreground">Options → Workflows → Install workflow</strong>,
           or open the <strong className="text-foreground">Conversation</strong> panel to drive any tab
           with the infer CLI.
         </p>
@@ -126,7 +126,7 @@ function Popup() {
             <CopyRow label="Secret" name="LLAMACPP_API_URL" value={`${gpu.endpointUrl}/v1`} />
             {gpu.apiKey && <CopyRow label="Secret" name="LLAMACPP_API_KEY" value={gpu.apiKey} secret />}
             {(gpu.hf ?? gpu.modelId) && <CopyRow label="Variable" name="DEFAULT_MODEL" value={`llamacpp/${gpu.hf ?? gpu.modelId}`} />}
-            <p>Re-install the workflow (from a repo's Tasks tab) to pick up llama.cpp support.</p>
+            <p>Re-install the workflow (Options &rarr; Workflows &rarr; Install workflow) to pick up llama.cpp support.</p>
           </div>
         )}
         {error && <p className="text-xs text-red-500 mb-2">{error}</p>}

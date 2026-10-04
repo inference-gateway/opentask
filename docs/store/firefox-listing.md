@@ -19,7 +19,7 @@ OpenTask adds these productivity tools to GitHub's comment boxes, repository nav
 
 **Quick-prompts palette.** Press Ctrl+Shift+P (or Cmd+Shift+P on Mac) or click the lightning bolt button injected into the comment toolbar to open a searchable palette of `@opentask` directives plus editable templates. Select one to insert it at the caret.
 
-**Repo-nav panels.** Tasks, Skills, and Init items added to GitHub's repository navigation: install the OpenTask agent workflow in the repo, browse a repository's skills, and initialize the OpenTask setup.
+**Repo-nav panels.** Tasks, Skills, and Init items added to GitHub's repository navigation: Tasks sends a task to the agent as a new issue or a `workflow_dispatch` run, Skills installs and removes registry skills through a single pull request, and Init dispatches the workflow to generate an `AGENTS.md` and open a pull request. The agent workflow itself is installed from the extension's Options -> Workflows -> Install workflow.
 
 **Issue Refine.** A Refine button on issue pages sends the issue to the agent, which rewrites its description in place.
 
@@ -41,7 +41,7 @@ Capture these screenshots at 1280x800 on a GitHub issue or PR page:
 
 1. Open any GitHub issue or pull request (e.g. https://github.com/octocat/Hello-World/issues/1).
 2. Focus the comment textarea and type `!` - a dropdown of repo skills should appear below the caret. Arrow keys navigate, Tab/Enter inserts, Esc closes.
-3. Press Ctrl+Shift+P (or Cmd+Shift+P on Mac) - the quick-prompts palette should open as a centered overlay. Type to filter, Enter to insert.
+3. Press Ctrl+Shift+P (or Cmd+Shift+P on Mac) - the quick-prompts palette should open just below the caret of the focused comment box. Type to filter, Enter to insert.
 4. Click the lightning bolt button in the comment toolbar - the same palette opens.
 5. Right-click the extension icon -> Manage Extension -> Extension preferences (or `about:addons` -> gear icon -> Manage Extension Options). The options page opens on the Workflows tab with tabs for Orchestrator, Agents, Prompts, Workflows, Dependencies, and Appearance. The editable quick-prompts JSON editor is under Prompts; Save and Reset to defaults buttons sit at the bottom of the page.
 6. Verify the manifest requests `storage`, `activeTab`, `tabs`, `scripting`, and `alarms` (settings, browser-use automation from the CLI bridge, and bridge reconnection; the Firefox build has no side panel), with the shared host permissions `https://rest.runpod.io/*` (optional GPU provisioning), and `http://*/*`, `https://*/*`, `<all_urls>` (the tabs your agent automates); and a content-script match on `https://github.com/*`.
