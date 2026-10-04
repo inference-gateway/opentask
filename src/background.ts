@@ -197,7 +197,7 @@ async function loadBot(): Promise<BotConfig> {
 }
 
 // Every repo the user's gh auth can access (owned, collaborator, org member) as
-// "owner/name". Powers the Install tab's owner + repository dropdowns.
+// "owner/name". Powers the Workflows tab's owner + repository dropdowns.
 async function listRepos(): Promise<{ repos: string[] } | { error: string }> {
   const r = await callTool("Bash", { command: "gh api 'user/repos?per_page=100' --paginate --jq '.[].full_name'" }, 310_000);
   if (!r.success) return { error: r.error || r.output || "gh api user/repos failed" };

@@ -148,7 +148,7 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
         {state.kind === "ready" && !state.error && !state.installed && (
           <p className="igw-tasks-muted">
             The OpenTask workflow is not installed here. Install it from the extension's
-            Options → Install tab.
+            Options → Workflows → Install workflow.
           </p>
         )}
       </div>
