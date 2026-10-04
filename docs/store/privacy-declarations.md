@@ -3,10 +3,11 @@
 Reusable, copy-paste answers for the Web Store listing's **Privacy** tab. Keep these
 in sync with `manifest.json` and [`PRIVACY.md`](../../PRIVACY.md). These declarations
 apply identically to Chrome Web Store, Microsoft Edge Add-ons, and Firefox Add-ons,
-except the `tabCapture` and `offscreen` entries: they apply only to the Chrome and
-Edge builds, whose manifests request them for tab recording - Firefox and Safari
-replace `permissions` wholesale, so their bundles never request those permissions and
-the Record control hides itself without `chrome.tabCapture`.
+except the `sidePanel`, `notifications`, `tabCapture`, and `offscreen` entries: they
+apply only to the Chrome and Edge builds. Firefox and Safari replace `permissions`
+wholesale with `storage`, `activeTab`, `tabs`, `scripting`, and `alarms`, so their
+bundles never request those four - they ship no side panel, and the Record control
+hides itself without `chrome.tabCapture`.
 
 ## Single purpose
 
@@ -68,12 +69,6 @@ the Record control hides itself without `chrome.tabCapture`.
 > Hosts an invisible document that runs the MediaRecorder for the tab recording
 > above (service workers cannot process media streams). It exists only while a
 > recording runs or is being saved, then it is closed.
-
-### Host permission - `https://api.github.com/*`
-> Grants access to GitHub's REST API for listing a repository's skills and
-> installing/managing its agent workflow. Requests run through the user's
-> connected `infer` CLI (`gh api` on the CLI host), so the extension itself never
-> stores or sends a GitHub token or credential.
 
 ### Host permission - `https://rest.runpod.io/*`
 > Only used if the user configures their own RunPod API key (Options page,

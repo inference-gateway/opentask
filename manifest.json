@@ -16,7 +16,6 @@
     "offscreen"
   ],
   "host_permissions": [
-    "https://api.github.com/*",
     "https://rest.runpod.io/*",
     "http://*/*",
     "https://*/*",
