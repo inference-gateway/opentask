@@ -245,7 +245,7 @@ Capture these screenshots at the recommended resolution for each platform:
 3. Press Ctrl+Shift+P (or Cmd+Shift+P on Mac) - the quick-prompts palette should open as a centered overlay. Type to filter, Enter to insert.
 4. Click the lightning bolt button in the comment toolbar - the same palette opens.
 5. Right-click the extension icon → Preferences (or Safari → Settings → Extensions → OpenTask → Preferences). The options page opens on the Workflows tab with tabs for Orchestrator, Agents, Prompts, Workflows, Dependencies, and Appearance. The editable quick-prompts JSON editor is under Prompts; Save and Reset to defaults buttons sit at the bottom of the page.
-6. Verify the manifest requests `storage`, `activeTab`, `tabs`, `scripting`, and `alarms` (settings, browser-use automation from the CLI bridge, and bridge reconnection; the Safari build has no side panel), with the shared host permissions `https://api.github.com/*` (GitHub API access via the CLI's `gh`), `https://rest.runpod.io/*` (optional GPU provisioning), and `http://*/*`, `https://*/*`, `<all_urls>` (the tabs your agent automates); and a content-script match on `https://github.com/*`.
+6. Verify the manifest requests `storage`, `activeTab`, `tabs`, `scripting`, and `alarms` (settings, browser-use automation from the CLI bridge, and bridge reconnection; the Safari build has no side panel), with the shared host permissions `https://rest.runpod.io/*` (optional GPU provisioning), and `http://*/*`, `https://*/*`, `<all_urls>` (the tabs your agent automates); and a content-script match on `https://github.com/*`.
 
 ### URLs for the listing
 
