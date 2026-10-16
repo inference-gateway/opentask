@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: actions/create-github-app-token@v3.2.0
+      - uses: actions/create-github-app-token@v3.3.0
         id: app-token
         with:
           client-id: ${{ secrets.INFERENCE_GATEWAY_MAINTAINER_APP_CLIENT_ID }}
@@ -69,7 +69,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: inference-gateway/infer-action@v0.55.5
+      - uses: inference-gateway/infer-action@v0.56.1
         with:
           debug: true
           github-token: ${{ steps.app-token.outputs.token }}
