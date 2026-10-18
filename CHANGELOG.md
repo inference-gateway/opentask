@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.0](https://github.com/inference-gateway/opentask/compare/v1.16.1...v1.17.0) (2026-10-18)
+
+### ✨ Features
+
+* **bridge:** connect the panel to the infer daemon AG-UI binding ([#213](https://github.com/inference-gateway/opentask/issues/213)) ([ff41b15](https://github.com/inference-gateway/opentask/commit/ff41b150f159104f3c26a0391a52c66a3c065dab)), closes [#209](https://github.com/inference-gateway/opentask/issues/209)
+* **recording:** record the current tab to distill skills from a captured flow ([#205](https://github.com/inference-gateway/opentask/issues/205)) ([f0162ef](https://github.com/inference-gateway/opentask/commit/f0162efed5d41c42e19f6989efe5731d4ec72266))
+
+### ♻️ Improvements
+
+* **recording:** check and install frame tools through the CLI's binaries commands ([#215](https://github.com/inference-gateway/opentask/issues/215)) ([8fed45b](https://github.com/inference-gateway/opentask/commit/8fed45b09121a089559d25bffc6259c8fb064c67)), references [inference-gateway/cli#1352](https://github.com/inference-gateway/cli/issues/1352)
+
+### 🐛 Bug Fixes
+
+* **bridge:** reach the CLI bridge on firefox and safari ([#228](https://github.com/inference-gateway/opentask/issues/228)) ([1f934e5](https://github.com/inference-gateway/opentask/commit/1f934e5ab65603cd08b360c45c4419a99476aa29))
+* **markdown:** rewrite per-project artifact images onto the daemon route ([#212](https://github.com/inference-gateway/opentask/issues/212)) ([e426f9d](https://github.com/inference-gateway/opentask/commit/e426f9d1cff82ef0d14aabfce8efa5baf093bc68))
+* **sidepanel:** preserve messages and reduce screenshots ([#235](https://github.com/inference-gateway/opentask/issues/235)) ([0bb8da7](https://github.com/inference-gateway/opentask/commit/0bb8da7f494dde8942dc04691eedb282654e15d7))
+
+### 📚 Documentation
+
+* **agents:** add code readability guidelines ([#224](https://github.com/inference-gateway/opentask/issues/224)) ([b7e5b57](https://github.com/inference-gateway/opentask/commit/b7e5b573e58420aceb19e1e2629e82d6cc423cb7))
+* correct release assets and install/record controls ([#225](https://github.com/inference-gateway/opentask/issues/225)) ([d8df51e](https://github.com/inference-gateway/opentask/commit/d8df51e8fbddb9974662dcd9bf1370245cfa8594))
+* **skill:** always start the bash allow-list with task ([#208](https://github.com/inference-gateway/opentask/issues/208)) ([d3cb24d](https://github.com/inference-gateway/opentask/commit/d3cb24d66d9456a74a50c611562c707cb61f603c))
+* **store:** declare the tab-recording permissions in the Chrome and Edge listings ([#216](https://github.com/inference-gateway/opentask/issues/216)) ([3b6ab38](https://github.com/inference-gateway/opentask/commit/3b6ab384da7e8cbb51435fba85091ffcc2c48602))
+* **store:** fix permission scope and drop unused github host ([#226](https://github.com/inference-gateway/opentask/issues/226)) ([f433101](https://github.com/inference-gateway/opentask/commit/f433101ad89e3bf97884954e651d8cea04e6bf9f))
+* **store:** point workflow install at Options -> Workflows ([#227](https://github.com/inference-gateway/opentask/issues/227)) ([6e2d814](https://github.com/inference-gateway/opentask/commit/6e2d8149efcacefa8ca6b029405fd3b18710c91e))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.280 -> 2.1.283 ([#210](https://github.com/inference-gateway/opentask/issues/210)) ([7418437](https://github.com/inference-gateway/opentask/commit/741843741b0e5e15db649fb96a8d6cab5dc1954a))
+* **deps:** bump claude-code 2.1.283 -> 2.1.285 ([#217](https://github.com/inference-gateway/opentask/issues/217)) ([ae53da8](https://github.com/inference-gateway/opentask/commit/ae53da878c87a77cd0164c235d23287f52cee73b))
+* **deps:** bump claude-code 2.1.285 -> 2.1.289 ([#229](https://github.com/inference-gateway/opentask/issues/229)) ([8a1ea5f](https://github.com/inference-gateway/opentask/commit/8a1ea5f96332961bd88e72dd4d2aa9714a6d83bc))
+* **deps:** bump infer CLI v0.208.2 -> v0.218.0 ([#211](https://github.com/inference-gateway/opentask/issues/211)) ([6937562](https://github.com/inference-gateway/opentask/commit/69375629212483a78ddff52573c5c35f54119bf3))
+* **deps:** bump infer CLI v0.218.0 -> v0.221.1 ([#214](https://github.com/inference-gateway/opentask/issues/214)) ([6cf496f](https://github.com/inference-gateway/opentask/commit/6cf496f5dede7f899b3fb23277839e785af9ebfd))
+* **deps:** bump infer CLI v0.221.1 -> v0.226.0 ([#230](https://github.com/inference-gateway/opentask/issues/230)) ([f54a6bd](https://github.com/inference-gateway/opentask/commit/f54a6bd5755d13e1eee7bbafb8abb1583d19a973))
+* **deps:** bump inference-gateway/infer-action ([#218](https://github.com/inference-gateway/opentask/issues/218)) ([59970f1](https://github.com/inference-gateway/opentask/commit/59970f14ed68c9f8284bcc6ec3732cf5f14dcff9))
+* **deps:** bump inference-gateway/infer-action ([#231](https://github.com/inference-gateway/opentask/issues/231)) ([dab5c96](https://github.com/inference-gateway/opentask/commit/dab5c96f57de67f762ac6260e5ce0c6340f0537f))
+* **deps:** bump the github-actions group with 3 updates ([#233](https://github.com/inference-gateway/opentask/issues/233)) ([41a9f74](https://github.com/inference-gateway/opentask/commit/41a9f7402b8121bcf7c91cfaa419d9bafe4d8c6e))
+* **deps:** bump the npm group with 4 updates ([#219](https://github.com/inference-gateway/opentask/issues/219)) ([d9a18aa](https://github.com/inference-gateway/opentask/commit/d9a18aa71063ca492404aedf22db6cdeff33ca33))
+* **deps:** bump the npm group with 5 updates ([#232](https://github.com/inference-gateway/opentask/issues/232)) ([b9c2226](https://github.com/inference-gateway/opentask/commit/b9c222688f906d208d5a6a734da200798d1ea84a))
+* **deps:** bump the npm group with 7 updates ([#234](https://github.com/inference-gateway/opentask/issues/234)) ([849970d](https://github.com/inference-gateway/opentask/commit/849970dc317e78cc7c313598f79f2f62afaf20a3))
+* **flox:** bump tool versions ([b3031a7](https://github.com/inference-gateway/opentask/commit/b3031a7d8bf673170251c39d0319f365185d601b))
+
 ## [1.16.1](https://github.com/inference-gateway/opentask/compare/v1.16.0...v1.16.1) (2026-09-26)
 
 ### 👷 CI
