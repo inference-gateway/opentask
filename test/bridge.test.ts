@@ -355,6 +355,15 @@ describe("runCommand", () => {
     };
   });
 
+  test("screenshots use compressed JPEG and report the matching MIME type", async () => {
+    Object.assign(chrome.tabs, { captureVisibleTab: async (_windowId: number, options: { format: string; quality: number }) => {
+      expect(options).toEqual({ format: "jpeg", quality: 80 });
+      return "data:image/jpeg;base64,AAAA";
+    } });
+    expect(await runCommand({ type: "browser_command", id: "shot", action: "screenshot" }))
+      .toMatchObject({ image: "AAAA", image_mime_type: "image/jpeg", error: "" });
+  });
+
   test("a click on a missing element surfaces the error instead of silent success", async () => {
     const result = await runCommand({ type: "browser_command", id: "1", action: "click", selector: "#missing" });
     expect(result.error).toBe("selector not found: #missing");
@@ -534,10 +543,10 @@ describe("handleFrame on the daemon binding", () => {
     expect(sent[0].project_dir).toBe("/proj");
   });
 
-  test("MESSAGES_SNAPSHOT replaces the transcript and ends busy", async () => {
+  test("MESSAGES_SNAPSHOT replaces the transcript without ending an active run", async () => {
     await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
     await frame(socket, { type: "MESSAGES_SNAPSHOT", messages: [{ id: "1", role: "user", content: "hello" }] });
-    expect(panelState()).toMatchObject({ running: false, messages: [{ role: "user", content: "hello" }] });
+    expect(panelState()).toMatchObject({ running: true, messages: [{ role: "user", content: "hello" }] });
   });
 
   test("an interrupt shows the approval and the answer is one resume covering it", async () => {
@@ -597,4 +606,11 @@ describe("handleFrame on the daemon binding", () => {
     await frame(socket, { type: "conversation_snapshot", messages: [{ role: "user", content: "x" }] });
     expect(panelState()).toMatchObject({ running: false, activeConversationId: undefined, messages: [] });
   });
+});
+
+test("snapshot restores user text accompanying an image", () => {
+  expect(snapshotToMessages([{ id: "u", role: "user", content: [
+    { type: "text", text: "That's the passage" },
+    { type: "image", source: { type: "data", mimeType: "image/png", value: "AAAA" } },
+  ] }])).toEqual([{ role: "user", content: "That's the passage\n[Attachment]" }]);
 });

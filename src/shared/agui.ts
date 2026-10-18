@@ -3,7 +3,7 @@
 // a frame with an uppercase type is a standard AG-UI 1.0 event, validated here
 // with the upstream schemas; unknown frame types must be ignored.
 import { EventSchema } from "@ag-ui/core/schemas";
-import type { Event, Interrupt, Message } from "@ag-ui/core";
+import type { ContentPart, Event, Interrupt, Message } from "@ag-ui/core";
 
 export const PROTOCOL_VERSION = 2;
 
@@ -107,7 +107,8 @@ export function toolLabel(name: string, args?: string): string {
 export function snapshotToMessages(list: Message[]): Msg[] {
   const out: Msg[] = [];
   for (const m of list) {
-    const content = typeof m.content === "string" ? m.content : "";
+    const content = typeof m.content === "string" ? m.content : (m.content ?? [])
+      .map((part: ContentPart) => part.type === "text" ? part.text : "[Attachment]").join("\n");
     if (m.role === "tool") {
       const row = out.find((o) => o.role === "tool" && o.id === m.toolCallId);
       if (row) {
