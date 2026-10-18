@@ -402,7 +402,6 @@ function handleEvent(event: Event) {
     case "MESSAGES_SNAPSHOT":
       changed = true;
       messages = snapshotToMessages(event.messages);
-      running = false;
       break;
     case "CUSTOM":
       changed = handleCustom(event.name, event.value);
@@ -600,9 +599,9 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   if (cmd.action === "screenshot") {
     await chrome.tabs.update(tabId, { active: true });
     const tab = await chrome.tabs.get(tabId);
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 80 });
     const comma = dataUrl.indexOf(",");
-    return { image: comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl, image_mime_type: "image/png" };
+    return { image: comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl, image_mime_type: "image/jpeg" };
   }
   throw new Error(`unknown action: ${cmd.action}`);
 }
@@ -683,6 +682,7 @@ export function initBridge() {
       }
       if (msg?.type === "resume_conversation" && typeof msg.id === "string") {
         activeConversationId = msg.id;
+        running = false;
         clearPrompts();
         sendInProject({ type: "resume_conversation", id: msg.id });
         broadcast();
