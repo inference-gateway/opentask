@@ -104,11 +104,14 @@ permission in **Options -> Workflows**; **re-install the workflow** after enabli
 
 ## Authoring the GitHub Actions workflow
 
-Installing via the **Tasks** tab covers the common case. When you need to
-author `.github/workflows/tasks.yml` by hand, update an existing workflow, bump
-the `inference-gateway/infer-action` version, or adapt the workflow to a
+Installing via the **Tasks** tab covers the browser case. From the infer CLI,
+`/opentask install the OpenTask workflow in <owner/repo>` in a chat turn does
+the same install without the extension. When you need to author
+`.github/workflows/tasks.yml` by hand, update an existing workflow, bump the
+`inference-gateway/infer-action` version, or adapt the workflow to a
 repository's languages and CI conventions, read
-[references/github-workflow.md](references/github-workflow.md).
+[references/github-workflow.md](references/github-workflow.md) - it also covers
+how to deliver the change as a pull request.
 
 ## Notes and gotchas
 
