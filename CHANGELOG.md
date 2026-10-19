@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.1](https://github.com/inference-gateway/opentask/compare/v1.17.0...v1.17.1) (2026-10-19)
+
+### 📚 Documentation
+
+* **skill:** cover installing the workflow from the infer CLI ([#236](https://github.com/inference-gateway/opentask/issues/236)) ([00085f3](https://github.com/inference-gateway/opentask/commit/00085f3a128efff1bd3a55f2871169e98c0690b3))
+
 ## [1.17.0](https://github.com/inference-gateway/opentask/compare/v1.16.1...v1.17.0) (2026-10-18)
 
 ### ✨ Features
