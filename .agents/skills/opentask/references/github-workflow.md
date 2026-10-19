@@ -180,7 +180,7 @@ extension's **Tasks** tab, you own the git flow too:
 1. Work outside the user's checked-out branch. If the current checkout is the
    target repository, add a `git worktree` under `/tmp` for the install
    branch. Otherwise shallow-clone the target into a temp dir under `/tmp`.
-2. Use the fixed head branch `infer/install-github-action`. Check it out on
+2. Use the fixed head branch `ci/install-github-action`. Check it out on
    top of origin's copy when it already exists, so a re-install updates the
    open pull request instead of opening a duplicate.
 3. Work from the examples bundled with this skill and the target repo. Do not
