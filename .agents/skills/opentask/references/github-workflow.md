@@ -171,3 +171,20 @@ repository:
 - When the change lands as a pull request, give it a Conventional Commit title
   (`ci: ...`) and a body that states exactly what changed in the workflow and
   why - a reader should not need the diff to understand the change.
+
+## Delivering the change as a pull request
+
+When you install or update the workflow from the infer CLI rather than the
+extension's **Tasks** tab, you own the git flow too:
+
+1. Work outside the user's checked-out branch. If the current checkout is the
+   target repository, add a `git worktree` under `/tmp` for the install
+   branch. Otherwise shallow-clone the target into a temp dir under `/tmp`.
+2. Use the fixed head branch `infer/install-github-action`. Check it out on
+   top of origin's copy when it already exists, so a re-install updates the
+   open pull request instead of opening a duplicate.
+3. Work from the examples bundled with this skill and the target repo. Do not
+   fetch infer-action docs from the network unless an example is missing.
+4. Show the user a short summary of the workflow diff, then commit, push the
+   branch, and open or update the pull request. Wait for the user's approval
+   before the push and before creating the pull request.
