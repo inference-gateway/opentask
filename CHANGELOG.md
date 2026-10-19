@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.2](https://github.com/inference-gateway/opentask/compare/v1.17.1...v1.17.2) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* **options:** save CLI bridge settings on blur, not per keystroke ([#237](https://github.com/inference-gateway/opentask/issues/237)) ([4d5bb81](https://github.com/inference-gateway/opentask/commit/4d5bb81c4ef2d72a0a7704711f8ab2b403743949))
+
 ## [1.17.1](https://github.com/inference-gateway/opentask/compare/v1.17.0...v1.17.1) (2026-10-19)
 
 ### 📚 Documentation
