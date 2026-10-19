@@ -147,10 +147,8 @@ export function OrchestratorTab({
           placeholder="52789"
           inputMode="numeric"
           value={bridgePort}
-          onChange={(e) => {
-            setBridgePort(e.target.value);
-            void storage.set("bridge-port", e.target.value);
-          }}
+          onChange={(e) => setBridgePort(e.target.value)}
+          onBlur={(e) => void storage.set("bridge-port", e.target.value.trim())}
         />
         <Label htmlFor="bridge-token">Shared token</Label>
         <div className="flex items-center gap-2">
@@ -160,10 +158,8 @@ export function OrchestratorTab({
             className="flex-1"
             autoComplete="off"
             value={bridgeToken}
-            onChange={(e) => {
-              setBridgeToken(e.target.value);
-              void storage.set("bridge-token", e.target.value);
-            }}
+            onChange={(e) => setBridgeToken(e.target.value)}
+            onBlur={(e) => void storage.set("bridge-token", e.target.value.trim())}
           />
           <Button variant="outline" onClick={() => setShowBridgeToken((v) => !v)}>
             {showBridgeToken ? "Hide" : "Show"}
@@ -175,10 +171,8 @@ export function OrchestratorTab({
           placeholder="/absolute/path/to/project"
           autoComplete="off"
           value={bridgeProjectDir}
-          onChange={(e) => {
-            setBridgeProjectDir(e.target.value);
-            void storage.set("bridge-project-dir", e.target.value);
-          }}
+          onChange={(e) => setBridgeProjectDir(e.target.value)}
+          onBlur={(e) => void storage.set("bridge-project-dir", e.target.value.trim())}
         />
       </Section>
 
