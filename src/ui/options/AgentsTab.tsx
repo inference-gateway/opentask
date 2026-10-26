@@ -66,25 +66,15 @@ export function AgentsTab() {
             <a href="https://github.com/inference-gateway/agents" className="underline">
               agents registry
             </a>{" "}
-            to include in the installed workflow. Checked agents are added to the OpenTask workflow
-            when you (re)install it.
+            to include in the installed workflow. Checked agents are added to the OpenTask workflow when you (re)install
+            it.
           </>
         }
       >
-        <Input
-          placeholder="Search agents…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="mb-2"
-        />
-        {filtered.length === 0 && (
-          <p className="text-sm text-muted-foreground">No agents match.</p>
-        )}
+        <Input placeholder="Search agents…" value={query} onChange={(e) => setQuery(e.target.value)} className="mb-2" />
+        {filtered.length === 0 && <p className="text-sm text-muted-foreground">No agents match.</p>}
         {filtered.map((agent) => (
-          <div
-            key={agent.metadata.name}
-            className="flex items-start gap-3 rounded-lg border p-3"
-          >
+          <div key={agent.metadata.name} className="flex items-start gap-3 rounded-lg border p-3">
             <Switch
               checked={selected.has(agent.metadata.name)}
               onCheckedChange={() => toggle(agent.metadata.name)}
@@ -97,9 +87,7 @@ export function AgentsTab() {
                   v{agent.metadata.version}
                 </span>
               </span>
-              <span className="text-sm text-muted-foreground">
-                {agent.metadata.description}
-              </span>
+              <span className="text-sm text-muted-foreground">{agent.metadata.description}</span>
             </div>
           </div>
         ))}

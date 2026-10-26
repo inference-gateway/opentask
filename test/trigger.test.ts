@@ -2,8 +2,7 @@ import { expect, test } from "bun:test";
 import { getTrigger } from "../src/lib/dom";
 
 // getTrigger only reads .value and .selectionStart, so a plain object stands in.
-const box = (value: string, pos = value.length) =>
-  ({ value, selectionStart: pos }) as HTMLTextAreaElement;
+const box = (value: string, pos = value.length) => ({ value, selectionStart: pos }) as HTMLTextAreaElement;
 
 test("fires on '!' at input start", () => {
   expect(getTrigger(box("!go"))).toEqual({ index: 0, query: "go" });

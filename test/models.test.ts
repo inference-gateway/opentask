@@ -1,5 +1,18 @@
 import { expect, test } from "bun:test";
-import { MODELS, DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_DEPENDENCIES, DEPENDENCY_DEFS, isBotConfig, isPermissions, isPluginOption, isDependenciesConfig, enabledPlugins, githubAppUrl } from "../src/shared/models";
+import {
+  MODELS,
+  DEFAULT_BOT,
+  DEFAULT_PERMISSIONS,
+  DEFAULT_PLUGINS,
+  DEFAULT_DEPENDENCIES,
+  DEPENDENCY_DEFS,
+  isBotConfig,
+  isPermissions,
+  isPluginOption,
+  isDependenciesConfig,
+  enabledPlugins,
+  githubAppUrl,
+} from "../src/shared/models";
 
 const noBot = DEFAULT_BOT;
 const bot = { enabled: true, clientId: "Iv23liABC", privateKeySecret: "OPENTASK_APP_PRIVATE_KEY" };
@@ -53,7 +66,7 @@ test("enabledPlugins returns only toggled-on ids", () => {
       { id: "a/b", enabled: true },
       { id: "c/d", enabled: false },
       { id: "e/f", enabled: true },
-    ]),
+    ])
   ).toEqual(["a/b", "e/f"]);
 });
 

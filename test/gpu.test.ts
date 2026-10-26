@@ -35,7 +35,17 @@ describe("podRequestBody", () => {
     expect(body.cloudType).toBe("SECURE");
     expect(body.ports).toEqual(["8080/http"]);
     expect(body.dockerStartCmd).toEqual([
-      "-hf", LLAMA_MODELS[0].hf, "--host", "0.0.0.0", "--port", "8080", "-ngl", "99", "--jinja", "--api-key", "sekret",
+      "-hf",
+      LLAMA_MODELS[0].hf,
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8080",
+      "-ngl",
+      "99",
+      "--jinja",
+      "--api-key",
+      "sekret",
     ]);
   });
 

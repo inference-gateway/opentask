@@ -9,13 +9,7 @@ const CHOICES: { value: Theme; label: string }[] = [
   { value: "dark", label: "Dark" },
 ];
 
-export function AppearanceTab({
-  theme,
-  setTheme,
-}: {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
-}) {
+export function AppearanceTab({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
   return (
     <Section title="Theme" description="Choose how the options page and toolbar popup are displayed.">
       <RadioGroup value={theme} onValueChange={(v) => setTheme(v as Theme)}>

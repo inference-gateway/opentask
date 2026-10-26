@@ -8,7 +8,14 @@ await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 
 const result = await Bun.build({
-  entrypoints: ["src/content.ts", "src/background.ts", "src/options.tsx", "src/popup.tsx", "src/sidepanel.tsx", "src/offscreen.ts"],
+  entrypoints: [
+    "src/content.ts",
+    "src/background.ts",
+    "src/options.tsx",
+    "src/popup.tsx",
+    "src/sidepanel.tsx",
+    "src/offscreen.ts",
+  ],
   outdir: "dist",
   target: "browser",
   minify: true,

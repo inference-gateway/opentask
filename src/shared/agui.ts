@@ -19,14 +19,28 @@ export function parseEvent(frame: Record<string, unknown>): Event | undefined {
 // TOOL_CALL_RESULT (unset while the tool is still running). Other roles leave
 // them unset.
 // `result` is the tool's output text when known (snapshot history).
-export type Msg = { role: string; content: string; args?: string; id?: string; ok?: boolean; error?: string; result?: string };
+export type Msg = {
+  role: string;
+  content: string;
+  args?: string;
+  id?: string;
+  ok?: boolean;
+  error?: string;
+  result?: string;
+};
 
 // Folds one AG-UI chat_event into the rendered message list. Text streaming,
 // reasoning streaming, and tool calls (name + args) are rendered; everything
 // else is a no-op by contract.
 export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   const e = event as {
-    type?: unknown; role?: string; delta?: string; toolCallName?: string; toolCallId?: string; content?: string; messageId?: string;
+    type?: unknown;
+    role?: string;
+    delta?: string;
+    toolCallName?: string;
+    toolCallId?: string;
+    content?: string;
+    messageId?: string;
   } | null;
   if (!e || typeof e.type !== "string") return messages;
   switch (e.type) {
@@ -44,8 +58,7 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
       return [...messages, { role: "reasoning", content: "" }];
     case "REASONING_MESSAGE_CONTENT": {
       const last = messages[messages.length - 1];
-      if (last?.role !== "reasoning")
-        return [...messages, { role: "reasoning", content: e.delta ?? "" }];
+      if (last?.role !== "reasoning") return [...messages, { role: "reasoning", content: e.delta ?? "" }];
       return [...messages.slice(0, -1), { ...last, content: last.content + (e.delta ?? "") }];
     }
     case "TOOL_CALL_START":
@@ -94,7 +107,9 @@ export function toolLabel(name: string, args?: string): string {
   if (!args) return name;
   try {
     const o = JSON.parse(args) as Record<string, unknown>;
-    const inner = Object.entries(o).map(([k, v]) => `${k}=${String(v)}`).join(", ");
+    const inner = Object.entries(o)
+      .map(([k, v]) => `${k}=${String(v)}`)
+      .join(", ");
     return `${name}(${inner})`;
   } catch {
     return `${name}(${args})`;
@@ -107,8 +122,10 @@ export function toolLabel(name: string, args?: string): string {
 export function snapshotToMessages(list: Message[]): Msg[] {
   const out: Msg[] = [];
   for (const m of list) {
-    const content = typeof m.content === "string" ? m.content : (m.content ?? [])
-      .map((part: ContentPart) => part.type === "text" ? part.text : "[Attachment]").join("\n");
+    const content =
+      typeof m.content === "string"
+        ? m.content
+        : (m.content ?? []).map((part: ContentPart) => (part.type === "text" ? part.text : "[Attachment]")).join("\n");
     if (m.role === "tool") {
       const row = out.find((o) => o.role === "tool" && o.id === m.toolCallId);
       if (row) {
@@ -128,7 +145,12 @@ export function snapshotToMessages(list: Message[]): Msg[] {
 }
 
 // A question the AskUserQuestion tool asked, read from the tool call's args.
-export type Question = { header: string; question: string; options: { label: string; description: string }[]; multiSelect: boolean };
+export type Question = {
+  header: string;
+  question: string;
+  options: { label: string; description: string }[];
+  multiSelect: boolean;
+};
 export type Answer = { header: string; question: string; selectedLabels: string[]; otherText: string };
 
 // Parses the AskUserQuestion tool call's args JSON into the questions its
@@ -146,9 +168,18 @@ export function parseQuestions(args?: string): Question[] {
     if (typeof q?.question !== "string") return [];
     const options = (Array.isArray(q.options) ? q.options : []).flatMap((opt): Question["options"] => {
       const o = opt as { label?: unknown; description?: unknown } | null;
-      return typeof o?.label === "string" ? [{ label: o.label, description: typeof o.description === "string" ? o.description : "" }] : [];
+      return typeof o?.label === "string"
+        ? [{ label: o.label, description: typeof o.description === "string" ? o.description : "" }]
+        : [];
     });
-    return [{ header: typeof q.header === "string" ? q.header : "", question: q.question, options, multiSelect: q.multiSelect === true }];
+    return [
+      {
+        header: typeof q.header === "string" ? q.header : "",
+        question: q.question,
+        options,
+        multiSelect: q.multiSelect === true,
+      },
+    ];
   });
 }
 
@@ -162,8 +193,10 @@ export type PendingInterrupt =
 export function pendingInterrupts(interrupts: Interrupt[], messages: Msg[]): PendingInterrupt[] {
   return interrupts.flatMap((it): PendingInterrupt[] => {
     const row = messages.find((m) => m.role === "tool" && m.id === (it.toolCallId ?? it.id));
-    if (it.reason === "input_required") return [{ id: it.id, reason: "input_required", questions: parseQuestions(row?.args) }];
-    if (it.reason === "tool_call") return [{ id: it.id, reason: "tool_call", toolName: row?.content ?? "", toolArgs: row?.args ?? "" }];
+    if (it.reason === "input_required")
+      return [{ id: it.id, reason: "input_required", questions: parseQuestions(row?.args) }];
+    if (it.reason === "tool_call")
+      return [{ id: it.id, reason: "tool_call", toolName: row?.content ?? "", toolArgs: row?.args ?? "" }];
     return [];
   });
 }
@@ -228,12 +261,14 @@ export function parseConversations(frame: Record<string, unknown>): Conversation
   return list.flatMap((c) => {
     const o = c as { id?: unknown; title?: unknown; updated_at?: unknown; message_count?: unknown };
     if (typeof o.id !== "string" || o.id === "") return [];
-    return [{
-      id: o.id,
-      title: typeof o.title === "string" ? o.title : "",
-      updatedAt: typeof o.updated_at === "string" ? o.updated_at : "",
-      messageCount: typeof o.message_count === "number" ? o.message_count : 0,
-    }];
+    return [
+      {
+        id: o.id,
+        title: typeof o.title === "string" ? o.title : "",
+        updatedAt: typeof o.updated_at === "string" ? o.updated_at : "",
+        messageCount: typeof o.message_count === "number" ? o.message_count : 0,
+      },
+    ];
   });
 }
 
@@ -274,11 +309,13 @@ export function parseSkills(frame: Record<string, unknown>): PanelSkill[] {
   return list.flatMap((s) => {
     const o = s as { name?: unknown; description?: unknown; scope?: unknown };
     if (typeof o.name !== "string" || o.name === "") return [];
-    return [{
-      name: o.name,
-      description: typeof o.description === "string" ? o.description : "",
-      scope: typeof o.scope === "string" ? o.scope : "",
-    }];
+    return [
+      {
+        name: o.name,
+        description: typeof o.description === "string" ? o.description : "",
+        scope: typeof o.scope === "string" ? o.scope : "",
+      },
+    ];
   });
 }
 

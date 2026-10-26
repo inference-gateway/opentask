@@ -17,7 +17,7 @@ describe("parseAttachments", () => {
         { filename: "a", mime_type: "", data: "AA" },
         { filename: "", mime_type: "text/plain", data: "AA" },
         { filename: "a", mime_type: "text/plain", data: "" },
-      ]),
+      ])
     ).toEqual([]);
   });
 
@@ -34,7 +34,11 @@ describe("parseAttachments", () => {
   });
 
   test("drops data over the per-file byte cap but keeps the rest", () => {
-    const big = { filename: "big.bin", mime_type: "application/octet-stream", data: "A".repeat(Math.ceil((10 * 1024 * 1024) / 3) * 4 + 1) };
+    const big = {
+      filename: "big.bin",
+      mime_type: "application/octet-stream",
+      data: "A".repeat(Math.ceil((10 * 1024 * 1024) / 3) * 4 + 1),
+    };
     const out = parseAttachments([big, valid]);
     expect(out).toEqual([valid]);
   });
@@ -53,6 +57,8 @@ describe("userMessageContent", () => {
   });
 
   test("no text part when the message is only files", () => {
-    expect(userMessageContent("", [valid])).toEqual([{ type: "image", mimeType: valid.mime_type, data: valid.data, filename: valid.filename }]);
+    expect(userMessageContent("", [valid])).toEqual([
+      { type: "image", mimeType: valid.mime_type, data: valid.data, filename: valid.filename },
+    ]);
   });
 });

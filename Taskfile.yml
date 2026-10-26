@@ -71,9 +71,20 @@ tasks:
       - echo "Run the following on macOS with Xcode installed:"
       - echo "  xcrun safari-web-extension-converter dist/ --bundle-identifier com.inference-gateway.opentask --project-location ../safari-extension --no-open"
 
+  lint:
+    desc: Run Biome checks (lint rules and formatting)
+    cmds:
+      - bun run lint
+
+  format:
+    desc: Apply Biome formatting to the sources
+    cmds:
+      - bun run format
+
   check:
     desc: Run all CI checks
     cmds:
       - task: typecheck
+      - task: lint
       - task: test
       - task: build

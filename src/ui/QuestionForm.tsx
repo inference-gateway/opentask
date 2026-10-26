@@ -6,20 +6,37 @@ import { Button } from "@/ui/components/button";
 import { Input } from "@/ui/components/input";
 import type { Answer, Question } from "../shared/agui";
 
-export function QuestionForm({ questions, onSubmit, onCancel }: { questions: Question[]; onSubmit: (answers: Answer[]) => void; onCancel: () => void }) {
+export function QuestionForm({
+  questions,
+  onSubmit,
+  onCancel,
+}: {
+  questions: Question[];
+  onSubmit: (answers: Answer[]) => void;
+  onCancel: () => void;
+}) {
   const [selected, setSelected] = useState<string[][]>(questions.map(() => []));
   const [other, setOther] = useState<string[]>(questions.map(() => ""));
 
   function toggle(qi: number, label: string, multi: boolean) {
-    setSelected((all) => all.map((labels, i) => {
-      if (i !== qi) return labels;
-      if (!multi) return [label];
-      return labels.includes(label) ? labels.filter((l) => l !== label) : [...labels, label];
-    }));
+    setSelected((all) =>
+      all.map((labels, i) => {
+        if (i !== qi) return labels;
+        if (!multi) return [label];
+        return labels.includes(label) ? labels.filter((l) => l !== label) : [...labels, label];
+      })
+    );
   }
 
   function submit() {
-    onSubmit(questions.map((q, i) => ({ header: q.header, question: q.question, selectedLabels: selected[i], otherText: other[i] })));
+    onSubmit(
+      questions.map((q, i) => ({
+        header: q.header,
+        question: q.question,
+        selectedLabels: selected[i],
+        otherText: other[i],
+      }))
+    );
   }
 
   const answered = questions.every((_, i) => selected[i].length > 0 || other[i].trim() !== "");
@@ -29,7 +46,11 @@ export function QuestionForm({ questions, onSubmit, onCancel }: { questions: Que
         {questions.map((q, qi) => (
           <fieldset key={qi} className="space-y-1.5">
             <legend className="text-sm font-semibold">
-              {q.header && <span className="mr-1 rounded bg-indigo-500/15 px-1 font-mono text-[0.8em] text-indigo-600 dark:text-indigo-400">{q.header}</span>}
+              {q.header && (
+                <span className="mr-1 rounded bg-indigo-500/15 px-1 font-mono text-[0.8em] text-indigo-600 dark:text-indigo-400">
+                  {q.header}
+                </span>
+              )}
               {q.question}
             </legend>
             {q.options.map((opt) => (

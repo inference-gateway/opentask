@@ -1,11 +1,52 @@
 import * as storage from "./shared/storage";
-import { isValidHf, podRequestBody, githubError, parseGhHttp, type Skill, type SkillsCatalogResponse, type ApplySkillsResponse, type DispatchTaskResponse, type AgentsCatalogResponse, type GpuState } from "./shared/messages";
-import { DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, isBotConfig, isPermissions, isPluginOption, isInitConfig, isDependenciesConfig, enabledPlugins, normalizeTimeout } from "./shared/models";
+import {
+  isValidHf,
+  podRequestBody,
+  githubError,
+  parseGhHttp,
+  type Skill,
+  type SkillsCatalogResponse,
+  type ApplySkillsResponse,
+  type DispatchTaskResponse,
+  type AgentsCatalogResponse,
+  type GpuState,
+} from "./shared/messages";
+import {
+  DEFAULT_BOT,
+  DEFAULT_PERMISSIONS,
+  DEFAULT_PLUGINS,
+  DEFAULT_INIT,
+  DEFAULT_INSTRUCTIONS,
+  DEFAULT_DEPENDENCIES,
+  isBotConfig,
+  isPermissions,
+  isPluginOption,
+  isInitConfig,
+  isDependenciesConfig,
+  enabledPlugins,
+  normalizeTimeout,
+} from "./shared/models";
 import type { BotConfig, Permissions, PluginOption, DependenciesConfig } from "./shared/models";
 import { REGISTRY, parseSource, isCatalogSkill, type CatalogSkill } from "./shared/skills";
-import { taskBody, taskTitle, refinePrompt, DEFAULT_REFINE_PROMPT, REFINE_SYSTEM_PROMPT, initPrompt } from "./shared/task";
+import {
+  taskBody,
+  taskTitle,
+  refinePrompt,
+  DEFAULT_REFINE_PROMPT,
+  REFINE_SYSTEM_PROMPT,
+  initPrompt,
+} from "./shared/task";
 import { CATALOG_URL, agentsFromCatalog, type AgentManifest } from "./shared/agents";
-import { createRecordingBox, frameToolsCommand, frameToolsStatus, frameToolsStatusCommand, normalizeRecordCap, paintRecordingOverlay, supportsTabCapture, type RecordState } from "./shared/recording";
+import {
+  createRecordingBox,
+  frameToolsCommand,
+  frameToolsStatus,
+  frameToolsStatusCommand,
+  normalizeRecordCap,
+  paintRecordingOverlay,
+  supportsTabCapture,
+  type RecordState,
+} from "./shared/recording";
 import type { Attachment } from "./shared/agui";
 import type { RecordStopResponse, RecordTakeResponse, RecordToolsResponse } from "./shared/messages";
 import { initBridge, callTool, sendUserMessage, startNewSession, CLI_DOWN } from "./lib/bridge";
@@ -129,7 +170,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "record-take") {
     const recording = heldRecording.take();
     if (recording) void ensureFrameTools();
-    sendResponse(recording ? { recording } satisfies RecordTakeResponse : {});
+    sendResponse(recording ? ({ recording } satisfies RecordTakeResponse) : {});
     return false;
   }
   if (msg?.type === "record-tools") {
@@ -165,9 +206,7 @@ async function getSkills(owner: string, repo: string): Promise<Skill[]> {
 
 async function loadPlugins(): Promise<PluginOption[]> {
   const stored = await storage.get<unknown>("plugins");
-  return Array.isArray(stored) && stored.every(isPluginOption)
-    ? (stored as PluginOption[])
-    : DEFAULT_PLUGINS;
+  return Array.isArray(stored) && stored.every(isPluginOption) ? (stored as PluginOption[]) : DEFAULT_PLUGINS;
 }
 
 async function loadDependencies(): Promise<DependenciesConfig> {
@@ -199,9 +238,18 @@ async function loadBot(): Promise<BotConfig> {
 // Every repo the user's gh auth can access (owned, collaborator, org member) as
 // "owner/name". Powers the Workflows tab's owner + repository dropdowns.
 async function listRepos(): Promise<{ repos: string[] } | { error: string }> {
-  const r = await callTool("Bash", { command: "gh api 'user/repos?per_page=100' --paginate --jq '.[].full_name'" }, 310_000);
+  const r = await callTool(
+    "Bash",
+    { command: "gh api 'user/repos?per_page=100' --paginate --jq '.[].full_name'" },
+    310_000
+  );
   if (!r.success) return { error: r.error || r.output || "gh api user/repos failed" };
-  return { repos: r.output.split("\n").map((s) => s.trim()).filter(Boolean) };
+  return {
+    repos: r.output
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  };
 }
 
 // The repo the connected CLI is running in ("owner/name"), from its working
@@ -254,7 +302,10 @@ async function headShaFor(owner: string, repo: string, branch: string): Promise<
   return createInitialCommit(owner, repo);
 }
 
-async function checkInstall(owner: string, repo: string): Promise<{ installed: boolean; url?: string } | { error: string }> {
+async function checkInstall(
+  owner: string,
+  repo: string
+): Promise<{ installed: boolean; url?: string } | { error: string }> {
   const res = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}`);
   if (res.status === 200) {
     const data = await res.json();
@@ -281,7 +332,10 @@ async function installSettingsContext(): Promise<string> {
   const deps = await loadDependencies();
 
   const lines: string[] = [`Job timeout-minutes: ${timeout}.`];
-  if (bot.enabled) lines.push(`Use the GitHub App token variant: client-id secret ${bot.clientId}, private-key secret ${bot.privateKeySecret}.`);
+  if (bot.enabled)
+    lines.push(
+      `Use the GitHub App token variant: client-id secret ${bot.clientId}, private-key secret ${bot.privateKeySecret}.`
+    );
   if (plugins.length) lines.push(`Pre-install these infer-action plugins: ${plugins.join(", ")}.`);
   if (agents.length) lines.push(`Expose these A2A agents (agents input): ${agents.join(",")}.`);
   if (!perms.createPRs) lines.push("Default enable-git-operations to false (advisory mode).");
@@ -289,7 +343,8 @@ async function installSettingsContext(): Promise<string> {
   if (perms.comment) lines.push("Allow gh issue comment and gh pr comment in bash-allow-append.");
   if (deps.apt?.trim()) lines.push(`apt packages: ${deps.apt.trim()}.`);
   const langs = deps.items.filter((d) => d.enabled && d.id !== "task").map((d) => d.id);
-  if (!deps.autoDetect && langs.length) lines.push(`Ensure the workflow's languages input includes: ${langs.join(" ")}.`);
+  if (!deps.autoDetect && langs.length)
+    lines.push(`Ensure the workflow's languages input includes: ${langs.join(" ")}.`);
   if (debug) lines.push("Enable debug output.");
   if (reviewInline) lines.push('Set review-inline: "true".');
   if (visionModel.trim()) lines.push(`Vision model: ${visionModel.trim()}.`);
@@ -327,7 +382,13 @@ async function createTask(owner: string, repo: string, prompt: string): Promise<
 // which infer-action picks up via its direct-prompt input. An empty `model` omits the input
 // entirely so the workflow's own `vars.DEFAULT_MODEL` decides - only a deliberate pick in
 // the Run task dropdown sends an override.
-async function dispatchTask(owner: string, repo: string, model: string, prompt: string, extra?: Record<string, string>): Promise<DispatchTaskResponse> {
+async function dispatchTask(
+  owner: string,
+  repo: string,
+  model: string,
+  prompt: string,
+  extra?: Record<string, string>
+): Promise<DispatchTaskResponse> {
   if (!prompt || !prompt.trim()) return { error: "Task is empty." };
   const repoRes = await ghFetch(owner, repo, "");
   if (!repoRes.ok) return ghError(repoRes);
@@ -342,8 +403,13 @@ async function dispatchTask(owner: string, repo: string, model: string, prompt: 
   let res = await dispatch({ ...core, ...extra });
   if (res.status === 422 && extra) res = await dispatch(core);
   if (res.status === 204) return { url: `https://github.com/${owner}/${repo}/actions` };
-  if (res.status === 404) return { error: "Workflow not found on the default branch. Merge the OpenTask Agent install PR first." };
-  if (res.status === 422) return { error: "Dispatch rejected - the installed workflow may predate the prompt input. Re-install the OpenTask Agent workflow." };
+  if (res.status === 404)
+    return { error: "Workflow not found on the default branch. Merge the OpenTask Agent install PR first." };
+  if (res.status === 422)
+    return {
+      error:
+        "Dispatch rejected - the installed workflow may predate the prompt input. Re-install the OpenTask Agent workflow.",
+    };
   throw await ghFail(res);
 }
 
@@ -352,7 +418,10 @@ async function dispatchTask(owner: string, repo: string, model: string, prompt: 
 // actual dispatch + error handling.
 async function refineIssue(owner: string, repo: string, issue: number): Promise<DispatchTaskResponse> {
   const template = (await storage.get<string>("refinePrompt")) ?? DEFAULT_REFINE_PROMPT;
-  return dispatchTask(owner, repo, "", refinePrompt(owner, repo, issue, template), { enable_git: "false", system_prompt: REFINE_SYSTEM_PROMPT });
+  return dispatchTask(owner, repo, "", refinePrompt(owner, repo, issue, template), {
+    enable_git: "false",
+    system_prompt: REFINE_SYSTEM_PROMPT,
+  });
 }
 
 // Scaffold a repo: read the global init config, then dispatch the installed workflow with
@@ -427,7 +496,9 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
       const src = entry && parseSource(entry.source);
       if (!src) return { error: `Skill "${name}" has no resolvable source.` };
       const srcTree = await resolveTree(src.owner, src.repo, src.ref);
-      const files = (await listTreeFiles(src.owner, src.repo, srcTree)).filter((f) => f.path.startsWith(`${src.path}/`));
+      const files = (await listTreeFiles(src.owner, src.repo, srcTree)).filter((f) =>
+        f.path.startsWith(`${src.path}/`)
+      );
       if (!files.length) return { error: `Skill "${name}" is empty at its source.` };
       for (const f of files) {
         const rel = f.path.slice(src.path.length + 1);
@@ -458,10 +529,16 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
     body: JSON.stringify({ base_tree: baseTree, tree }),
   }).then((r) => r.json());
 
-  const parts = [add.length ? `install ${add.join(", ")}` : "", remove.length ? `remove ${remove.join(", ")}` : ""].filter(Boolean).join("; ");
+  const parts = [add.length ? `install ${add.join(", ")}` : "", remove.length ? `remove ${remove.join(", ")}` : ""]
+    .filter(Boolean)
+    .join("; ");
   const commit = await ghFetch(owner, repo, "git/commits", {
     method: "POST",
-    body: JSON.stringify({ message: `chore: update OpenTask skills (${parts})`, tree: newTree.sha, parents: [baseSha] }),
+    body: JSON.stringify({
+      message: `chore: update OpenTask skills (${parts})`,
+      tree: newTree.sha,
+      parents: [baseSha],
+    }),
   }).then((r) => r.json());
 
   const skillsBranch = `${SKILLS_BRANCH}-${Date.now().toString(36)}`;
@@ -530,12 +607,18 @@ async function resolveTree(owner: string, repo: string, ref: string): Promise<st
   return (await res.json()).commit.tree.sha;
 }
 
-async function listTreeFiles(owner: string, repo: string, treeSha: string): Promise<{ path: string; sha: string; mode: string }[]> {
+async function listTreeFiles(
+  owner: string,
+  repo: string,
+  treeSha: string
+): Promise<{ path: string; sha: string; mode: string }[]> {
   const res = await ghFetch(owner, repo, `git/trees/${treeSha}?recursive=1`);
   if (!res.ok) throw await ghFail(res);
   const data = await res.json();
   const all = Array.isArray(data.tree) ? data.tree : [];
-  return all.filter((e: { type: string }) => e.type === "blob").map((e: { path: string; sha: string; mode: string }) => ({ path: e.path, sha: e.sha, mode: e.mode }));
+  return all
+    .filter((e: { type: string }) => e.type === "blob")
+    .map((e: { path: string; sha: string; mode: string }) => ({ path: e.path, sha: e.sha, mode: e.mode }));
 }
 
 // GitHub Contents/blob base64 comes newline-wrapped; decode as UTF-8 (skill text may be non-ASCII).
@@ -556,7 +639,11 @@ async function runpodFetch(path: string, init?: RequestInit): Promise<Response> 
   if (!key) throw new Error("No RunPod API key configured. Add one in Settings > Orchestrator.");
   return fetch(`https://rest.runpod.io/v1${path}`, {
     ...init,
-    headers: { ...init?.headers as Record<string, string>, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: {
+      ...(init?.headers as Record<string, string>),
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
   });
 }
 
@@ -564,7 +651,14 @@ async function runpodFetch(path: string, init?: RequestInit): Promise<Response> 
 async function runpodError(res: Response): Promise<string> {
   const text = await res.text().catch(() => "");
   let detail = text;
-  try { detail = (JSON.parse(text) as { error?: string; message?: string }).error ?? (JSON.parse(text) as { message?: string }).message ?? text; } catch { /* not JSON */ }
+  try {
+    detail =
+      (JSON.parse(text) as { error?: string; message?: string }).error ??
+      (JSON.parse(text) as { message?: string }).message ??
+      text;
+  } catch {
+    /* not JSON */
+  }
   return `RunPod ${res.status}: ${detail || res.statusText}`;
 }
 
@@ -576,7 +670,12 @@ async function saveGpuState(state: GpuState): Promise<void> {
   await storage.set("gpu-state", state);
 }
 
-async function provisionGPU(gpuTypeId: string, modelId: string, hf: string, cloudType?: string): Promise<{ state: GpuState } | { error: string }> {
+async function provisionGPU(
+  gpuTypeId: string,
+  modelId: string,
+  hf: string,
+  cloudType?: string
+): Promise<{ state: GpuState } | { error: string }> {
   const existing = await loadGpuState();
   if (existing.status === "running" || existing.status === "provisioning") {
     return { error: `GPU is already ${existing.status}. Deprovision it first.` };
@@ -590,7 +689,7 @@ async function provisionGPU(gpuTypeId: string, modelId: string, hf: string, clou
     await saveGpuState({ status: "failed" });
     return { error: await runpodError(res) };
   }
-  const pod = await res.json() as { id: string; podId?: string };
+  const pod = (await res.json()) as { id: string; podId?: string };
   const podId = pod.id ?? pod.podId;
   const state: GpuState = {
     status: "provisioning",
@@ -625,7 +724,7 @@ async function gpuStatus(): Promise<{ state: GpuState } | { error: string }> {
     return { state: idle };
   }
   if (!res.ok) return { error: await runpodError(res) };
-  const pod = await res.json() as { desiredStatus?: string; status?: string };
+  const pod = (await res.json()) as { desiredStatus?: string; status?: string };
   const status = pod.desiredStatus ?? pod.status ?? "unknown";
   if (status === "RUNNING") {
     const running: GpuState = { ...state, status: "running" };
@@ -673,7 +772,8 @@ async function closeOffscreen(): Promise<void> {
 async function isRecording(): Promise<boolean> {
   const contexts = await chrome.runtime.getContexts({});
   return contexts.some(
-    (c) => c.contextType === chrome.runtime.ContextType.OFFSCREEN_DOCUMENT && (c.documentUrl ?? "").endsWith("#recording"),
+    (c) =>
+      c.contextType === chrome.runtime.ContextType.OFFSCREEN_DOCUMENT && (c.documentUrl ?? "").endsWith("#recording")
   );
 }
 
@@ -685,7 +785,9 @@ async function recordState(): Promise<RecordState> {
 
 // The offscreen listener responds asynchronously; right after createDocument it
 // may not be listening yet, so retry the send briefly.
-async function sendToOffscreen(msg: Record<string, unknown>): Promise<{ state?: RecordState; error?: string; recording?: Attachment } | undefined> {
+async function sendToOffscreen(
+  msg: Record<string, unknown>
+): Promise<{ state?: RecordState; error?: string; recording?: Attachment } | undefined> {
   let lastErr: unknown;
   for (let i = 0; i < 5; i++) {
     try {
@@ -722,8 +824,8 @@ async function recordStop(): Promise<RecordStopResponse> {
     const resp = await sendToOffscreen({ target: "offscreen", type: "stop-recording" });
     if (resp?.error) return { error: resp.error };
     if (resp?.recording) {
-        heldRecording.hold(resp.recording);
-        announceCapture();
+      heldRecording.hold(resp.recording);
+      announceCapture();
     }
     return resp?.state ?? { status: "idle" };
   } finally {
@@ -752,8 +854,8 @@ function announceCapture(): void {
 function ensureFrameTools(): Promise<RecordToolsResponse> {
   frameTools ??= installFrameTools().catch((err) => ({ error: String(err) }));
   return frameTools.then((r) => {
-      if ("error" in r) frameTools = undefined;
-      return r;
+    if ("error" in r) frameTools = undefined;
+    return r;
   });
 }
 

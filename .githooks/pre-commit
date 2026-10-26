@@ -9,5 +9,8 @@ fi
 echo "--- pre-commit: typecheck ---"
 bun run typecheck || exit 1
 
+echo "--- pre-commit: lint ---"
+bun run lint || exit 1
+
 echo "--- pre-commit: tests ---"
 bun test || exit 1

@@ -1,5 +1,33 @@
 import * as storage from "../shared/storage";
-import { backoffMs, isClearCommand, isVisibleMessage, parseActiveThreads, parseAttachments, parseConversations, parseEvent, parseFrame, parseHistory, parseSkills, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, userMessageContent, PROTOCOL_VERSION, type ActiveThread, type Answer, type Attachment, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, type PendingInterrupt, type PendingQuestion } from "../shared/agui";
+import {
+  backoffMs,
+  isClearCommand,
+  isVisibleMessage,
+  parseActiveThreads,
+  parseAttachments,
+  parseConversations,
+  parseEvent,
+  parseFrame,
+  parseHistory,
+  parseSkills,
+  pendingInterrupts,
+  reduceAgui,
+  runningFromEvent,
+  snapshotToMessages,
+  stripAnsi,
+  userMessageContent,
+  PROTOCOL_VERSION,
+  type ActiveThread,
+  type Answer,
+  type Attachment,
+  type ConversationMeta,
+  type Msg,
+  type PanelSkill,
+  type PanelState,
+  type PendingApproval,
+  type PendingInterrupt,
+  type PendingQuestion,
+} from "../shared/agui";
 import type { Event, Interrupt } from "@ag-ui/core";
 
 export const DEFAULT_PORT = "52789";
@@ -82,7 +110,8 @@ function clearPrompts() {
 // interrupt, else a panel tool_request's approval.
 function pendingApproval(): PendingApproval | undefined {
   for (const it of interrupts) {
-    if (it.reason === "tool_call" && !resumeEntries.has(it.id)) return { id: it.id, source: "interrupt", toolName: it.toolName, toolArgs: it.toolArgs };
+    if (it.reason === "tool_call" && !resumeEntries.has(it.id))
+      return { id: it.id, source: "interrupt", toolName: it.toolName, toolArgs: it.toolArgs };
   }
   return toolRequestApproval;
 }
@@ -101,8 +130,31 @@ export function panelState(): PanelState {
     ...(m.args !== undefined ? { args: stripAnsi(m.args) } : {}),
   }));
   const approval = pendingApproval();
-  const cleanApproval = approval && { ...approval, toolName: stripAnsi(approval.toolName), toolArgs: stripAnsi(approval.toolArgs) };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, history, models: cliModels, currentModel, mode, activeConversationId, updateRequired, projectDir, activeThreads, pendingApproval: cleanApproval, pendingQuestion: pendingQuestion() };
+  const cleanApproval = approval && {
+    ...approval,
+    toolName: stripAnsi(approval.toolName),
+    toolArgs: stripAnsi(approval.toolArgs),
+  };
+  return {
+    type: "state",
+    connected,
+    connecting: wantConnected && !connected,
+    running,
+    artifactBase: `http://127.0.0.1:${httpPort}`,
+    messages: clean.filter(isVisibleMessage),
+    conversations,
+    skills,
+    history,
+    models: cliModels,
+    currentModel,
+    mode,
+    activeConversationId,
+    updateRequired,
+    projectDir,
+    activeThreads,
+    pendingApproval: cleanApproval,
+    pendingQuestion: pendingQuestion(),
+  };
 }
 
 function broadcast() {
@@ -141,7 +193,15 @@ function sendRunInput(content: string | Record<string, unknown>[]) {
 // user has answered each of them.
 function sendResumeWhenComplete() {
   if (interrupts.length === 0 || interrupts.some((it) => !resumeEntries.has(it.id))) return;
-  send({ type: "run_agent_input", input: { threadId: activeConversationId ?? "", runId: crypto.randomUUID(), messages: [], resume: [...resumeEntries.values()] } });
+  send({
+    type: "run_agent_input",
+    input: {
+      threadId: activeConversationId ?? "",
+      runId: crypto.randomUUID(),
+      messages: [],
+      resume: [...resumeEntries.values()],
+    },
+  });
   interrupts = [];
   resumeEntries.clear();
   clearApprovalAlert();
@@ -151,7 +211,10 @@ export const CLI_DOWN = "Connect the infer daemon to use GitHub features (Option
 
 export type ToolResult = { success: boolean; output: string; error: string };
 
-const pendingTools = new Map<string, { resolve: (r: ToolResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+const pendingTools = new Map<
+  string,
+  { resolve: (r: ToolResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }
+>();
 
 // tool_request ids issued by callTool, so a run carrying one never arms the
 // panel loader. Entries clear on the request's tool_result.
@@ -292,13 +355,15 @@ async function connect() {
   ws = socket;
 
   socket.onopen = () => {
-    socket.send(JSON.stringify({
-      type: "browser_hello",
-      token,
-      client: "extension",
-      protocol_version: PROTOCOL_VERSION,
-      extension_version: chrome.runtime.getManifest().version,
-    }));
+    socket.send(
+      JSON.stringify({
+        type: "browser_hello",
+        token,
+        client: "extension",
+        protocol_version: PROTOCOL_VERSION,
+        extension_version: chrome.runtime.getManifest().version,
+      })
+    );
   };
 
   socket.onmessage = (ev) => void handleFrame(socket, ev.data);
@@ -331,7 +396,9 @@ function requestConnect() {
 
 function scheduleReconnect() {
   if (attempt >= 5) return;
-  setTimeout(() => { if (wantConnected && !connected) void connect(); }, backoffMs(attempt++));
+  setTimeout(() => {
+    if (wantConnected && !connected) void connect();
+  }, backoffMs(attempt++));
 }
 
 export async function handleFrame(socket: WebSocket, data: unknown) {
@@ -365,7 +432,9 @@ export async function handleFrame(socket: WebSocket, data: unknown) {
       broadcast();
       return;
     case "models":
-      cliModels = Array.isArray(frame.models) ? (frame.models as unknown[]).filter((m): m is string => typeof m === "string") : [];
+      cliModels = Array.isArray(frame.models)
+        ? (frame.models as unknown[]).filter((m): m is string => typeof m === "string")
+        : [];
       currentModel = typeof frame.current === "string" && frame.current ? frame.current : undefined;
       broadcast();
       return;
@@ -485,7 +554,10 @@ function answerApproval(id: string, approved: boolean) {
 
 function answerQuestion(id: string, answers?: Answer[]) {
   if (!interrupts.some((it) => it.id === id)) return;
-  resumeEntries.set(id, answers ? { interruptId: id, status: "resolved", payload: { answers } } : { interruptId: id, status: "cancelled" });
+  resumeEntries.set(
+    id,
+    answers ? { interruptId: id, status: "resolved", payload: { answers } } : { interruptId: id, status: "cancelled" }
+  );
   sendResumeWhenComplete();
 }
 
@@ -501,7 +573,15 @@ type BrowserCommand = {
 };
 
 export async function runCommand(cmd: BrowserCommand) {
-  const result: Record<string, unknown> = { type: "browser_result", id: cmd.id, url: "", title: "", content: "", events: [], error: "" };
+  const result: Record<string, unknown> = {
+    type: "browser_result",
+    id: cmd.id,
+    url: "",
+    title: "",
+    content: "",
+    events: [],
+    error: "",
+  };
   const DEFAULT_TIMEOUT_MS = 30_000;
   const timeoutMs = DEFAULT_TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -510,7 +590,8 @@ export async function runCommand(cmd: BrowserCommand) {
   });
   try {
     Object.assign(result, (await Promise.race([exec(cmd), timeout])) ?? {});
-    const tab = controlledTabId === undefined ? undefined : await chrome.tabs.get(controlledTabId).catch(() => undefined);
+    const tab =
+      controlledTabId === undefined ? undefined : await chrome.tabs.get(controlledTabId).catch(() => undefined);
     result.url = tab?.url ?? "";
     result.title = tab?.title ?? "";
   } catch (err) {
@@ -526,7 +607,8 @@ export async function runCommand(cmd: BrowserCommand) {
 async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   if (cmd.action === "navigate") {
     if (!cmd.url) throw new Error("navigate requires url");
-    const existing = controlledTabId === undefined ? undefined : await chrome.tabs.get(controlledTabId).catch(() => undefined);
+    const existing =
+      controlledTabId === undefined ? undefined : await chrome.tabs.get(controlledTabId).catch(() => undefined);
     const tab = existing
       ? await chrome.tabs.update(existing.id!, { url: cmd.url, active: true })
       : await chrome.tabs.create({ url: cmd.url });
@@ -545,84 +627,106 @@ async function exec(cmd: BrowserCommand): Promise<Record<string, unknown>> {
   }
 
   let tabId = controlledTabId;
-  if (tabId === undefined || !(await chrome.tabs.get(tabId).catch(() => undefined)))
-    tabId = await activeTabId();
+  if (tabId === undefined || !(await chrome.tabs.get(tabId).catch(() => undefined))) tabId = await activeTabId();
   if (tabId === undefined) throw new Error("no active tab");
 
   const sel = cmd.selector ?? "";
   if (cmd.action === "click") {
-    await run(tabId, (s: string) => {
-      try {
-        const find = (q: string): HTMLElement | null => {
-          if (!q.startsWith("text=")) return document.querySelector(q) as HTMLElement | null;
-          const text = q.slice(5).replace(/^["']|["']$/g, "");
-          const walker = document.createTreeWalker(document.body, 4 /* NodeFilter.SHOW_TEXT */);
-          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-            const el = n.parentElement;
-            if (n.textContent?.includes(text) && el && el.checkVisibility?.() !== false) return el;
-          }
-          return null;
-        };
-        const el = find(s);
-        if (!el) throw new Error("selector not found: " + s);
-        el.click();
-        return {};
-      } catch (e) {
-        return { err: e instanceof Error ? e.message : String(e) };
-      }
-    }, [sel]);
+    await run(
+      tabId,
+      (s: string) => {
+        try {
+          const find = (q: string): HTMLElement | null => {
+            if (!q.startsWith("text=")) return document.querySelector(q) as HTMLElement | null;
+            const text = q.slice(5).replace(/^["']|["']$/g, "");
+            const walker = document.createTreeWalker(document.body, 4 /* NodeFilter.SHOW_TEXT */);
+            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+              const el = n.parentElement;
+              if (n.textContent?.includes(text) && el && el.checkVisibility?.() !== false) return el;
+            }
+            return null;
+          };
+          const el = find(s);
+          if (!el) throw new Error("selector not found: " + s);
+          el.click();
+          return {};
+        } catch (e) {
+          return { err: e instanceof Error ? e.message : String(e) };
+        }
+      },
+      [sel]
+    );
     return {};
   }
   if (cmd.action === "type") {
-    await run(tabId, (s: string, text: string, enter: boolean) => {
-      try {
-        const find = (q: string): HTMLElement | null => {
-          if (!q.startsWith("text=")) return document.querySelector(q) as HTMLElement | null;
-          const text = q.slice(5).replace(/^["']|["']$/g, "");
-          const walker = document.createTreeWalker(document.body, 4 /* NodeFilter.SHOW_TEXT */);
-          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-            const el = n.parentElement;
-            if (n.textContent?.includes(text) && el && el.checkVisibility?.() !== false) return el;
+    await run(
+      tabId,
+      (s: string, text: string, enter: boolean) => {
+        try {
+          const find = (q: string): HTMLElement | null => {
+            if (!q.startsWith("text=")) return document.querySelector(q) as HTMLElement | null;
+            const text = q.slice(5).replace(/^["']|["']$/g, "");
+            const walker = document.createTreeWalker(document.body, 4 /* NodeFilter.SHOW_TEXT */);
+            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+              const el = n.parentElement;
+              if (n.textContent?.includes(text) && el && el.checkVisibility?.() !== false) return el;
+            }
+            return null;
+          };
+          const el = find(s) as (HTMLElement & { value?: string }) | null;
+          if (!el) throw new Error("selector not found: " + s);
+          el.focus();
+          if ("value" in el) el.value = text;
+          else el.textContent = text;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          if (enter) {
+            for (const t of ["keydown", "keypress", "keyup"])
+              el.dispatchEvent(new KeyboardEvent(t, { key: "Enter", code: "Enter", bubbles: true }));
+            (el.closest("form") as HTMLFormElement | null)?.requestSubmit?.();
           }
-          return null;
-        };
-        const el = find(s) as (HTMLElement & { value?: string }) | null;
-        if (!el) throw new Error("selector not found: " + s);
-        el.focus();
-        if ("value" in el) el.value = text;
-        else el.textContent = text;
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        if (enter) {
-          for (const t of ["keydown", "keypress", "keyup"])
-            el.dispatchEvent(new KeyboardEvent(t, { key: "Enter", code: "Enter", bubbles: true }));
-          (el.closest("form") as HTMLFormElement | null)?.requestSubmit?.();
+          return {};
+        } catch (e) {
+          return { err: e instanceof Error ? e.message : String(e) };
         }
-        return {};
-      } catch (e) {
-        return { err: e instanceof Error ? e.message : String(e) };
-      }
-    }, [sel, cmd.text ?? "", cmd.press_enter === true]);
+      },
+      [sel, cmd.text ?? "", cmd.press_enter === true]
+    );
     return {};
   }
   if (cmd.action === "read") {
-    const content = await run(tabId, (s: string) => {
-      try {
-        const el = (s ? document.querySelector(s) : document.body) as HTMLElement | null;
-        if (!el) throw new Error("selector not found: " + s);
-        const tag = el.tagName.toLowerCase();
-        if (tag === "input" || tag === "textarea" || tag === "select") {
-          const type = (el.getAttribute("type") || "").toLowerCase();
-          const ac = (el.getAttribute("autocomplete") || "").toLowerCase();
-          const hay = ((el.getAttribute("name") || "") + " " + (el.id || "") + " " + (el.getAttribute("aria-label") || "")).toLowerCase();
-          const sensitive = type === "password" || ac === "current-password" || ac === "new-password" || ac === "one-time-code" || /pass|secret|token|otp|cvc|card/.test(hay);
-          return { value: sensitive ? "[redacted]" : ((el as HTMLInputElement).value || "") };
+    const content = await run(
+      tabId,
+      (s: string) => {
+        try {
+          const el = (s ? document.querySelector(s) : document.body) as HTMLElement | null;
+          if (!el) throw new Error("selector not found: " + s);
+          const tag = el.tagName.toLowerCase();
+          if (tag === "input" || tag === "textarea" || tag === "select") {
+            const type = (el.getAttribute("type") || "").toLowerCase();
+            const ac = (el.getAttribute("autocomplete") || "").toLowerCase();
+            const hay = (
+              (el.getAttribute("name") || "") +
+              " " +
+              (el.id || "") +
+              " " +
+              (el.getAttribute("aria-label") || "")
+            ).toLowerCase();
+            const sensitive =
+              type === "password" ||
+              ac === "current-password" ||
+              ac === "new-password" ||
+              ac === "one-time-code" ||
+              /pass|secret|token|otp|cvc|card/.test(hay);
+            return { value: sensitive ? "[redacted]" : (el as HTMLInputElement).value || "" };
+          }
+          return { value: el.innerText };
+        } catch (e) {
+          return { err: e instanceof Error ? e.message : String(e) };
         }
-        return { value: el.innerText };
-      } catch (e) {
-        return { err: e instanceof Error ? e.message : String(e) };
-      }
-    }, [sel]);
+      },
+      [sel]
+    );
     return { content };
   }
   if (cmd.action === "screenshot") {
@@ -689,9 +793,12 @@ export function initBridge() {
   chrome.notifications?.onClicked.addListener((id) => {
     if (id !== APPROVAL_NOTIFICATION) return;
     clearApprovalAlert();
-    void chrome.windows.getLastFocused().then((win) => {
-      if (win?.id !== undefined) return chrome.sidePanel.open({ windowId: win.id });
-    }).catch(() => undefined);
+    void chrome.windows
+      .getLastFocused()
+      .then((win) => {
+        if (win?.id !== undefined) return chrome.sidePanel.open({ windowId: win.id });
+      })
+      .catch(() => undefined);
   });
 
   chrome.runtime.onConnect.addListener((port) => {
@@ -717,7 +824,12 @@ export function initBridge() {
         sendInProject({ type: "resume_conversation", id: msg.id });
         broadcast();
       }
-      if (msg?.type === "follow_thread" && typeof msg.projectDir === "string" && typeof msg.conversationId === "string" && msg.conversationId) {
+      if (
+        msg?.type === "follow_thread" &&
+        typeof msg.projectDir === "string" &&
+        typeof msg.conversationId === "string" &&
+        msg.conversationId
+      ) {
         followThread({ projectDir: msg.projectDir, conversationId: msg.conversationId });
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {

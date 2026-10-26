@@ -1,6 +1,33 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { approvalDetail, backoffMs, isClearCommand, isVisibleMessage, parseActiveThreads, parseConversations, parseEvent, parseFrame, parseHistory, parseQuestions, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, toolLabel, type Msg } from "../src/shared/agui";
-import { __reset, __setSocket, callTool, handleFrame, initBridge, panelState, runCommand, sendUserMessage } from "../src/lib/bridge";
+import {
+  approvalDetail,
+  backoffMs,
+  isClearCommand,
+  isVisibleMessage,
+  parseActiveThreads,
+  parseConversations,
+  parseEvent,
+  parseFrame,
+  parseHistory,
+  parseQuestions,
+  pendingInterrupts,
+  reduceAgui,
+  runningFromEvent,
+  snapshotToMessages,
+  stripAnsi,
+  toolLabel,
+  type Msg,
+} from "../src/shared/agui";
+import {
+  __reset,
+  __setSocket,
+  callTool,
+  handleFrame,
+  initBridge,
+  panelState,
+  runCommand,
+  sendUserMessage,
+} from "../src/lib/bridge";
 
 describe("reduceAgui", () => {
   test("streams start/content into one assistant message", () => {
@@ -81,7 +108,11 @@ describe("reduceAgui", () => {
   test("tool result marks the matching tool row ok or failed", () => {
     let m = reduceAgui([], { type: "TOOL_CALL_START", toolCallId: "a", toolCallName: "Bash" });
     m = reduceAgui(m, { type: "TOOL_CALL_START", toolCallId: "b", toolCallName: "Read" });
-    m = reduceAgui(m, { type: "TOOL_CALL_RESULT", toolCallId: "a", content: JSON.stringify({ success: false, error: "exit 1" }) });
+    m = reduceAgui(m, {
+      type: "TOOL_CALL_RESULT",
+      toolCallId: "a",
+      content: JSON.stringify({ success: false, error: "exit 1" }),
+    });
     m = reduceAgui(m, { type: "TOOL_CALL_RESULT", toolCallId: "b", content: JSON.stringify({ success: true }) });
     expect(m[0]).toMatchObject({ content: "Bash", ok: false, error: "exit 1" });
     expect(m[1]).toMatchObject({ content: "Read", ok: true });
@@ -89,7 +120,9 @@ describe("reduceAgui", () => {
 
   test("tool result with unknown id falls back to the last tool row; malformed content is a no-op", () => {
     const start = reduceAgui([], { type: "TOOL_CALL_START", toolCallId: "a", toolCallName: "Bash" });
-    expect(reduceAgui(start, { type: "TOOL_CALL_RESULT", toolCallId: "zzz", content: "{\"success\":true}" })[0].ok).toBe(true);
+    expect(reduceAgui(start, { type: "TOOL_CALL_RESULT", toolCallId: "zzz", content: '{"success":true}' })[0].ok).toBe(
+      true
+    );
     expect(reduceAgui(start, { type: "TOOL_CALL_RESULT", toolCallId: "a", content: "not json" })).toBe(start);
   });
 
@@ -201,7 +234,9 @@ describe("parseFrame", () => {
 describe("approvalDetail", () => {
   test("shows a shell command as written, lines and leading comment intact", () => {
     const command = "# opentask: download ffmpeg\nsh install.sh ffmpeg";
-    expect(approvalDetail({ id: "r1", source: "interrupt", toolName: "Bash", toolArgs: JSON.stringify({ command }) })).toBe(command);
+    expect(
+      approvalDetail({ id: "r1", source: "interrupt", toolName: "Bash", toolArgs: JSON.stringify({ command }) })
+    ).toBe(command);
   });
 
   test("keeps other tools' arguments as raw JSON", () => {
@@ -217,9 +252,16 @@ describe("approvalDetail", () => {
 
 describe("parseEvent", () => {
   test("accepts the standard events the CLI writes", () => {
-    const ev = parseEvent({ type: "RUN_FINISHED", threadId: "t", runId: "r", outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] } });
+    const ev = parseEvent({
+      type: "RUN_FINISHED",
+      threadId: "t",
+      runId: "r",
+      outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] },
+    });
     expect(String(ev?.type)).toBe("RUN_FINISHED");
-    expect(String(parseEvent({ type: "CUSTOM", name: "approval_request", value: { tool_call_id: "x" } })?.type)).toBe("CUSTOM");
+    expect(String(parseEvent({ type: "CUSTOM", name: "approval_request", value: { tool_call_id: "x" } })?.type)).toBe(
+      "CUSTOM"
+    );
   });
 
   test("rejects app frames and malformed events", () => {
@@ -230,8 +272,27 @@ describe("parseEvent", () => {
 
 describe("parseQuestions", () => {
   test("reads the AskUserQuestion args", () => {
-    const args = JSON.stringify({ questions: [{ header: "Lib", question: "Which?", options: [{ label: "a", description: "first" }, { label: "b" }], multiSelect: true }] });
-    expect(parseQuestions(args)).toEqual([{ header: "Lib", question: "Which?", options: [{ label: "a", description: "first" }, { label: "b", description: "" }], multiSelect: true }]);
+    const args = JSON.stringify({
+      questions: [
+        {
+          header: "Lib",
+          question: "Which?",
+          options: [{ label: "a", description: "first" }, { label: "b" }],
+          multiSelect: true,
+        },
+      ],
+    });
+    expect(parseQuestions(args)).toEqual([
+      {
+        header: "Lib",
+        question: "Which?",
+        options: [
+          { label: "a", description: "first" },
+          { label: "b", description: "" },
+        ],
+        multiSelect: true,
+      },
+    ]);
   });
 
   test("is empty for other args or junk", () => {
@@ -244,7 +305,12 @@ describe("parseQuestions", () => {
 describe("pendingInterrupts", () => {
   const rows: Msg[] = [
     { role: "tool", content: "Bash", args: '{"command":"ls"}', id: "c1" },
-    { role: "tool", content: "AskUserQuestion", args: JSON.stringify({ questions: [{ question: "Which?", options: [{ label: "a" }] }] }), id: "q1" },
+    {
+      role: "tool",
+      content: "AskUserQuestion",
+      args: JSON.stringify({ questions: [{ question: "Which?", options: [{ label: "a" }] }] }),
+      id: "q1",
+    },
   ];
 
   test("an approval takes name and args from the run's tool row", () => {
@@ -270,14 +336,14 @@ describe("parseConversations", () => {
       parseConversations({
         type: "conversations",
         conversations: [{ id: "a1", title: "Fix login bug", updated_at: "2026-08-16T12:00:00Z", message_count: 12 }],
-      }),
+      })
     ).toEqual([{ id: "a1", title: "Fix login bug", updatedAt: "2026-08-16T12:00:00Z", messageCount: 12 }]);
   });
 
   test("drops entries without a usable string id and defaults missing fields", () => {
-    expect(
-      parseConversations({ conversations: [{ title: "no id" }, { id: "" }, { id: 5 }, { id: "ok" }] }),
-    ).toEqual([{ id: "ok", title: "", updatedAt: "", messageCount: 0 }]);
+    expect(parseConversations({ conversations: [{ title: "no id" }, { id: "" }, { id: 5 }, { id: "ok" }] })).toEqual([
+      { id: "ok", title: "", updatedAt: "", messageCount: 0 },
+    ]);
   });
 
   test("returns [] for a missing or non-array conversations field", () => {
@@ -289,7 +355,7 @@ describe("parseConversations", () => {
 describe("stripAnsi", () => {
   test("removes truecolor SGR codes from a status line", () => {
     expect(stripAnsi("\x1b[1;38;2;158;206;106m✓ \x1b[m Generating snippet with AI...")).toBe(
-      "✓  Generating snippet with AI...",
+      "✓  Generating snippet with AI..."
     );
   });
 
@@ -306,20 +372,38 @@ describe("snapshotToMessages", () => {
   test("rebuilds tool rows from assistant toolCalls and attaches tool messages as results", () => {
     const msgs = snapshotToMessages([
       { id: "1", role: "user", content: "ls please" },
-      { id: "2", role: "assistant", content: "", toolCalls: [{ id: "t1", type: "function", function: { name: "Bash", arguments: "{\"command\":\"ls\"}" } }] },
+      {
+        id: "2",
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "t1", type: "function", function: { name: "Bash", arguments: '{"command":"ls"}' } }],
+      },
       { id: "3", role: "tool", content: "a.txt\nb.txt", toolCallId: "t1" },
       { id: "4", role: "assistant", content: "Two files." },
     ]);
     expect(msgs).toEqual([
       { role: "user", content: "ls please" },
-      { role: "tool", content: "Bash", args: "{\"command\":\"ls\"}", id: "t1", ok: true, error: undefined, result: "a.txt\nb.txt" },
+      {
+        role: "tool",
+        content: "Bash",
+        args: '{"command":"ls"}',
+        id: "t1",
+        ok: true,
+        error: undefined,
+        result: "a.txt\nb.txt",
+      },
       { role: "assistant", content: "Two files." },
     ]);
   });
 
   test("a tool message with error marks its row failed, an orphan one is kept as text", () => {
     const msgs = snapshotToMessages([
-      { id: "2", role: "assistant", content: "", toolCalls: [{ id: "t1", type: "function", function: { name: "Bash", arguments: "{}" } }] },
+      {
+        id: "2",
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "t1", type: "function", function: { name: "Bash", arguments: "{}" } }],
+      },
       { id: "3", role: "tool", content: "boom", toolCallId: "t1", error: "exit 1" },
       { id: "5", role: "tool", content: "Performed read", toolCallId: "zzz" },
     ]);
@@ -356,12 +440,17 @@ describe("runCommand", () => {
   });
 
   test("screenshots use compressed JPEG and report the matching MIME type", async () => {
-    Object.assign(chrome.tabs, { captureVisibleTab: async (_windowId: number, options: { format: string; quality: number }) => {
-      expect(options).toEqual({ format: "jpeg", quality: 80 });
-      return "data:image/jpeg;base64,AAAA";
-    } });
-    expect(await runCommand({ type: "browser_command", id: "shot", action: "screenshot" }))
-      .toMatchObject({ image: "AAAA", image_mime_type: "image/jpeg", error: "" });
+    Object.assign(chrome.tabs, {
+      captureVisibleTab: async (_windowId: number, options: { format: string; quality: number }) => {
+        expect(options).toEqual({ format: "jpeg", quality: 80 });
+        return "data:image/jpeg;base64,AAAA";
+      },
+    });
+    expect(await runCommand({ type: "browser_command", id: "shot", action: "screenshot" })).toMatchObject({
+      image: "AAAA",
+      image_mime_type: "image/jpeg",
+      error: "",
+    });
   });
 
   test("a click on a missing element surfaces the error instead of silent success", async () => {
@@ -370,12 +459,23 @@ describe("runCommand", () => {
   });
 
   test("a click with a Playwright-style selector surfaces the SyntaxError", async () => {
-    const result = await runCommand({ type: "browser_command", id: "2", action: "click", selector: 'button:has-text("Comment")' });
+    const result = await runCommand({
+      type: "browser_command",
+      id: "2",
+      action: "click",
+      selector: 'button:has-text("Comment")',
+    });
     expect(result.error).not.toBe("");
   });
 
   test("a type on a missing element surfaces the error", async () => {
-    const result = await runCommand({ type: "browser_command", id: "3", action: "type", selector: "#missing", text: "hi" });
+    const result = await runCommand({
+      type: "browser_command",
+      id: "3",
+      action: "type",
+      selector: "#missing",
+      text: "hi",
+    });
     expect(result.error).toBe("selector not found: #missing");
   });
 
@@ -391,23 +491,42 @@ describe("runCommand", () => {
   });
 
   test("a text= click finds the element by visible text and the click bubbles to a delegated handler", async () => {
-    document.body.innerHTML = '<table><tbody><tr class="zA"><td><span class="bog">Data restoration is now open</span></td></tr></tbody></table>';
+    document.body.innerHTML =
+      '<table><tbody><tr class="zA"><td><span class="bog">Data restoration is now open</span></td></tr></tbody></table>';
     let clicked = false;
-    document.querySelector("tr")?.addEventListener("click", () => { clicked = true; });
-    const result = await runCommand({ type: "browser_command", id: "t7", action: "click", selector: 'text="Data restoration is now open"' });
+    document.querySelector("tr")?.addEventListener("click", () => {
+      clicked = true;
+    });
+    const result = await runCommand({
+      type: "browser_command",
+      id: "t7",
+      action: "click",
+      selector: 'text="Data restoration is now open"',
+    });
     expect(clicked).toBe(true);
     expect(result.error).toBe("");
   });
 
   test("a text= click with no matching text reports selector not found", async () => {
     document.body.innerHTML = "<p>unrelated</p>";
-    const result = await runCommand({ type: "browser_command", id: "t8", action: "click", selector: "text=No such subject" });
+    const result = await runCommand({
+      type: "browser_command",
+      id: "t8",
+      action: "click",
+      selector: "text=No such subject",
+    });
     expect(result.error).toBe("selector not found: text=No such subject");
   });
 
   test("a text= type targets the element containing the text", async () => {
     document.body.innerHTML = "<div>Reply here</div>";
-    const result = await runCommand({ type: "browser_command", id: "t9", action: "type", selector: "text=Reply here", text: "hi" });
+    const result = await runCommand({
+      type: "browser_command",
+      id: "t9",
+      action: "type",
+      selector: "text=Reply here",
+      text: "hi",
+    });
     expect(result.error).toBe("");
     expect(document.querySelector("div")?.textContent).toBe("hi");
   });
@@ -415,7 +534,9 @@ describe("runCommand", () => {
   test("a click on an existing element clicks it and reports no error", async () => {
     document.body.innerHTML = '<button id="b"></button>';
     let clicked = false;
-    document.getElementById("b")?.addEventListener("click", () => { clicked = true; });
+    document.getElementById("b")?.addEventListener("click", () => {
+      clicked = true;
+    });
     const result = await runCommand({ type: "browser_command", id: "6", action: "click", selector: "#b" });
     expect(clicked).toBe(true);
     expect(result.error).toBe("");
@@ -441,7 +562,9 @@ describe("initBridge without a side panel", () => {
     class FakeSocket {
       static OPEN = 1;
       readyState = 0;
-      constructor(url: string) { urls.push(url); }
+      constructor(url: string) {
+        urls.push(url);
+      }
       close() {}
     }
     (globalThis as Record<string, unknown>).WebSocket = FakeSocket;
@@ -530,7 +653,10 @@ describe("handleFrame on the daemon binding", () => {
     expect(sendUserMessage("look", [{ filename: "a.png", mime_type: "image/png", data: "AAAA" }])).toBe(true);
     expect(sent[0]).toMatchObject({ type: "run_agent_input", input: { threadId: "s1", messages: [{ role: "user" }] } });
     const input = sent[0].input as { messages: { content: unknown }[]; runId: string };
-    expect(input.messages[0].content).toEqual([{ type: "text", text: "look" }, { type: "image", mimeType: "image/png", data: "AAAA", filename: "a.png" }]);
+    expect(input.messages[0].content).toEqual([
+      { type: "text", text: "look" },
+      { type: "image", mimeType: "image/png", data: "AAAA", filename: "a.png" },
+    ]);
     expect(input.runId).not.toBe("");
     expect(panelState().running).toBe(true);
   });
@@ -553,16 +679,35 @@ describe("handleFrame on the daemon binding", () => {
     await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
     await frame(socket, { type: "TOOL_CALL_START", toolCallId: "c1", toolCallName: "Bash" });
     await frame(socket, { type: "TOOL_CALL_ARGS", toolCallId: "c1", delta: '{"command":"ls"}' });
-    await frame(socket, { type: "RUN_FINISHED", threadId: "s1", runId: "r1", outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] } });
-    expect(panelState().pendingApproval).toEqual({ id: "c1", source: "interrupt", toolName: "Bash", toolArgs: '{"command":"ls"}' });
+    await frame(socket, {
+      type: "RUN_FINISHED",
+      threadId: "s1",
+      runId: "r1",
+      outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] },
+    });
+    expect(panelState().pendingApproval).toEqual({
+      id: "c1",
+      source: "interrupt",
+      toolName: "Bash",
+      toolArgs: '{"command":"ls"}',
+    });
     expect(panelState().running).toBe(false);
   });
 
   test("a question interrupt shows the form built from the AskUserQuestion args", async () => {
     await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
     await frame(socket, { type: "TOOL_CALL_START", toolCallId: "q1", toolCallName: "AskUserQuestion" });
-    await frame(socket, { type: "TOOL_CALL_ARGS", toolCallId: "q1", delta: JSON.stringify({ questions: [{ question: "Which?", options: [{ label: "a" }] }] }) });
-    await frame(socket, { type: "RUN_FINISHED", threadId: "s1", runId: "r1", outcome: { type: "interrupt", interrupts: [{ id: "q1", reason: "input_required", responseSchema: {} }] } });
+    await frame(socket, {
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "q1",
+      delta: JSON.stringify({ questions: [{ question: "Which?", options: [{ label: "a" }] }] }),
+    });
+    await frame(socket, {
+      type: "RUN_FINISHED",
+      threadId: "s1",
+      runId: "r1",
+      outcome: { type: "interrupt", interrupts: [{ id: "q1", reason: "input_required", responseSchema: {} }] },
+    });
     expect(panelState().pendingQuestion).toMatchObject({ id: "q1", questions: [{ question: "Which?" }] });
     expect(panelState().pendingApproval).toBeUndefined();
   });
@@ -570,7 +715,12 @@ describe("handleFrame on the daemon binding", () => {
   test("a RUN_STARTED after an interrupt clears a prompt another client answered", async () => {
     await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r1" });
     await frame(socket, { type: "TOOL_CALL_START", toolCallId: "c1", toolCallName: "Bash" });
-    await frame(socket, { type: "RUN_FINISHED", threadId: "s1", runId: "r1", outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] } });
+    await frame(socket, {
+      type: "RUN_FINISHED",
+      threadId: "s1",
+      runId: "r1",
+      outcome: { type: "interrupt", interrupts: [{ id: "c1", reason: "tool_call", toolCallId: "c1" }] },
+    });
     await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r2" });
     expect(panelState().pendingApproval).toBeUndefined();
     expect(panelState().running).toBe(true);
@@ -594,8 +744,17 @@ describe("handleFrame on the daemon binding", () => {
   });
 
   test("a panel tool_request's CUSTOM approval is shown and cleared by approval_resolved", async () => {
-    await frame(socket, { type: "CUSTOM", name: "approval_request", value: { tool_call_id: "t9", tool_name: "Bash", tool_args: "{}" } });
-    expect(panelState().pendingApproval).toEqual({ id: "t9", source: "tool_request", toolName: "Bash", toolArgs: "{}" });
+    await frame(socket, {
+      type: "CUSTOM",
+      name: "approval_request",
+      value: { tool_call_id: "t9", tool_name: "Bash", tool_args: "{}" },
+    });
+    expect(panelState().pendingApproval).toEqual({
+      id: "t9",
+      source: "tool_request",
+      toolName: "Bash",
+      toolArgs: "{}",
+    });
     await frame(socket, { type: "CUSTOM", name: "approval_resolved", value: { tool_call_id: "t9" } });
     expect(panelState().pendingApproval).toBeUndefined();
   });
@@ -625,13 +784,18 @@ describe("handleFrame on the daemon binding", () => {
     await frame(socket, { type: "RUN_STARTED", threadId: "mine", runId: "r1" });
     await frame(socket, { type: "thread_activity", threads: [{ project_dir: "/other", conversation_id: "d1" }] });
     expect(sent.map((f) => f.type)).toEqual(["list_conversations"]);
-    expect(panelState()).toMatchObject({ activeConversationId: "mine", activeThreads: [{ projectDir: "/other", conversationId: "d1" }] });
+    expect(panelState()).toMatchObject({
+      activeConversationId: "mine",
+      activeThreads: [{ projectDir: "/other", conversationId: "d1" }],
+    });
   });
 
   test("parseActiveThreads drops malformed entries", () => {
-    expect(parseActiveThreads({ threads: [{ project_dir: "/a", conversation_id: "c" }, { conversation_id: "c2" }, { project_dir: "/b" }, 3] })).toEqual([
-      { projectDir: "/a", conversationId: "c" },
-    ]);
+    expect(
+      parseActiveThreads({
+        threads: [{ project_dir: "/a", conversation_id: "c" }, { conversation_id: "c2" }, { project_dir: "/b" }, 3],
+      })
+    ).toEqual([{ projectDir: "/a", conversationId: "c" }]);
     expect(parseActiveThreads({})).toEqual([]);
   });
 
@@ -644,8 +808,16 @@ describe("handleFrame on the daemon binding", () => {
 });
 
 test("snapshot restores user text accompanying an image", () => {
-  expect(snapshotToMessages([{ id: "u", role: "user", content: [
-    { type: "text", text: "That's the passage" },
-    { type: "image", source: { type: "data", mimeType: "image/png", value: "AAAA" } },
-  ] }])).toEqual([{ role: "user", content: "That's the passage\n[Attachment]" }]);
+  expect(
+    snapshotToMessages([
+      {
+        id: "u",
+        role: "user",
+        content: [
+          { type: "text", text: "That's the passage" },
+          { type: "image", source: { type: "data", mimeType: "image/png", value: "AAAA" } },
+        ],
+      },
+    ])
+  ).toEqual([{ role: "user", content: "That's the passage\n[Attachment]" }]);
 });

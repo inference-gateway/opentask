@@ -3,7 +3,12 @@ import { Button } from "@/ui/components/button";
 import { ask } from "./ask";
 import { captureFailureMessage, formatElapsed, supportsTabCapture, type RecordState } from "@/shared/recording";
 import type { Attachment } from "@/shared/agui";
-import type { RecordStartResponse, RecordStatusResponse, RecordStopResponse, RecordTakeResponse } from "@/shared/messages";
+import type {
+  RecordStartResponse,
+  RecordStatusResponse,
+  RecordStopResponse,
+  RecordTakeResponse,
+} from "@/shared/messages";
 
 const CLAIM_RETRIES = 5;
 const CLAIM_RETRY_MS = 1000;

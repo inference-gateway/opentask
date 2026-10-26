@@ -25,7 +25,8 @@ export function InitPanel({ owner, repo, onClose }: { owner: string; repo: strin
   function doInit() {
     setSend({ kind: "sending" });
     ask({ type: "init-project", owner, repo }, (resp) => {
-      if (chrome.runtime?.lastError || !resp) return setSend({ kind: "error", message: "Failed to send init request." });
+      if (chrome.runtime?.lastError || !resp)
+        return setSend({ kind: "error", message: "Failed to send init request." });
       if (resp.error) return setSend({ kind: "error", message: resp.error });
       setSend({ kind: "sent", url: resp.url as string });
     });
@@ -40,37 +41,48 @@ export function InitPanel({ owner, repo, onClose }: { owner: string; repo: strin
   return (
     <div className="igw-tasks-panel">
       <div className="igw-tasks-header">
-        <button className="igw-tasks-close" onClick={onClose} aria-label="Close">×</button>
+        <button className="igw-tasks-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
       </div>
       <div className="igw-tasks-body">
-        <p className="igw-tasks-repo">{owner}/{repo}</p>
-        <p className="igw-tasks-muted">The OpenTask agent will generate an <code>AGENTS.md</code> and open a pull request.</p>
+        <p className="igw-tasks-repo">
+          {owner}/{repo}
+        </p>
+        <p className="igw-tasks-muted">
+          The OpenTask agent will generate an <code>AGENTS.md</code> and open a pull request.
+        </p>
         <ul className="igw-tasks-list">
           <li>Generate AGENTS.md</li>
-          {extras.filter((e) => e.on).map((e) => <li key={e.label}>{e.label}</li>)}
+          {extras
+            .filter((e) => e.on)
+            .map((e) => (
+              <li key={e.label}>{e.label}</li>
+            ))}
         </ul>
         <p className="igw-tasks-muted">
           Toggle the extras in{" "}
           <a
             className="igw-tasks-link"
             href="#"
-            onClick={(e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); }}
+            onClick={(e) => {
+              e.preventDefault();
+              chrome.runtime.openOptionsPage();
+            }}
           >
             Settings
           </a>
           .
         </p>
-        <button
-          className="igw-tasks-btn"
-          onClick={doInit}
-          disabled={send.kind === "sending"}
-        >
+        <button className="igw-tasks-btn" onClick={doInit} disabled={send.kind === "sending"}>
           {send.kind === "sending" ? "Starting…" : "Initialize project"}
         </button>
         {send.kind === "sent" && (
           <p className="igw-tasks-success">
             Run started -{" "}
-            <a className="igw-tasks-link" href={send.url} target="_blank" rel="noopener noreferrer">view Actions</a>
+            <a className="igw-tasks-link" href={send.url} target="_blank" rel="noopener noreferrer">
+              view Actions
+            </a>
           </p>
         )}
         {send.kind === "error" && <p className="igw-tasks-error">{send.message}</p>}

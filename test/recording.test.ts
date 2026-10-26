@@ -124,7 +124,7 @@ describe("createRecordingBox", () => {
 describe("recordingLine", () => {
   test("names the capture, the bundled extractor, and asks before proposing a skill", () => {
     expect(recordingLine("opentask-recording-20260926-134505.mp4")).toBe(
-      "[recording: opentask-recording-20260926-134505.mp4 - a capture of the flow. Extract frames with the bundled ~/.infer/bin/tools/ffmpeg (no installs, no other video tooling), inspect them, then ask whether to save this flow as a skill.]",
+      "[recording: opentask-recording-20260926-134505.mp4 - a capture of the flow. Extract frames with the bundled ~/.infer/bin/tools/ffmpeg (no installs, no other video tooling), inspect them, then ask whether to save this flow as a skill.]"
     );
   });
 });
@@ -159,7 +159,7 @@ function runFrameTools(command: string, opts: { inferFails?: boolean } = {}) {
     `#!/bin/sh
 echo "infer $*" >> "$LOG"
 ${opts.inferFails ? "exit 1" : "exit 0"}
-`,
+`
   );
   chmodSync(join(stubs, "infer"), 0o755);
   const result = spawnSync("sh", ["-c", command], {
@@ -183,7 +183,9 @@ describe("frameToolsStatus", () => {
 
   test("reads the status word from the CLI's row", () => {
     expect(frameToolsStatus(row("current"))).toBe("current");
-    expect(frameToolsStatus(`piper       current  /Users/me/.infer/bin/tools/piper\n${row("missing")}`)).toBe("missing");
+    expect(frameToolsStatus(`piper       current  /Users/me/.infer/bin/tools/piper\n${row("missing")}`)).toBe(
+      "missing"
+    );
   });
 
   test("reads a stale row past ANSI colors and the CLI's error footer", () => {
@@ -206,7 +208,9 @@ describe("frameToolsCommand", () => {
   });
 
   test("opens with a comment telling the approver what it downloads and why", () => {
-    expect(frameToolsCommand().split("\n")[0]).toMatch(/^# opentask: download the latest ffmpeg .* extract frames from your recording$/);
+    expect(frameToolsCommand().split("\n")[0]).toMatch(
+      /^# opentask: download the latest ffmpeg .* extract frames from your recording$/
+    );
   });
 
   test("fails when the CLI cannot install", () => {
@@ -315,7 +319,7 @@ describe("offscreen recorder", () => {
 
   test("hands the capture to the panel rather than downloading it", async () => {
     const sources = await Promise.all(
-      ["../src/offscreen.ts", "../src/background.ts"].map((path) => Bun.file(new URL(path, import.meta.url)).text()),
+      ["../src/offscreen.ts", "../src/background.ts"].map((path) => Bun.file(new URL(path, import.meta.url)).text())
     );
     for (const source of sources) expect(source).not.toContain("chrome.downloads");
     const manifest = (await Bun.file(new URL("../manifest.json", import.meta.url)).json()) as { permissions: string[] };

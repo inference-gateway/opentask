@@ -3,9 +3,24 @@ export type Prompt = { id: string; label: string; description: string; insert: s
 
 export const DEFAULT_PROMPTS: Prompt[] = [
   { id: "opentask", label: "@opentask", description: "Trigger the OpenTask agent", insert: "@opentask " },
-  { id: "opentask-review", label: "Review PR", description: "Ask the OpenTask agent to review this PR", insert: "@opentask review this pull request for correctness and simplification." },
-  { id: "opentask-fix", label: "Fix issue", description: "Ask the OpenTask agent to fix this issue", insert: "@opentask fix this issue." },
-  { id: "opentask-work", label: "Work on issue", description: "Ask the OpenTask agent to work on this issue", insert: "@opentask can you work on this?" },
+  {
+    id: "opentask-review",
+    label: "Review PR",
+    description: "Ask the OpenTask agent to review this PR",
+    insert: "@opentask review this pull request for correctness and simplification.",
+  },
+  {
+    id: "opentask-fix",
+    label: "Fix issue",
+    description: "Ask the OpenTask agent to fix this issue",
+    insert: "@opentask fix this issue.",
+  },
+  {
+    id: "opentask-work",
+    label: "Work on issue",
+    description: "Ask the OpenTask agent to work on this issue",
+    insert: "@opentask can you work on this?",
+  },
 ];
 
 // Merge stored prompts with defaults, appending any default the user hasn't

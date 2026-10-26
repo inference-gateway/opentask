@@ -44,9 +44,8 @@ export function OrchestratorTab({
         title="Permissions"
         description={
           <>
-            What the OpenTask agent may do while a task runs. These widen infer-action's read-only
-            baseline; unchecked capabilities stay blocked. <strong>Re-install the workflow</strong> after
-            changing these.
+            What the OpenTask agent may do while a task runs. These widen infer-action's read-only baseline; unchecked
+            capabilities stay blocked. <strong>Re-install the workflow</strong> after changing these.
           </>
         }
       >
@@ -65,9 +64,9 @@ export function OrchestratorTab({
         title="Issue refinement"
         description={
           <>
-            Let the OpenTask agent rewrite an issue's description in place. Refine edits the issue body
-            via <code>gh issue edit</code>, so the installed workflow needs <code>Create GitHub issues</code>{" "}
-            permission above - <strong>re-install</strong> after enabling.
+            Let the OpenTask agent rewrite an issue's description in place. Refine edits the issue body via{" "}
+            <code>gh issue edit</code>, so the installed workflow needs <code>Create GitHub issues</code> permission
+            above - <strong>re-install</strong> after enabling.
           </>
         }
       >
@@ -83,9 +82,9 @@ export function OrchestratorTab({
         title="Project init"
         description={
           <>
-            What the <strong>Init</strong> button (in a repo's nav) asks the agent to scaffold. It always
-            generates an <code>AGENTS.md</code> and opens a PR; these add optional extras. Requires the
-            OpenTask Agent workflow to be installed on the repo.
+            What the <strong>Init</strong> button (in a repo's nav) asks the agent to scaffold. It always generates an{" "}
+            <code>AGENTS.md</code> and opens a PR; these add optional extras. Requires the OpenTask Agent workflow to be
+            installed on the repo.
           </>
         }
       >
@@ -105,7 +104,15 @@ export function OrchestratorTab({
         description={
           <>
             Provision on-demand GPU instances from the extension popup. Get your API key from{" "}
-            <a className="text-primary hover:underline" href="https://www.runpod.io/console/user/settings" target="_blank" rel="noreferrer">RunPod settings</a>.
+            <a
+              className="text-primary hover:underline"
+              href="https://www.runpod.io/console/user/settings"
+              target="_blank"
+              rel="noreferrer"
+            >
+              RunPod settings
+            </a>
+            .
           </>
         }
       >
@@ -133,10 +140,10 @@ export function OrchestratorTab({
         title="CLI Bridge"
         description={
           <>
-            Connect the side panel to <code>infer daemon</code>, which also drives this browser. The port and
-            token come from <code>binding</code> in <code>~/.infer/daemon.yaml</code> or{" "}
-            <code>extension</code> in <code>~/.infer/browser_use.yaml</code> (<code>infer init</code> seeds a token).
-            Conversations open in the project directory.
+            Connect the side panel to <code>infer daemon</code>, which also drives this browser. The port and token come
+            from <code>binding</code> in <code>~/.infer/daemon.yaml</code> or <code>extension</code> in{" "}
+            <code>~/.infer/browser_use.yaml</code> (<code>infer init</code> seeds a token). Conversations open in the
+            project directory.
           </>
         }
       >
@@ -180,9 +187,9 @@ export function OrchestratorTab({
         title="Tab recording"
         description={
           <>
-            Record the current tab (Chrome and Edge only) and attach the saved file to a task so
-            the agent can distill the demonstrated flow into a skill. The recording hard-stops at
-            this cap and is sized to stay under GitHub's 10 MB attachment limit.
+            Record the current tab (Chrome and Edge only) and attach the saved file to a task so the agent can distill
+            the demonstrated flow into a skill. The recording hard-stops at this cap and is sized to stay under GitHub's
+            10 MB attachment limit.
           </>
         }
       >

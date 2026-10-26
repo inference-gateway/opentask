@@ -3,18 +3,41 @@
 // latestTodos); user edits live in a local draft until handed back to the
 // agent with "Send to agent". Callers key it by conversation to reset the draft.
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Check, ChevronDown, Circle, CircleDot, GripVertical, Plus, Send, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  Circle,
+  CircleDot,
+  GripVertical,
+  Plus,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { cn } from "../lib/utils";
 import type { Msg } from "../shared/agui";
 import { advanceTodo, latestTodos, moveTodo, todoHandoff, todosDiffer, type Todo } from "../shared/todos";
 
 const STATUS_ICON = { pending: Circle, in_progress: CircleDot, completed: Check } as const;
-const STATUS_CLASS = { pending: "text-muted-foreground", in_progress: "text-indigo-500", completed: "text-emerald-500" } as const;
+const STATUS_CLASS = {
+  pending: "text-muted-foreground",
+  in_progress: "text-indigo-500",
+  completed: "text-emerald-500",
+} as const;
 
 const ROW_BUTTON =
   "shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-default disabled:opacity-30";
 
-export function TodoPanel({ messages, canSend, onSend }: { messages: Msg[]; canSend: boolean; onSend: (content: string) => void }) {
+export function TodoPanel({
+  messages,
+  canSend,
+  onSend,
+}: {
+  messages: Msg[];
+  canSend: boolean;
+  onSend: (content: string) => void;
+}) {
   const agentTodos = latestTodos(messages);
   const [draft, setDraft] = useState<Todo[] | null>(null);
   const shown = draft ?? agentTodos;
@@ -108,7 +131,7 @@ export function TodoPanel({ messages, canSend, onSend }: { messages: Msg[]; canS
                       dragFrom.current !== i &&
                       (i > dragFrom.current
                         ? "shadow-[inset_0_-2px_0_0_var(--color-indigo-500)]"
-                        : "shadow-[inset_0_2px_0_0_var(--color-indigo-500)]"),
+                        : "shadow-[inset_0_2px_0_0_var(--color-indigo-500)]")
                   )}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -149,10 +172,16 @@ export function TodoPanel({ messages, canSend, onSend }: { messages: Msg[]; canS
                     title={t.content}
                     className={cn(
                       "min-w-0 flex-1 bg-transparent py-0.5 outline-none",
-                      t.status === "completed" && "text-muted-foreground line-through",
+                      t.status === "completed" && "text-muted-foreground line-through"
                     )}
                   />
-                  <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move todo up" className={ROW_BUTTON}>
+                  <button
+                    type="button"
+                    onClick={() => move(i, i - 1)}
+                    disabled={i === 0}
+                    aria-label="Move todo up"
+                    className={ROW_BUTTON}
+                  >
                     <ArrowUp className="size-3.5" />
                   </button>
                   <button
@@ -164,7 +193,12 @@ export function TodoPanel({ messages, canSend, onSend }: { messages: Msg[]; canS
                   >
                     <ArrowDown className="size-3.5" />
                   </button>
-                  <button type="button" onClick={() => edit(shown.filter((_, j) => j !== i))} aria-label="Delete todo" className={ROW_BUTTON}>
+                  <button
+                    type="button"
+                    onClick={() => edit(shown.filter((_, j) => j !== i))}
+                    aria-label="Delete todo"
+                    className={ROW_BUTTON}
+                  >
                     <Trash2 className="size-3.5" />
                   </button>
                 </li>

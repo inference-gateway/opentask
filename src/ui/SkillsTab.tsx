@@ -5,7 +5,11 @@ import { useAsk } from "./useAsk";
 import { CheckList } from "./CheckList";
 
 type Loaded = { catalog: CatalogSkill[]; installed: string[]; languages: string[] };
-type Apply = { kind: "idle" } | { kind: "applying" } | { kind: "done"; url: string } | { kind: "error"; message: string };
+type Apply =
+  | { kind: "idle" }
+  | { kind: "applying" }
+  | { kind: "done"; url: string }
+  | { kind: "error"; message: string };
 
 // Multi-select skills list: checked = installed. Applying opens one PR that adds the newly
 // checked skills' folders and removes the unchecked-but-installed ones under .agents/skills/.
@@ -86,11 +90,18 @@ export function SkillsTab({ owner, repo }: { owner: string; repo: string }) {
         )}
       />
       <button className="igw-tasks-btn" onClick={applyChanges} disabled={!dirty || apply.kind === "applying"}>
-        {apply.kind === "applying" ? "Opening PR…" : dirty ? `Apply changes (+${add.length} / −${remove.length})` : "No changes"}
+        {apply.kind === "applying"
+          ? "Opening PR…"
+          : dirty
+            ? `Apply changes (+${add.length} / −${remove.length})`
+            : "No changes"}
       </button>
       {apply.kind === "done" && (
         <p className="igw-tasks-success">
-          PR opened - <a className="igw-tasks-link" href={apply.url} target="_blank" rel="noopener noreferrer">view PR</a>
+          PR opened -{" "}
+          <a className="igw-tasks-link" href={apply.url} target="_blank" rel="noopener noreferrer">
+            view PR
+          </a>
         </p>
       )}
       {apply.kind === "error" && <p className="igw-tasks-error">{apply.message}</p>}
