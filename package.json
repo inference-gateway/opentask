@@ -7,7 +7,9 @@
   "scripts": {
     "build": "bun run build.ts",
     "test": "bun test",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "lint": "biome lint .",
+    "format": "biome format --write ."
   },
   "dependencies": {
     "@ag-ui/core": "1.0.3",
@@ -25,6 +27,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.3",
     "@tailwindcss/cli": "^4.3.3",
     "@types/bun": "^1.4.3",
     "@types/chrome": "^0.3.5",

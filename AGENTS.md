@@ -6,11 +6,12 @@ Chrome-first Manifest V3 browser extension built with Bun, TypeScript, and React
 - `flox activate` — enter the pinned Bun + go-task environment.
 - `task hooks:install` — required first step; points Git at `.githooks/`.
 - `task setup` — install the hook and dependencies from `bun.lock`.
-- `task check` — typecheck, test, and production build; run before submitting (CI runs it on every PR).
-- `task build` / `task test` / `task typecheck` — individual checks.
+- `task check` — typecheck, lint, test, and production build; run before submitting (CI runs it on every PR).
+- `task build` / `task test` / `task typecheck` / `task lint` — individual checks.
+- `task format` — apply Biome formatting (the repo-wide pass has not been applied yet).
 - `task build:firefox` / `task build:safari` / `task package:chrome` — per-browser builds and store ZIPs.
 
-The pre-commit hook runs typecheck and tests on every commit; skip with `GIT_HOOKS_SKIP=1`.
+The pre-commit hook runs typecheck, lint, and tests on every commit; skip with `GIT_HOOKS_SKIP=1`.
 
 Manual testing: `task build`, reload the unpacked `dist/` in `chrome://extensions`, then exercise a GitHub issue/PR comment box. The side panel (`sidepanel.html`) needs a running `infer` CLI bridge (Options → Orchestrator → *CLI Bridge*).
 
@@ -24,7 +25,7 @@ Manual testing: `task build`, reload the unpacked `dist/` in `chrome://extension
 
 ## Style
 
-TypeScript/TSX with ES modules, two-space indentation, double quotes, semicolons. Strict types; avoid `any` when a message/view/storage shape can be expressed. `camelCase` for functions and variables, `PascalCase` for components and types, lowercase filenames for utilities. Keep browser-privileged API and cross-origin fetch logic in the background worker, not UI components. No formatter or linter — rely on `tsc` and match existing files.
+TypeScript/TSX with ES modules, two-space indentation, double quotes, semicolons. Strict types; avoid `any` when a message/view/storage shape can be expressed. `camelCase` for functions and variables, `PascalCase` for components and types, lowercase filenames for utilities. Keep browser-privileged API and cross-origin fetch logic in the background worker, not UI components. Biome (`biome.jsonc`) lints and formats. `task lint` runs in `task check` and the pre-commit hook and must stay clean. `task format` applies Biome formatting — the repo-wide pass has not been applied yet, so until it lands keep new code consistent with the surrounding file. Downgraded rules carry their reason inline in `biome.jsonc`.
 
 Code readability:
 
