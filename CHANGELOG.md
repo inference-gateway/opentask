@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.18.0](https://github.com/inference-gateway/opentask/compare/v1.17.2...v1.18.0) (2026-10-26)
+
+### ✨ Features
+
+* **bridge:** mirror threads streaming in other daemon clients ([#242](https://github.com/inference-gateway/opentask/issues/242)) ([1d1ba40](https://github.com/inference-gateway/opentask/commit/1d1ba40605ffac8a6e2336ed280e668448842b4b))
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#238](https://github.com/inference-gateway/opentask/issues/238)) ([2b2f924](https://github.com/inference-gateway/opentask/commit/2b2f92425525fa851042a4af4165f0e2b75b8860))
+
+### 🔧 Miscellaneous
+
+* **biome:** add lint and format tooling ([#243](https://github.com/inference-gateway/opentask/issues/243)) ([850e137](https://github.com/inference-gateway/opentask/commit/850e137372a0ba5b8e9e6904f4003559cf51a591))
+* **deps:** bump infer CLI v0.230.0 -> v0.231.1 ([#239](https://github.com/inference-gateway/opentask/issues/239)) ([fce64d1](https://github.com/inference-gateway/opentask/commit/fce64d14688a9ff473c6e5fcfd99c5db14f64d96))
+* **deps:** bump inference-gateway/infer-action ([#240](https://github.com/inference-gateway/opentask/issues/240)) ([80710ca](https://github.com/inference-gateway/opentask/commit/80710ca746c882044b737f5f48bc6896fe1f019c))
+* **deps:** bump the npm group with 5 updates ([#241](https://github.com/inference-gateway/opentask/issues/241)) ([e9f7521](https://github.com/inference-gateway/opentask/commit/e9f7521b86812b5859642412a1e3aec1f8f606eb))
+* **deps:** upgrade infer cli ([6ed752b](https://github.com/inference-gateway/opentask/commit/6ed752b2f5863cdd2c479b7d1bcc0f9bbc037394))
+
 ## [1.17.2](https://github.com/inference-gateway/opentask/compare/v1.17.1...v1.17.2) (2026-10-19)
 
 ### 🐛 Bug Fixes
