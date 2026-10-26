@@ -601,38 +601,38 @@ describe("handleFrame on the daemon binding", () => {
   });
 
   test("a thread_activity frame auto-follows one streaming thread while the panel is idle", async () => {
-      __reset();
-      await frame(socket, { type: "thread_activity", threads: [{ project_dir: "/desktop", conversation_id: "d1" }] });
-      expect(sent).toEqual([{ type: "resume_conversation", project_dir: "/desktop", id: "d1" }]);
-      expect(panelState()).toMatchObject({ activeConversationId: "d1", projectDir: "/desktop" });
+    __reset();
+    await frame(socket, { type: "thread_activity", threads: [{ project_dir: "/desktop", conversation_id: "d1" }] });
+    expect(sent).toEqual([{ type: "resume_conversation", project_dir: "/desktop", id: "d1" }]);
+    expect(panelState()).toMatchObject({ activeConversationId: "d1", projectDir: "/desktop" });
   });
 
   test("an idle panel leaves an empty or multi-thread activity list alone", async () => {
-      __reset();
-      await frame(socket, { type: "thread_activity", threads: [] });
-      await frame(socket, {
-        type: "thread_activity",
-        threads: [
-          { project_dir: "/a", conversation_id: "c1" },
-          { project_dir: "/b", conversation_id: "c2" },
-        ],
-      });
-      expect(sent).toEqual([]);
-      expect(panelState().activeThreads).toHaveLength(2);
+    __reset();
+    await frame(socket, { type: "thread_activity", threads: [] });
+    await frame(socket, {
+      type: "thread_activity",
+      threads: [
+        { project_dir: "/a", conversation_id: "c1" },
+        { project_dir: "/b", conversation_id: "c2" },
+      ],
+    });
+    expect(sent).toEqual([]);
+    expect(panelState().activeThreads).toHaveLength(2);
   });
 
   test("a panel already following a thread adopts the activity list without hijack", async () => {
-      await frame(socket, { type: "RUN_STARTED", threadId: "mine", runId: "r1" });
-      await frame(socket, { type: "thread_activity", threads: [{ project_dir: "/other", conversation_id: "d1" }] });
-      expect(sent.map((f) => f.type)).toEqual(["list_conversations"]);
-      expect(panelState()).toMatchObject({ activeConversationId: "mine", activeThreads: [{ projectDir: "/other", conversationId: "d1" }] });
+    await frame(socket, { type: "RUN_STARTED", threadId: "mine", runId: "r1" });
+    await frame(socket, { type: "thread_activity", threads: [{ project_dir: "/other", conversation_id: "d1" }] });
+    expect(sent.map((f) => f.type)).toEqual(["list_conversations"]);
+    expect(panelState()).toMatchObject({ activeConversationId: "mine", activeThreads: [{ projectDir: "/other", conversationId: "d1" }] });
   });
 
   test("parseActiveThreads drops malformed entries", () => {
-      expect(parseActiveThreads({ threads: [{ project_dir: "/a", conversation_id: "c" }, { conversation_id: "c2" }, { project_dir: "/b" }, 3] })).toEqual([
-        { projectDir: "/a", conversationId: "c" },
-      ]);
-      expect(parseActiveThreads({})).toEqual([]);
+    expect(parseActiveThreads({ threads: [{ project_dir: "/a", conversation_id: "c" }, { conversation_id: "c2" }, { project_dir: "/b" }, 3] })).toEqual([
+      { projectDir: "/a", conversationId: "c" },
+    ]);
+    expect(parseActiveThreads({})).toEqual([]);
   });
 
   test("old envelope frames are ignored", async () => {

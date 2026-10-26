@@ -434,15 +434,15 @@ function SidePanel() {
         activeThreads
           .filter((t) => t.conversationId !== activeConversationId)
           .map((t) => (
-                <div key={t.conversationId} className="flex items-center gap-2 border-b border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300">
-                  <span className="min-w-0 flex-1">
-                    The desktop app is streaming in{" "}
-                    <span className="font-mono">{t.projectDir.split("/").filter(Boolean).pop() ?? t.projectDir}</span>
-                  </span>
-                  <Button size="sm" className="h-6 shrink-0 px-3 text-xs" onClick={() => followThread(t)}>
-                    Follow
-                  </Button>
-                </div>
+            <div key={t.conversationId} className="flex items-center gap-2 border-b border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300">
+              <span className="min-w-0 flex-1">
+                Another client is streaming in{" "}
+                <span className="font-mono">{t.projectDir.split("/").filter(Boolean).pop() ?? t.projectDir}</span>
+              </span>
+              <Button size="sm" className="h-6 shrink-0 px-3 text-xs" onClick={() => followThread(t)}>
+                Follow
+              </Button>
+            </div>
           ))}
 
       {!connected && (
