@@ -3,7 +3,7 @@ import { githubError, parseGhHttp } from "../src/shared/messages";
 
 describe("parseGhHttp", () => {
   test("parses status and body from CRLF gh api --include output", () => {
-    const out = "HTTP/2.0 200 OK\r\nContent-Type: application/json\r\n\r\n{\"login\":\"me\"}";
+    const out = 'HTTP/2.0 200 OK\r\nContent-Type: application/json\r\n\r\n{"login":"me"}';
     expect(parseGhHttp(out)).toEqual({ status: 200, body: '{"login":"me"}' });
   });
 
@@ -29,8 +29,7 @@ describe("parseGhHttp", () => {
 
 describe("githubError", () => {
   test("surfaces GitHub's message instead of a bare status", () => {
-    expect(githubError(422, JSON.stringify({ message: "Invalid tree info" })))
-      .toBe("GitHub 422: Invalid tree info");
+    expect(githubError(422, JSON.stringify({ message: "Invalid tree info" }))).toBe("GitHub 422: Invalid tree info");
   });
 
   test("folds the errors array into the message", () => {

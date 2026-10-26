@@ -8,8 +8,15 @@ export function taskBody(prompt: string): string {
 }
 
 export function taskTitle(prompt: string): string {
-  const first = prompt.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
-  const cleaned = first.replace(TRIGGER, "").replace(/^[\s:\u2013\u2014-]+/, "").trim();
+  const first =
+    prompt
+      .split("\n")
+      .map((l) => l.trim())
+      .find(Boolean) ?? "";
+  const cleaned = first
+    .replace(TRIGGER, "")
+    .replace(/^[\s:\u2013\u2014-]+/, "")
+    .trim();
   const base = cleaned || "OpenTask task";
   return base.length > 80 ? `${base.slice(0, 79)}…` : base;
 }
@@ -59,7 +66,7 @@ export const REFINE_SYSTEM_PROMPT = [
   "files in the checkout. Your ONLY write is editing the issue itself with `gh issue edit`.",
   "",
   "If a tool or CLI call fails, the action did NOT happen - re-read, fix, and retry; never",
-  "report success on a failed call. If a CLI call fails with \"unknown flag\", the usage text in",
+  'report success on a failed call. If a CLI call fails with "unknown flag", the usage text in',
   "the error is the authoritative flag list.",
   "",
   "## Output",
@@ -89,14 +96,18 @@ export function initPrompt(owner: string, repo: string, cfg: InitConfig): string
     parts.push(
       `Also add an executable \`.githooks/pre-commit\` that runs this repo's typecheck/tests`,
       `before a commit, and document \`git config core.hooksPath .githooks\` in AGENTS.md so`,
-      `contributors activate it (the committed hook is inert until they run that).`,
+      `contributors activate it (the committed hook is inert until they run that).`
     );
   }
   if (cfg.claudeSymlink) {
-    parts.push(`Also create a symlink \`CLAUDE.md\` -> \`AGENTS.md\` (a real symlink, e.g. \`ln -s AGENTS.md CLAUDE.md\`, not a copy).`);
+    parts.push(
+      `Also create a symlink \`CLAUDE.md\` -> \`AGENTS.md\` (a real symlink, e.g. \`ln -s AGENTS.md CLAUDE.md\`, not a copy).`
+    );
   }
   if (cfg.skillsSymlink) {
-    parts.push(`Also create a symlink \`.claude/skills\` -> \`.agents/skills\` (create the \`.claude/\` directory first, then \`ln -s ../.agents/skills .claude/skills\`).`);
+    parts.push(
+      `Also create a symlink \`.claude/skills\` -> \`.agents/skills\` (create the \`.claude/\` directory first, then \`ln -s ../.agents/skills .claude/skills\`).`
+    );
   }
   parts.push(`Open a pull request with all of these changes.`);
   return parts.join(" ");

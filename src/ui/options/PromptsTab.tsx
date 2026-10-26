@@ -55,10 +55,9 @@ export function PromptsTab({
         title="System instructions"
         description={
           <>
-            Extra guidance baked into the workflow's <code>custom-instructions</code> when you install
-            or re-install it. Use it to steer agent behavior (e.g. "post the full review in a single
-            comment covering every changed file"). <strong>Re-install the workflow</strong> after
-            editing; leave blank to omit the block.
+            Extra guidance baked into the workflow's <code>custom-instructions</code> when you install or re-install it.
+            Use it to steer agent behavior (e.g. "post the full review in a single comment covering every changed
+            file"). <strong>Re-install the workflow</strong> after editing; leave blank to omit the block.
           </>
         }
       >
@@ -76,9 +75,9 @@ export function PromptsTab({
         description={
           <>
             The prompt dispatched when you click <strong>Refine</strong> on an issue. Placeholders{" "}
-            <code>{"{owner}"}</code>, <code>{"{repo}"}</code>, and <code>{"{issue}"}</code> are
-            substituted at dispatch time. Steer how issues get rewritten (e.g. instruct the agent to
-            read the code first and follow your <code>.github/ISSUE_TEMPLATE</code> structure).
+            <code>{"{owner}"}</code>, <code>{"{repo}"}</code>, and <code>{"{issue}"}</code> are substituted at dispatch
+            time. Steer how issues get rewritten (e.g. instruct the agent to read the code first and follow your{" "}
+            <code>.github/ISSUE_TEMPLATE</code> structure).
           </>
         }
       >

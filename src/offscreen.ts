@@ -1,4 +1,11 @@
-import { RECORD_FPS, normalizeRecordCap, recordingBitrate, recordingFilename, recordingMime, type RecordState } from "./shared/recording";
+import {
+  RECORD_FPS,
+  normalizeRecordCap,
+  recordingBitrate,
+  recordingFilename,
+  recordingMime,
+  type RecordState,
+} from "./shared/recording";
 import type { Attachment } from "./shared/agui";
 
 let recorder: MediaRecorder | undefined;

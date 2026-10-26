@@ -31,9 +31,13 @@ test("normalizeTimeout defaults invalid input and rounds positive numbers", () =
 });
 
 test("initPrompt includes only the enabled extras", () => {
-  expect(initPrompt("o", "r", { githooks: true, claudeSymlink: false, skillsSymlink: false })).toContain(".githooks/pre-commit");
+  expect(initPrompt("o", "r", { githooks: true, claudeSymlink: false, skillsSymlink: false })).toContain(
+    ".githooks/pre-commit"
+  );
   expect(initPrompt("o", "r", { githooks: false, claudeSymlink: true, skillsSymlink: false })).toContain("CLAUDE.md");
-  expect(initPrompt("o", "r", { githooks: false, claudeSymlink: false, skillsSymlink: true })).toContain(".claude/skills");
+  expect(initPrompt("o", "r", { githooks: false, claudeSymlink: false, skillsSymlink: true })).toContain(
+    ".claude/skills"
+  );
 
   const all = initPrompt("o", "r", { githooks: true, claudeSymlink: true, skillsSymlink: true });
   expect(all).toContain(".githooks/pre-commit");

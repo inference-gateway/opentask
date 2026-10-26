@@ -30,4 +30,3 @@ test("remove deletes the key", async () => {
   await storage.remove("key");
   expect(await storage.get<string>("key")).toBeUndefined();
 });
-

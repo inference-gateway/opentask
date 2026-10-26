@@ -19,4 +19,3 @@ export function remove(key: string): Promise<void> {
   if (!area) return Promise.resolve();
   return area.remove(key);
 }
-

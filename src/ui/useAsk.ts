@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ask } from "./ask";
 
-export type AskStatus<T> =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready"; data: T };
+export type AskStatus<T> = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: T };
 
 // The loading/error/ready fetch boilerplate that Skills/Agents/Install panels each
 // hand-rolled around ask(). `message` is (re)sent on mount and whenever `deps` change;
@@ -13,7 +10,7 @@ export type AskStatus<T> =
 export function useAsk<T>(
   message: unknown,
   fallbackError: string,
-  deps: unknown[],
+  deps: unknown[]
 ): { status: AskStatus<T>; reload: () => void } {
   const [status, setStatus] = useState<AskStatus<T>>({ kind: "loading" });
   const [nonce, setNonce] = useState(0);

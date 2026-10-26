@@ -32,9 +32,27 @@ export function getTrigger(box: HTMLTextAreaElement, trigger = "!"): { index: nu
 
 // Non-repo top-level GitHub paths, so we don't fire the Contents API on them.
 const NON_REPO = new Set([
-  "orgs", "settings", "notifications", "marketplace", "explore", "sponsors",
-  "topics", "collections", "trending", "features", "about", "pricing", "login",
-  "join", "new", "codespaces", "pulls", "issues", "dashboard", "search", "apps",
+  "orgs",
+  "settings",
+  "notifications",
+  "marketplace",
+  "explore",
+  "sponsors",
+  "topics",
+  "collections",
+  "trending",
+  "features",
+  "about",
+  "pricing",
+  "login",
+  "join",
+  "new",
+  "codespaces",
+  "pulls",
+  "issues",
+  "dashboard",
+  "search",
+  "apps",
 ]);
 
 export function repoFromUrl(): { owner: string; repo: string } | null {

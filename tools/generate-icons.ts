@@ -10,7 +10,10 @@ const src = readFile(SRC);
 await mkdir("src/icons", { recursive: true });
 
 for (const size of SIZES) {
-  const png = await sharp(await src).resize(size, size).png().toBuffer();
+  const png = await sharp(await src)
+    .resize(size, size)
+    .png()
+    .toBuffer();
   await writeFile(`src/icons/icon-${size}.png`, png);
   console.log(`Created src/icons/icon-${size}.png (${png.length} bytes)`);
 }

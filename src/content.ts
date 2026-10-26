@@ -111,7 +111,12 @@ function commitSkill(): void {
   const chosen = skill.results[skill.active];
   if (chosen) {
     // Replace the typed '!query' with the skill invocation.
-    replaceRange(skill.box, skill.triggerIndex, skill.box.selectionStart ?? skill.triggerIndex, `/${chosen.item.name} `);
+    replaceRange(
+      skill.box,
+      skill.triggerIndex,
+      skill.box.selectionStart ?? skill.triggerIndex,
+      `/${chosen.item.name} `
+    );
   }
   closeSkill();
 }
@@ -197,7 +202,7 @@ document.addEventListener(
       }
     }
   },
-  true,
+  true
 );
 
 // ponytail: best-effort toolbar button - GitHub's markdown toolbar markup churns, so
@@ -205,13 +210,9 @@ document.addEventListener(
 const buttoned = new WeakSet<Element>();
 function tryInjectButton(box: HTMLTextAreaElement): void {
   try {
-    const md = box.id
-      ? document.querySelector<HTMLElement>(`markdown-toolbar[for="${CSS.escape(box.id)}"]`)
-      : null;
+    const md = box.id ? document.querySelector<HTMLElement>(`markdown-toolbar[for="${CSS.escape(box.id)}"]`) : null;
     if (!md) return;
-    const toolbar = md.offsetParent
-      ? md
-      : md.parentElement?.querySelector<HTMLElement>('[class*="ActionBar"]');
+    const toolbar = md.offsetParent ? md : md.parentElement?.querySelector<HTMLElement>('[class*="ActionBar"]');
     if (!toolbar || buttoned.has(toolbar)) return;
     buttoned.add(toolbar);
     const btn = document.createElement("button");
@@ -236,9 +237,12 @@ const TASKS_NAV_ID = "igw-tasks-nav";
 const SKILLS_NAV_ID = "igw-skills-nav";
 const INIT_NAV_ID = "igw-init-nav";
 // Verified octicon paths (octicon-* classes are stable, unlike CSS modules).
-const TASKS_ICON = "M5.75 2.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-6a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM2 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z";
-const SKILLS_ICON = "M8.878.392a1.75 1.75 0 0 0-1.756 0l-5.25 3.045A1.75 1.75 0 0 0 1 4.951v6.098c0 .624.332 1.2.872 1.514l5.25 3.045a1.75 1.75 0 0 0 1.756 0l5.25-3.045c.54-.313.872-.89.872-1.514V4.951a1.75 1.75 0 0 0-.872-1.514L8.878.392ZM7.875 1.69a.25.25 0 0 1 .25 0l4.63 2.685L8 7.133 3.245 4.375l4.63-2.685ZM2.5 5.677v5.372c0 .09.047.171.125.216l4.625 2.683V8.432L2.5 5.677Zm6.25 8.271 4.625-2.683a.25.25 0 0 0 .125-.216V5.677L8.75 8.432v5.516Z";
-const INIT_ICON = "M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z";
+const TASKS_ICON =
+  "M5.75 2.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-6a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM2 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z";
+const SKILLS_ICON =
+  "M8.878.392a1.75 1.75 0 0 0-1.756 0l-5.25 3.045A1.75 1.75 0 0 0 1 4.951v6.098c0 .624.332 1.2.872 1.514l5.25 3.045a1.75 1.75 0 0 0 1.756 0l5.25-3.045c.54-.313.872-.89.872-1.514V4.951a1.75 1.75 0 0 0-.872-1.514L8.878.392ZM7.875 1.69a.25.25 0 0 1 .25 0l4.63 2.685L8 7.133 3.245 4.375l4.63-2.685ZM2.5 5.677v5.372c0 .09.047.171.125.216l4.625 2.683V8.432L2.5 5.677Zm6.25 8.271 4.625-2.683a.25.25 0 0 0 .125-.216V5.677L8.75 8.432v5.516Z";
+const INIT_ICON =
+  "M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z";
 
 // One popover at a time, shared by both nav buttons. openId tracks which nav opened it, so
 // clicking the same button toggles it closed.
@@ -257,7 +261,8 @@ function closePanel(): void {
 
 function onDocClick(e: MouseEvent): void {
   const t = e.target as Element | null;
-  if (panelHost && !panelHost.contains(t) && !t?.closest?.(`#${TASKS_NAV_ID}, #${SKILLS_NAV_ID}, #${INIT_NAV_ID}`)) closePanel();
+  if (panelHost && !panelHost.contains(t) && !t?.closest?.(`#${TASKS_NAV_ID}, #${SKILLS_NAV_ID}, #${INIT_NAV_ID}`))
+    closePanel();
 }
 
 function openPanel(id: string, anchor: HTMLElement, make: (owner: string, repo: string) => ReactElement): void {
@@ -284,7 +289,15 @@ function makeNavItem(sample: HTMLElement, id: string, label: string, iconPath: s
   const anchor = li.querySelector("a");
   if (!anchor) return null;
   li.id = id;
-  for (const attr of ["href", "data-tab-item", "data-react-nav", "data-turbo-frame", "data-discover", "data-hotkey", "aria-current"]) {
+  for (const attr of [
+    "href",
+    "data-tab-item",
+    "data-react-nav",
+    "data-turbo-frame",
+    "data-discover",
+    "data-hotkey",
+    "aria-current",
+  ]) {
     anchor.removeAttribute(attr);
   }
   anchor.setAttribute("role", "button");
@@ -318,9 +331,24 @@ function tryInjectNav(): void {
     let after: Element = agents ?? items[items.length - 1];
 
     const defs: { id: string; label: string; icon: string; make: (o: string, r: string) => ReactElement }[] = [
-      { id: TASKS_NAV_ID, label: "Tasks", icon: TASKS_ICON, make: (o, r) => createElement(InstallPanel, { owner: o, repo: r, onClose: closePanel }) },
-      { id: SKILLS_NAV_ID, label: "Skills", icon: SKILLS_ICON, make: (o, r) => createElement(SkillsPanel, { owner: o, repo: r, onClose: closePanel }) },
-      { id: INIT_NAV_ID, label: "Init", icon: INIT_ICON, make: (o, r) => createElement(InitPanel, { owner: o, repo: r, onClose: closePanel }) },
+      {
+        id: TASKS_NAV_ID,
+        label: "Tasks",
+        icon: TASKS_ICON,
+        make: (o, r) => createElement(InstallPanel, { owner: o, repo: r, onClose: closePanel }),
+      },
+      {
+        id: SKILLS_NAV_ID,
+        label: "Skills",
+        icon: SKILLS_ICON,
+        make: (o, r) => createElement(SkillsPanel, { owner: o, repo: r, onClose: closePanel }),
+      },
+      {
+        id: INIT_NAV_ID,
+        label: "Init",
+        icon: INIT_ICON,
+        make: (o, r) => createElement(InitPanel, { owner: o, repo: r, onClose: closePanel }),
+      },
     ];
     for (const def of defs) {
       const existing = document.getElementById(def.id);
@@ -398,7 +426,9 @@ function refineNow(btn: HTMLButtonElement, loc: { owner: string; repo: string; i
     if (chrome.runtime?.lastError || !resp || resp.error) {
       btn.disabled = false;
       btn.textContent = "Refine failed";
-      setTimeout(() => { btn.textContent = "Refine"; }, 3000);
+      setTimeout(() => {
+        btn.textContent = "Refine";
+      }, 3000);
       return;
     }
     refined = true;
@@ -409,13 +439,21 @@ function refineNow(btn: HTMLButtonElement, loc: { owner: string; repo: string; i
 // ponytail: best-effort native-issue-creation detection - flag the "Create" click, then
 // dispatch once we land on the new issue. A submit that fails validation leaves a stale
 // flag; the 15s TTL + consume-once caps it. Upgrade to a real form hook only if it misfires.
-document.addEventListener("click", (e) => {
-  if (!refineCfg.auto || !location.pathname.includes("/issues/new")) return;
-  const label = (e.target as Element | null)?.closest("button")?.textContent?.trim() ?? "";
-  if (/^(Create|Submit new issue)$/i.test(label)) {
-    try { sessionStorage.setItem(REFINE_PENDING, String(Date.now())); } catch { /* ignore */ }
-  }
-}, true);
+document.addEventListener(
+  "click",
+  (e) => {
+    if (!refineCfg.auto || !location.pathname.includes("/issues/new")) return;
+    const label = (e.target as Element | null)?.closest("button")?.textContent?.trim() ?? "";
+    if (/^(Create|Submit new issue)$/i.test(label)) {
+      try {
+        sessionStorage.setItem(REFINE_PENDING, String(Date.now()));
+      } catch {
+        /* ignore */
+      }
+    }
+  },
+  true
+);
 
 function maybeAutoRefine(): void {
   if (!refineCfg.auto) return;
@@ -431,7 +469,9 @@ function maybeAutoRefine(): void {
     return;
   }
   if (!ts || Date.now() - ts > 15000) return;
-  chrome.runtime.sendMessage({ type: "refine-issue", ...loc }, () => { /* fire-and-forget */ });
+  chrome.runtime.sendMessage({ type: "refine-issue", ...loc }, () => {
+    /* fire-and-forget */
+  });
 }
 
 new MutationObserver(() => {

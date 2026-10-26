@@ -44,9 +44,7 @@ export type ApplySkillsRequest = { type: "apply-skills"; owner: string; repo: st
 export type ApplySkillsResponse = { prUrl: string } | { error: string };
 
 export type AgentsCatalogRequest = { type: "agents-catalog" };
-export type AgentsCatalogResponse =
-  | { catalog: AgentManifest[] }
-  | { error: string };
+export type AgentsCatalogResponse = { catalog: AgentManifest[] } | { error: string };
 
 // --- RunPod GPU provisioning ---
 
@@ -69,13 +67,18 @@ export const isValidHf = (hf: string) => /^[\w.-]+\/[\w.-]+(:[\w.]+)?$/.test(hf.
 export function githubError(status: number, body: string): string {
   let detail = body.trim();
   try {
-    const json = JSON.parse(body) as { message?: string; errors?: { message?: string; field?: string; code?: string }[] };
+    const json = JSON.parse(body) as {
+      message?: string;
+      errors?: { message?: string; field?: string; code?: string }[];
+    };
     const errors = (json.errors ?? [])
       .map((e) => e.message ?? [e.field, e.code].filter(Boolean).join(" "))
       .filter(Boolean)
       .join("; ");
     detail = [json.message, errors].filter(Boolean).join(" - ");
-  } catch { /* not JSON - fall back to the raw text */ }
+  } catch {
+    /* not JSON - fall back to the raw text */
+  }
   return detail ? `GitHub ${status}: ${detail.slice(0, 300)}` : `GitHub ${status}`;
 }
 
@@ -86,7 +89,8 @@ export function githubError(status: number, body: string): string {
 export function parseGhHttp(output: string, toolError?: string): { status: number; body: string } {
   const matches = [...output.matchAll(/^HTTP\/[\d.]+ (\d{3})[^\n]*$/gm)];
   const last = matches[matches.length - 1];
-  if (!last) throw new Error(toolError || "gh api returned no response - is gh installed and authenticated on the CLI host?");
+  if (!last)
+    throw new Error(toolError || "gh api returned no response - is gh installed and authenticated on the CLI host?");
   const rest = output.slice(last.index! + last[0].length);
   const blank = rest.search(/\r?\n\r?\n/);
   const body = blank < 0 ? "" : rest.slice(blank).replace(/^\r?\n\r?\n/, "");
@@ -122,7 +126,19 @@ export function podRequestBody(gpuTypeId: string, model: LlamaModel, apiKey: str
   return {
     name: `opentask-${model.id}`,
     imageName: "ghcr.io/ggml-org/llama.cpp:server-cuda",
-    dockerStartCmd: ["-hf", model.hf, "--host", "0.0.0.0", "--port", "8080", "-ngl", "99", "--jinja", "--api-key", apiKey],
+    dockerStartCmd: [
+      "-hf",
+      model.hf,
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8080",
+      "-ngl",
+      "99",
+      "--jinja",
+      "--api-key",
+      apiKey,
+    ],
     gpuTypeIds: [gpuTypeId],
     allowedCudaVersions: ["12.8", "12.9", "13.0"],
     cloudType: cloudType ?? "SECURE",
@@ -132,7 +148,13 @@ export function podRequestBody(gpuTypeId: string, model: LlamaModel, apiKey: str
   };
 }
 
-export type ProvisionGPURequest = { type: "provision-gpu"; gpuTypeId: string; modelId: string; hf: string; cloudType?: string };
+export type ProvisionGPURequest = {
+  type: "provision-gpu";
+  gpuTypeId: string;
+  modelId: string;
+  hf: string;
+  cloudType?: string;
+};
 export type ProvisionGPUResponse = { state: GpuState } | { error: string };
 
 export type DeprovisionGPURequest = { type: "deprovision-gpu" };

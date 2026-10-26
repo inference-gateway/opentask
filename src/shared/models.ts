@@ -37,9 +37,10 @@ export function isBotConfig(b: unknown): b is BotConfig {
 // the webhook (webhook_active=false) - the manifest POST flow can't be submitted from an
 // extension origin. A non-blank owner targets that org's settings; blank = personal.
 export function githubAppUrl(owner: string, isOrg: boolean): string {
-  const base = owner && isOrg
-    ? `https://github.com/organizations/${owner}/settings/apps/new`
-    : "https://github.com/settings/apps/new";
+  const base =
+    owner && isOrg
+      ? `https://github.com/organizations/${owner}/settings/apps/new`
+      : "https://github.com/settings/apps/new";
   const params = new URLSearchParams({
     name: owner ? `OpenTask ${owner}` : "OpenTask Agent",
     description: "OpenTask agent bot",
@@ -95,8 +96,7 @@ export function isPluginOption(p: unknown): p is PluginOption {
 }
 
 // ids of the plugins toggled on - what actually gets baked into the workflow.
-export const enabledPlugins = (plugins: PluginOption[]): string[] =>
-  plugins.filter((p) => p.enabled).map((p) => p.id);
+export const enabledPlugins = (plugins: PluginOption[]): string[] => plugins.filter((p) => p.enabled).map((p) => p.id);
 
 // Common CI dependencies for the generated workflow. Language toolchains are installed
 // by infer-action itself via its `languages:` input; only `task` remains a real setup
@@ -127,11 +127,25 @@ export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
 // installed toolchain the agent cannot invoke leaves it hand-simulating the tool.
 // `task` needs none: it is already in the Infer CLI's read-only bash baseline.
 export const DEPENDENCY_DEFS: { id: string; label: string; step?: string; lang?: string; allow?: string[] }[] = [
-  { id: "task", label: "Task (go-task)", step: `      - uses: arduino/setup-task@v3.0.0\n        with:\n          version: 3.x\n          repo-token: \${{ secrets.GITHUB_TOKEN }}` },
+  {
+    id: "task",
+    label: "Task (go-task)",
+    step: `      - uses: arduino/setup-task@v3.0.0\n        with:\n          version: 3.x\n          repo-token: \${{ secrets.GITHUB_TOKEN }}`,
+  },
   { id: "go", label: "Go", lang: "go", allow: ["gofmt( .*)?", "go (fmt|vet|test|build|run|mod|generate|tool)( .*)?"] },
   { id: "rust", label: "Rust", lang: "rust", allow: ["cargo( .*)?", "rustfmt( .*)?", "rustc( .*)?", "rustup( .*)?"] },
-  { id: "node", label: "Node.js / TypeScript", lang: "node", allow: ["npm( .*)?", "npx( .*)?", "yarn( .*)?", "pnpm( .*)?", "bun( .*)?", "bunx( .*)?"] },
-  { id: "python", label: "Python", lang: "python", allow: ["python3?( .*)?", "pip3?( .*)?", "pytest( .*)?", "ruff( .*)?", "uv( .*)?"] },
+  {
+    id: "node",
+    label: "Node.js / TypeScript",
+    lang: "node",
+    allow: ["npm( .*)?", "npx( .*)?", "yarn( .*)?", "pnpm( .*)?", "bun( .*)?", "bunx( .*)?"],
+  },
+  {
+    id: "python",
+    label: "Python",
+    lang: "python",
+    allow: ["python3?( .*)?", "pip3?( .*)?", "pytest( .*)?", "ruff( .*)?", "uv( .*)?"],
+  },
 ];
 
 export function isDependenciesConfig(x: unknown): x is DependenciesConfig {
@@ -141,7 +155,7 @@ export function isDependenciesConfig(x: unknown): x is DependenciesConfig {
     typeof (x as Record<string, unknown>).autoDetect === "boolean" &&
     ["string", "undefined"].includes(typeof (x as Record<string, unknown>).apt) &&
     Array.isArray((x as Record<string, unknown>).items) &&
-    ((x as { items: unknown[] }).items).every(isPluginOption)
+    (x as { items: unknown[] }).items.every(isPluginOption)
   );
 }
 
@@ -200,4 +214,3 @@ misses the issue and does not scale:
   "In Progress" BEFORE you start changing anything, and the option closest to "QA" right
   after the pull request is opened (fall back to "Done" only when no QA-like option
   exists). Never set "Done" - that happens at merge.`;
-

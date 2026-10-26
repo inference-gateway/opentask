@@ -2,7 +2,29 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
 import { DEFAULT_PROMPTS, mergePrompts, type Prompt } from "./shared/prompts";
-import { DEFAULT_BOT, DEFAULT_PERMISSIONS, DEFAULT_REFINE, DEFAULT_PLUGINS, DEFAULT_INIT, DEFAULT_TIMEOUT, DEFAULT_INSTRUCTIONS, DEFAULT_DEPENDENCIES, normalizeTimeout, isBotConfig, isPermissions, isRefineConfig, isPluginOption, isInitConfig, isDependenciesConfig, type BotConfig, type Permissions, type RefineConfig, type PluginOption, type InitConfig, type DependenciesConfig } from "./shared/models";
+import {
+  DEFAULT_BOT,
+  DEFAULT_PERMISSIONS,
+  DEFAULT_REFINE,
+  DEFAULT_PLUGINS,
+  DEFAULT_INIT,
+  DEFAULT_TIMEOUT,
+  DEFAULT_INSTRUCTIONS,
+  DEFAULT_DEPENDENCIES,
+  normalizeTimeout,
+  isBotConfig,
+  isPermissions,
+  isRefineConfig,
+  isPluginOption,
+  isInitConfig,
+  isDependenciesConfig,
+  type BotConfig,
+  type Permissions,
+  type RefineConfig,
+  type PluginOption,
+  type InitConfig,
+  type DependenciesConfig,
+} from "./shared/models";
 import { DEFAULT_REFINE_PROMPT } from "./shared/task";
 import { applyTheme, type Theme } from "./shared/theme";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/components/tabs";
@@ -57,13 +79,18 @@ function Options() {
       setImageModel((await storage.get<string>("imageModel")) ?? "");
       const pl = await storage.get<unknown>("plugins");
       const stored = Array.isArray(pl) ? pl.filter(isPluginOption) : [];
-      setPlugins(DEFAULT_PLUGINS.map((p) => ({ ...p, enabled: stored.find((s) => s.id === p.id)?.enabled ?? p.enabled })));
+      setPlugins(
+        DEFAULT_PLUGINS.map((p) => ({ ...p, enabled: stored.find((s) => s.id === p.id)?.enabled ?? p.enabled }))
+      );
       const dp = await storage.get<unknown>("dependencies");
       const dpc = isDependenciesConfig(dp) ? dp : DEFAULT_DEPENDENCIES;
       setDeps({
         autoDetect: dpc.autoDetect,
         apt: dpc.apt ?? "",
-        items: DEFAULT_DEPENDENCIES.items.map((d) => ({ ...d, enabled: dpc.items.find((s) => s.id === d.id)?.enabled ?? d.enabled })),
+        items: DEFAULT_DEPENDENCIES.items.map((d) => ({
+          ...d,
+          enabled: dpc.items.find((s) => s.id === d.id)?.enabled ?? d.enabled,
+        })),
       });
       const t = (await storage.get<string>("theme")) as Theme | undefined;
       const resolved = t === "light" || t === "dark" ? t : "system";
@@ -109,7 +136,11 @@ function Options() {
     if (bot.enabled && (!bot.clientId.trim() || !bot.privateKeySecret.trim())) {
       return setStatus("Custom Bot needs a Client ID and a private-key secret name.");
     }
-    await storage.set("bot", { enabled: bot.enabled, clientId: bot.clientId.trim(), privateKeySecret: bot.privateKeySecret.trim() });
+    await storage.set("bot", {
+      enabled: bot.enabled,
+      clientId: bot.clientId.trim(),
+      privateKeySecret: bot.privateKeySecret.trim(),
+    });
     await storage.set("prompts", parsed);
     await storage.set("instructions", instructions);
     await storage.set("refinePrompt", refinePromptText);
@@ -148,7 +179,6 @@ function Options() {
     applyTheme(t);
   }
 
-
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold mb-4">OpenTask settings</h1>
@@ -164,7 +194,14 @@ function Options() {
         </TabsList>
 
         <TabsContent value="orchestrator" className="flex flex-col gap-4">
-          <OrchestratorTab perms={perms} setPerms={setPerms} refine={refine} setRefine={setRefine} init={init} setInit={setInit} />
+          <OrchestratorTab
+            perms={perms}
+            setPerms={setPerms}
+            refine={refine}
+            setRefine={setRefine}
+            init={init}
+            setInit={setInit}
+          />
         </TabsContent>
 
         <TabsContent value="agents" className="flex flex-col gap-4">
@@ -172,11 +209,37 @@ function Options() {
         </TabsContent>
 
         <TabsContent value="prompts" className="flex flex-col gap-4">
-          <PromptsTab promptsText={promptsText} setPromptsText={setPromptsText} instructions={instructions} setInstructions={setInstructions} refinePromptText={refinePromptText} setRefinePromptText={setRefinePromptText} />
+          <PromptsTab
+            promptsText={promptsText}
+            setPromptsText={setPromptsText}
+            instructions={instructions}
+            setInstructions={setInstructions}
+            refinePromptText={refinePromptText}
+            setRefinePromptText={setRefinePromptText}
+          />
         </TabsContent>
 
         <TabsContent value="workflow" className="flex flex-col gap-4">
-          <WorkflowTab connected={bridgeConnected} repos={repos} reposError={reposError} defaultRepo={defaultRepo} timeout={timeout} setTimeoutMin={setTimeoutMin} plugins={plugins} setPlugins={setPlugins} debug={debug} setDebug={setDebug} reviewInline={reviewInline} setReviewInline={setReviewInline} visionModel={visionModel} setVisionModel={setVisionModel} imageModel={imageModel} setImageModel={setImageModel} bot={bot} setBot={setBot} />
+          <WorkflowTab
+            connected={bridgeConnected}
+            repos={repos}
+            reposError={reposError}
+            defaultRepo={defaultRepo}
+            timeout={timeout}
+            setTimeoutMin={setTimeoutMin}
+            plugins={plugins}
+            setPlugins={setPlugins}
+            debug={debug}
+            setDebug={setDebug}
+            reviewInline={reviewInline}
+            setReviewInline={setReviewInline}
+            visionModel={visionModel}
+            setVisionModel={setVisionModel}
+            imageModel={imageModel}
+            setImageModel={setImageModel}
+            bot={bot}
+            setBot={setBot}
+          />
         </TabsContent>
 
         <TabsContent value="dependencies" className="flex flex-col gap-4">
@@ -210,5 +273,5 @@ function isPrompt(p: unknown): p is Prompt {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Options />
-  </StrictMode>,
+  </StrictMode>
 );

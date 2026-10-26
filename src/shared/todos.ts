@@ -71,7 +71,9 @@ export function moveTodo(todos: Todo[], from: number, to: number): Todo[] {
 
 // Advances one todo's status: pending -> in_progress -> completed -> pending.
 export function advanceTodo(todos: Todo[], i: number): Todo[] {
-  return todos.map((t, j) => (j === i ? { ...t, status: STATUS_CYCLE[(STATUS_CYCLE.indexOf(t.status) + 1) % STATUS_CYCLE.length] } : t));
+  return todos.map((t, j) =>
+    j === i ? { ...t, status: STATUS_CYCLE[(STATUS_CYCLE.indexOf(t.status) + 1) % STATUS_CYCLE.length] } : t
+  );
 }
 
 // The user message handing an edited list back to the agent (same wording as

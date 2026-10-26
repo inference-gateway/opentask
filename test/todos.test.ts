@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type { Msg } from "../src/shared/agui";
-import { advanceTodo, latestTodos, moveTodo, parseTodos, todoHandoff, todosDiffer, todoSummary, type Todo } from "../src/shared/todos";
+import {
+  advanceTodo,
+  latestTodos,
+  moveTodo,
+  parseTodos,
+  todoHandoff,
+  todosDiffer,
+  todoSummary,
+  type Todo,
+} from "../src/shared/todos";
 
 const todoArgs = JSON.stringify({
   todos: [
@@ -24,7 +33,9 @@ describe("parseTodos", () => {
   });
 
   test("tolerates common text field names and a bare array; unknown status reads pending", () => {
-    expect(parseTodos("TodoWrite", '[{"text":"a"},{"subject":"b","status":"completed"},{"task":"c","status":"weird"}]')).toEqual([
+    expect(
+      parseTodos("TodoWrite", '[{"text":"a"},{"subject":"b","status":"completed"},{"task":"c","status":"weird"}]')
+    ).toEqual([
       { content: "a", status: "pending" },
       { content: "b", status: "completed" },
       { content: "c", status: "pending" },
@@ -70,7 +81,12 @@ describe("latestTodos", () => {
   });
 
   test("is empty without any todo-list call", () => {
-    expect(latestTodos([{ role: "tool", content: "Bash", args: '{"command":"ls"}' }, { role: "user", content: "TodoWrite" }])).toEqual([]);
+    expect(
+      latestTodos([
+        { role: "tool", content: "Bash", args: '{"command":"ls"}' },
+        { role: "user", content: "TodoWrite" },
+      ])
+    ).toEqual([]);
   });
 });
 

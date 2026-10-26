@@ -5,9 +5,7 @@ import { DEFAULT_PROMPTS, mergePrompts, type Prompt } from "../shared/prompts";
 import type { GpuState } from "../shared/messages";
 import { ask } from "./ask";
 
-type State =
-  | { kind: "checking" }
-  | { kind: "ready"; installed: boolean; fileUrl?: string; error?: string };
+type State = { kind: "checking" } | { kind: "ready"; installed: boolean; fileUrl?: string; error?: string };
 
 type SendState =
   | { kind: "idle" }
@@ -35,7 +33,8 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
       if (state?.status === "running" && hf) setGpuModel(`llamacpp/${hf}`);
     });
     ask({ type: "check-install", owner, repo }, (resp) => {
-      if (chrome.runtime?.lastError || !resp) return setState({ kind: "ready", installed: false, error: "Failed to check install status." });
+      if (chrome.runtime?.lastError || !resp)
+        return setState({ kind: "ready", installed: false, error: "Failed to check install status." });
       if (resp.error) return setState({ kind: "ready", installed: false, error: resp.error });
       setState({ kind: "ready", installed: resp.installed as boolean, fileUrl: resp.url as string | undefined });
     });
@@ -73,10 +72,14 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
   return (
     <div className="igw-tasks-panel">
       <div className="igw-tasks-header">
-        <button className="igw-tasks-close" onClick={onClose} aria-label="Close">×</button>
+        <button className="igw-tasks-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
       </div>
       <div className="igw-tasks-body">
-        <p className="igw-tasks-repo">{owner}/{repo}</p>
+        <p className="igw-tasks-repo">
+          {owner}/{repo}
+        </p>
 
         {state.kind === "checking" && <p className="igw-tasks-muted">Checking…</p>}
 
@@ -84,7 +87,9 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
 
         {state.kind === "ready" && !state.error && state.installed && (
           <>
-            <label className="igw-tasks-label" htmlFor="igw-task-input">New task</label>
+            <label className="igw-tasks-label" htmlFor="igw-task-input">
+              New task
+            </label>
             <textarea
               id="igw-task-input"
               ref={taRef}
@@ -103,8 +108,14 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
                   if (p) insertTemplate(p.insert);
                 }}
               >
-                <option value="" disabled>Insert template…</option>
-                {prompts.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                <option value="" disabled>
+                  Insert template…
+                </option>
+                {prompts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
               </select>
             )}
             <label className="igw-tasks-check">
@@ -120,14 +131,14 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
               >
                 <option value="">Repository default (DEFAULT_MODEL)</option>
                 {gpuModel && <option value={gpuModel}>{gpuModel}</option>}
-                {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+                {MODELS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
               </select>
             )}
-            <button
-              className="igw-tasks-btn"
-              onClick={sendTask}
-              disabled={send.kind === "sending" || !task.trim()}
-            >
+            <button className="igw-tasks-btn" onClick={sendTask} disabled={send.kind === "sending" || !task.trim()}>
               {send.kind === "sending" ? "Sending…" : createIssue ? "Send task" : "Run task"}
             </button>
             {send.kind === "sent" && (
@@ -140,15 +151,17 @@ export function InstallPanel({ owner, repo, onClose }: { owner: string; repo: st
             )}
             {send.kind === "error" && <p className="igw-tasks-error">{send.message}</p>}
             {state.fileUrl && (
-              <a className="igw-tasks-link" href={state.fileUrl} target="_blank" rel="noopener noreferrer">View workflow file</a>
+              <a className="igw-tasks-link" href={state.fileUrl} target="_blank" rel="noopener noreferrer">
+                View workflow file
+              </a>
             )}
           </>
         )}
 
         {state.kind === "ready" && !state.error && !state.installed && (
           <p className="igw-tasks-muted">
-            The OpenTask workflow is not installed here. Install it from the extension's
-            Options → Workflows → Install workflow.
+            The OpenTask workflow is not installed here. Install it from the extension's Options → Workflows → Install
+            workflow.
           </p>
         )}
       </div>

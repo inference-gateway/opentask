@@ -10,19 +10,14 @@ export type AgentManifest = {
   };
 };
 
-export const CATALOG_URL =
-  "https://cdn.jsdelivr.net/gh/inference-gateway/agents@main/catalog.json";
+export const CATALOG_URL = "https://cdn.jsdelivr.net/gh/inference-gateway/agents@main/catalog.json";
 
 export function isAgentManifest(m: unknown): m is AgentManifest {
   if (!m || typeof m !== "object") return false;
   const o = m as Record<string, unknown>;
   const meta = o.metadata as Record<string, unknown> | undefined;
   if (!meta || typeof meta !== "object") return false;
-  return (
-    typeof meta.name === "string" &&
-    typeof meta.description === "string" &&
-    typeof meta.version === "string"
-  );
+  return typeof meta.name === "string" && typeof meta.description === "string" && typeof meta.version === "string";
 }
 
 // The catalog is a wrapper object { version, updated, agents: [...] }; a bare

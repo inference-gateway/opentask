@@ -19,9 +19,8 @@ export function DependenciesTab({
         title="Auto-detect"
         description={
           <>
-            Pick language toolchains from the repo's GitHub language breakdown when the
-            workflow is installed. While on, the language toggles below are ignored.{" "}
-            <strong>Re-install the workflow</strong> after changing this.
+            Pick language toolchains from the repo's GitHub language breakdown when the workflow is installed. While on,
+            the language toggles below are ignored. <strong>Re-install the workflow</strong> after changing this.
           </>
         }
       >
@@ -34,10 +33,9 @@ export function DependenciesTab({
         title="Dependencies"
         description={
           <>
-            Toolchains available to the agent. Languages are installed by infer-action itself
-            (its <code>languages:</code> input, respecting version files like{" "}
-            <code>go.mod</code>); Task is a setup step before it.{" "}
-            <strong>Re-install the workflow</strong> after changing these.
+            Toolchains available to the agent. Languages are installed by infer-action itself (its{" "}
+            <code>languages:</code> input, respecting version files like <code>go.mod</code>); Task is a setup step
+            before it. <strong>Re-install the workflow</strong> after changing these.
           </>
         }
       >
@@ -57,9 +55,8 @@ export function DependenciesTab({
         title="APT packages"
         description={
           <>
-            System packages infer-action installs before the agent runs (its{" "}
-            <code>apt:</code> input), space-separated. Leave empty to omit.{" "}
-            <strong>Re-install the workflow</strong> after changing these.
+            System packages infer-action installs before the agent runs (its <code>apt:</code> input), space-separated.
+            Leave empty to omit. <strong>Re-install the workflow</strong> after changing these.
           </>
         }
       >

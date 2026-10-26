@@ -90,7 +90,12 @@ function SidePanel() {
   const [currentModel, setCurrentModel] = useState<string | undefined>(undefined);
   const [mode, setMode] = useState<string | undefined>(undefined);
   const [atBottom, setAtBottom] = useState(true);
-  const [menu, setMenu] = useState<{ results: FuzzyResult<PanelSkill>[]; active: number; triggerIndex: number; pos: CaretPos } | null>(null);
+  const [menu, setMenu] = useState<{
+    results: FuzzyResult<PanelSkill>[];
+    active: number;
+    triggerIndex: number;
+    pos: CaretPos;
+  } | null>(null);
   const portRef = useRef<chrome.runtime.Port | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -118,7 +123,7 @@ function SidePanel() {
         setArtifactBase(msg.artifactBase);
         setMessages(msg.messages);
         setConversations(msg.conversations);
-      setActiveThreads(msg.activeThreads ?? []);
+        setActiveThreads(msg.activeThreads ?? []);
         setSkills(msg.skills);
         setHistory(msg.history);
         setModels(msg.models);
@@ -171,7 +176,11 @@ function SidePanel() {
   }
 
   function followThread(t: ActiveThread) {
-    portRef.current?.postMessage({ type: "follow_thread", projectDir: t.projectDir, conversationId: t.conversationId } satisfies PanelFollowThread);
+    portRef.current?.postMessage({
+      type: "follow_thread",
+      projectDir: t.projectDir,
+      conversationId: t.conversationId,
+    } satisfies PanelFollowThread);
   }
 
   const PREVIEWABLE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -210,7 +219,7 @@ function SidePanel() {
       setAttachments((list) =>
         list.length >= MAX_ATTACHMENTS
           ? list
-          : [...list, { filename: file.name || "pasted-image.png", mime_type: mimeType, data }],
+          : [...list, { filename: file.name || "pasted-image.png", mime_type: mimeType, data }]
       );
     }
   }
@@ -229,7 +238,7 @@ function SidePanel() {
       ask({ type: "record-tools" }, (resp) => {
         const r = resp as RecordToolsResponse;
         resolve("error" in r ? r.error : "");
-      }),
+      })
     );
   }
 
@@ -293,7 +302,11 @@ function SidePanel() {
 
   function respondQuestion(answers?: PanelQuestionResponse["answers"]) {
     if (!pendingQuestion) return;
-    portRef.current?.postMessage({ type: "question_response", id: pendingQuestion.id, answers } satisfies PanelQuestionResponse);
+    portRef.current?.postMessage({
+      type: "question_response",
+      id: pendingQuestion.id,
+      answers,
+    } satisfies PanelQuestionResponse);
     setPendingQuestion(undefined);
   }
 
@@ -305,7 +318,7 @@ function SidePanel() {
     if (!pendingApproval) return;
     approveRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-        if (approvalShortcut(e, respondApproval)) e.preventDefault();
+      if (approvalShortcut(e, respondApproval)) e.preventDefault();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -318,7 +331,7 @@ function SidePanel() {
           ⌘
         </div>
         <span className="font-semibold tracking-tight">OpenTask</span>
-          <RecordButton onRecording={addRecording} />
+        <RecordButton onRecording={addRecording} />
         <span
           className={
             "ml-auto flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium " +
@@ -390,7 +403,9 @@ function SidePanel() {
         <div className="flex items-center gap-2 border-b border-border/60 bg-background/60 px-3 py-2">
           <Select
             value={currentModel ?? ""}
-            onValueChange={(model) => portRef.current?.postMessage({ type: "select_model", model } satisfies PanelSelectModel)}
+            onValueChange={(model) =>
+              portRef.current?.postMessage({ type: "select_model", model } satisfies PanelSelectModel)
+            }
           >
             <SelectTrigger size="sm" className="h-7 min-w-0 flex-1 font-mono text-xs" aria-label="Model">
               <SelectValue placeholder="Model" />
@@ -410,7 +425,10 @@ function SidePanel() {
             aria-pressed={mode === "auto"}
             title="Auto mode: run tools without approval prompts (the CLI's shift+tab YOLO mode)"
             onClick={() =>
-              portRef.current?.postMessage({ type: "set_mode", mode: mode === "auto" ? "standard" : "auto" } satisfies PanelSetMode)
+              portRef.current?.postMessage({
+                type: "set_mode",
+                mode: mode === "auto" ? "standard" : "auto",
+              } satisfies PanelSetMode)
             }
           >
             Auto
@@ -420,7 +438,8 @@ function SidePanel() {
 
       {connected && updateRequired && (
         <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          This panel speaks protocol version 2 and the daemon answered with another. Update infer and this extension to matching releases.
+          This panel speaks protocol version 2 and the daemon answered with another. Update infer and this extension to
+          matching releases.
         </div>
       )}
 
@@ -434,7 +453,10 @@ function SidePanel() {
         activeThreads
           .filter((t) => t.conversationId !== activeConversationId)
           .map((t) => (
-            <div key={t.conversationId} className="flex items-center gap-2 border-b border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300">
+            <div
+              key={t.conversationId}
+              className="flex items-center gap-2 border-b border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300"
+            >
               <span className="min-w-0 flex-1">
                 Another client is streaming in{" "}
                 <span className="font-mono">{t.projectDir.split("/").filter(Boolean).pop() ?? t.projectDir}</span>
@@ -448,8 +470,8 @@ function SidePanel() {
       {!connected && (
         <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           <span className="flex-1">
-            Not connected to the infer daemon. Set the port, token and project directory in Options, make
-            sure <code>infer daemon</code> is running, then connect.
+            Not connected to the infer daemon. Set the port, token and project directory in Options, make sure{" "}
+            <code>infer daemon</code> is running, then connect.
           </span>
           <Button size="sm" className="h-7 shrink-0 px-3 text-xs" disabled={connecting} onClick={connect}>
             {connecting ? "Connecting…" : "Connect"}
@@ -458,96 +480,128 @@ function SidePanel() {
       )}
 
       <div className="relative flex-1 min-h-0">
-      <div
-        className="h-full overflow-y-auto px-3 py-4 space-y-3"
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
-        }}
-      >
-        {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-600/15 text-2xl">
-              💬
-            </div>
-            <p className="text-sm font-medium text-foreground">No conversation yet</p>
-            <p className="max-w-[220px] text-xs">Pick a conversation above to resume, or send a message to start a new one.</p>
-          </div>
-        )}
-        {messages.map((m, i) => {
-          const todos = parseTodos(m.content, m.args);
-          return (
-          <div key={i} className={m.role === "user" ? "group flex justify-end" : "group flex justify-start"}>
-            {m.role === "tool" ? (
-              <details className="max-w-[85%] rounded-2xl border border-border/60 bg-background/60 font-mono text-xs text-muted-foreground open:w-full">
-                <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-1 [&::-webkit-details-marker]:hidden">
-                  {m.ok === undefined ? (
-                    <span className="text-indigo-500">⚙</span>
-                  ) : m.ok ? (
-                    <span className="text-emerald-500">✓</span>
-                  ) : (
-                    <span className="text-red-500">✗</span>
-                  )}
-                  <span className="truncate">{todos ? `${m.content} ${todoSummary(todos)}` : toolLabel(m.content, m.args)}</span>
-                </summary>
-                {todos ? (
-                  <div className="max-h-64 space-y-1.5 overflow-auto border-t border-border/60 px-3 py-2">
-                    {todos.map((t, ti) => (
-                      <div key={ti} className="flex items-start gap-1.5">
-                        <span className={t.status === "completed" ? "text-emerald-500" : t.status === "in_progress" ? "text-indigo-500" : undefined}>
-                          {t.status === "completed" ? "✓" : t.status === "in_progress" ? "◐" : "○"}
-                        </span>
-                        <span className={t.status === "completed" ? "line-through" : t.status === "in_progress" ? "text-foreground" : undefined}>{t.content}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">
-                    {m.args ? prettyArgs(m.args) : m.content}
-                  </pre>
-                )}
-                {m.result && (
-                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-foreground/80">
-                    {m.result}
-                  </pre>
-                )}
-                {m.error && <pre className="whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-red-500">{m.error}</pre>}
-              </details>
-            ) : (
-              <div className={m.role === "user" ? "flex max-w-[85%] flex-col items-end" : "flex max-w-[85%] flex-col items-start"}>
-                <div
-                  className={
-                    m.role === "user"
-                      ? "rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
-                      : m.role === "reasoning"
-                        ? "rounded-2xl rounded-bl-md border border-dashed border-border/60 bg-background/40 px-3.5 py-2 text-xs italic text-muted-foreground whitespace-pre-wrap"
-                        : "rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
-                  }
-                >
-                  {m.role === "assistant" ? <Markdown text={m.content} artifactBase={artifactBase} /> : m.content}
-                </div>
-                <CopyButton text={m.content} />
-              </div>
-            )}
-          </div>
-              );
-        })}
-        <div ref={endRef} />
-      </div>
-      {!atBottom && (
-        <Button
-          size="icon-xs"
-          variant="secondary"
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-border/60 shadow-md"
-          aria-label="Scroll to bottom"
-          onClick={() => {
-            setAtBottom(true);
-            endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+        <div
+          className="h-full overflow-y-auto px-3 py-4 space-y-3"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
           }}
         >
-          <ArrowDown />
-        </Button>
-      )}
+          {messages.length === 0 && (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-600/15 text-2xl">
+                💬
+              </div>
+              <p className="text-sm font-medium text-foreground">No conversation yet</p>
+              <p className="max-w-[220px] text-xs">
+                Pick a conversation above to resume, or send a message to start a new one.
+              </p>
+            </div>
+          )}
+          {messages.map((m, i) => {
+            const todos = parseTodos(m.content, m.args);
+            return (
+              <div key={i} className={m.role === "user" ? "group flex justify-end" : "group flex justify-start"}>
+                {m.role === "tool" ? (
+                  <details className="max-w-[85%] rounded-2xl border border-border/60 bg-background/60 font-mono text-xs text-muted-foreground open:w-full">
+                    <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-1 [&::-webkit-details-marker]:hidden">
+                      {m.ok === undefined ? (
+                        <span className="text-indigo-500">⚙</span>
+                      ) : m.ok ? (
+                        <span className="text-emerald-500">✓</span>
+                      ) : (
+                        <span className="text-red-500">✗</span>
+                      )}
+                      <span className="truncate">
+                        {todos ? `${m.content} ${todoSummary(todos)}` : toolLabel(m.content, m.args)}
+                      </span>
+                    </summary>
+                    {todos ? (
+                      <div className="max-h-64 space-y-1.5 overflow-auto border-t border-border/60 px-3 py-2">
+                        {todos.map((t, ti) => (
+                          <div key={ti} className="flex items-start gap-1.5">
+                            <span
+                              className={
+                                t.status === "completed"
+                                  ? "text-emerald-500"
+                                  : t.status === "in_progress"
+                                    ? "text-indigo-500"
+                                    : undefined
+                              }
+                            >
+                              {t.status === "completed" ? "✓" : t.status === "in_progress" ? "◐" : "○"}
+                            </span>
+                            <span
+                              className={
+                                t.status === "completed"
+                                  ? "line-through"
+                                  : t.status === "in_progress"
+                                    ? "text-foreground"
+                                    : undefined
+                              }
+                            >
+                              {t.content}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2">
+                        {m.args ? prettyArgs(m.args) : m.content}
+                      </pre>
+                    )}
+                    {m.result && (
+                      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-foreground/80">
+                        {m.result}
+                      </pre>
+                    )}
+                    {m.error && (
+                      <pre className="whitespace-pre-wrap break-all border-t border-border/60 px-3 py-2 text-red-500">
+                        {m.error}
+                      </pre>
+                    )}
+                  </details>
+                ) : (
+                  <div
+                    className={
+                      m.role === "user"
+                        ? "flex max-w-[85%] flex-col items-end"
+                        : "flex max-w-[85%] flex-col items-start"
+                    }
+                  >
+                    <div
+                      className={
+                        m.role === "user"
+                          ? "rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-violet-600 px-3.5 py-2 text-white shadow-sm whitespace-pre-wrap"
+                          : m.role === "reasoning"
+                            ? "rounded-2xl rounded-bl-md border border-dashed border-border/60 bg-background/40 px-3.5 py-2 text-xs italic text-muted-foreground whitespace-pre-wrap"
+                            : "rounded-2xl rounded-bl-md border border-border/60 bg-card px-3.5 py-2 text-card-foreground shadow-sm"
+                      }
+                    >
+                      {m.role === "assistant" ? <Markdown text={m.content} artifactBase={artifactBase} /> : m.content}
+                    </div>
+                    <CopyButton text={m.content} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <div ref={endRef} />
+        </div>
+        {!atBottom && (
+          <Button
+            size="icon-xs"
+            variant="secondary"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-border/60 shadow-md"
+            aria-label="Scroll to bottom"
+            onClick={() => {
+              setAtBottom(true);
+              endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+            }}
+          >
+            <ArrowDown />
+          </Button>
+        )}
       </div>
 
       {pendingApproval && (
@@ -556,7 +610,8 @@ function SidePanel() {
             <div className="mb-2 flex items-center gap-2">
               <span className="flex size-5 items-center justify-center rounded-md bg-amber-500/15 text-xs">⚠</span>
               <span className="text-sm font-semibold">
-                Approve <span className="font-mono text-amber-600 dark:text-amber-400">{pendingApproval.toolName}</span>?
+                Approve <span className="font-mono text-amber-600 dark:text-amber-400">{pendingApproval.toolName}</span>
+                ?
               </span>
             </div>
             {pendingApproval.toolArgs && (
@@ -578,7 +633,12 @@ function SidePanel() {
       )}
 
       {pendingQuestion && !pendingApproval && (
-        <QuestionForm key={pendingQuestion.id} questions={pendingQuestion.questions} onSubmit={respondQuestion} onCancel={() => respondQuestion(undefined)} />
+        <QuestionForm
+          key={pendingQuestion.id}
+          questions={pendingQuestion.questions}
+          onSubmit={respondQuestion}
+          onCancel={() => respondQuestion(undefined)}
+        />
       )}
 
       {connected && running && !pendingApproval && !pendingQuestion && (
@@ -597,28 +657,30 @@ function SidePanel() {
           key={activeConversationId ?? "new"}
           messages={messages}
           canSend={connected && !running}
-          onSend={(content) => portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage)}
+          onSend={(content) =>
+            portRef.current?.postMessage({ type: "user_message", content } satisfies PanelUserMessage)
+          }
         />
         <div
           className={
-          "rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20" +
-          (dropActive ? " border-indigo-500/60 bg-indigo-500/5" : "")
+            "rounded-xl border border-border/60 bg-card p-1.5 shadow-sm transition-colors focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20" +
+            (dropActive ? " border-indigo-500/60 bg-indigo-500/5" : "")
           }
           onDragOver={(e) => {
-          e.preventDefault();
-          setDropActive(true);
+            e.preventDefault();
+            setDropActive(true);
           }}
           onDragLeave={() => setDropActive(false)}
           onDrop={(e) => {
-          e.preventDefault();
-          setDropActive(false);
-          void addFiles(e.dataTransfer?.files ?? null);
+            e.preventDefault();
+            setDropActive(false);
+            void addFiles(e.dataTransfer?.files ?? null);
           }}
         >
           {attachmentNotice && <div className="px-1 pt-1 text-xs text-red-500">{attachmentNotice}</div>}
           {preparing && <div className="px-1 pt-1 text-xs text-muted-foreground">Preparing the frame extractor…</div>}
           {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-1 pt-1.5">
+            <div className="flex flex-wrap gap-2 px-1 pt-1.5">
               {attachments.map((a, i) => {
                 const safeMimeType = previewMimeType(a.mime_type);
                 const remove = () => setAttachments((list) => list.filter((_, j) => j !== i));
@@ -640,7 +702,11 @@ function SidePanel() {
                     <span className="mt-0.5 block truncate text-muted-foreground">{a.filename}</span>
                   </div>
                 ) : (
-                  <span key={i} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-2 pr-1.5 text-xs" title={a.filename}>
+                  <span
+                    key={i}
+                    className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/60 py-0.5 pl-2 pr-1.5 text-xs"
+                    title={a.filename}
+                  >
                     <Paperclip className="size-3 shrink-0 text-muted-foreground" />
                     <span className="max-w-40 truncate">{a.filename}</span>
                     <button
@@ -654,10 +720,10 @@ function SidePanel() {
                   </span>
                 );
               })}
-          </div>
+            </div>
           )}
           <div className="flex items-end gap-2">
-          <input
+            <input
               ref={fileInputRef}
               type="file"
               multiple
@@ -668,118 +734,121 @@ function SidePanel() {
                 void addFiles(e.target.files);
                 e.target.value = "";
               }}
-          />
-          <Button
+            />
+            <Button
               size="icon-sm"
               variant="ghost"
               className="text-muted-foreground hover:text-foreground"
               aria-label="Attach files"
               title="Attach files"
               onClick={() => fileInputRef.current?.click()}
-          >
+            >
               <Plus />
-          </Button>
-          <Textarea
-            ref={taRef}
-            rows={2}
-            placeholder="Message the agent…"
-            value={draft}
-            className="min-h-9 resize-none border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
-            onChange={(e) => {
-              setDraft(e.target.value);
-              updateSkillMenu();
-            }}
-            onBlur={() => setMenu(null)}
-            onPaste={(e) => {
-                  if (e.clipboardData?.files.length) {
+            </Button>
+            <Textarea
+              ref={taRef}
+              rows={2}
+              placeholder="Message the agent…"
+              value={draft}
+              className="min-h-9 resize-none border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
+              onChange={(e) => {
+                setDraft(e.target.value);
+                updateSkillMenu();
+              }}
+              onBlur={() => setMenu(null)}
+              onPaste={(e) => {
+                if (e.clipboardData?.files.length) {
+                  e.preventDefault();
+                  void addFiles(e.clipboardData.files);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (menu && e.key === "Escape") {
+                  e.preventDefault();
+                  setMenu(null);
+                  return;
+                }
+                if (menu && menu.results.length) {
+                  if (e.key === "ArrowDown") {
                     e.preventDefault();
-                    void addFiles(e.clipboardData.files);
+                    setMenu({ ...menu, active: (menu.active + 1) % menu.results.length });
+                    return;
                   }
-            }}
-            onKeyDown={(e) => {
-              if (menu && e.key === "Escape") {
-                e.preventDefault();
-                setMenu(null);
-                return;
-              }
-              if (menu && menu.results.length) {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setMenu({ ...menu, active: (menu.active + 1) % menu.results.length });
-                  return;
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setMenu({ ...menu, active: (menu.active - 1 + menu.results.length) % menu.results.length });
+                    return;
+                  }
+                  if (e.key === "Enter" || e.key === "Tab") {
+                    e.preventDefault();
+                    commitSkill(menu.active);
+                    return;
+                  }
                 }
-                if (e.key === "ArrowUp") {
+                // The CLI's shared shell input history, mirroring the TUI's
+                // HistoryManager: ArrowUp always recalls (stashing the current
+                // draft on entry), ArrowDown walks newer and finally restores
+                // the stashed draft.
+                if (e.key === "ArrowUp" && history.length) {
                   e.preventDefault();
-                  setMenu({ ...menu, active: (menu.active - 1 + menu.results.length) % menu.results.length });
-                  return;
-                }
-                if (e.key === "Enter" || e.key === "Tab") {
-                  e.preventDefault();
-                  commitSkill(menu.active);
-                  return;
-                }
-              }
-              // The CLI's shared shell input history, mirroring the TUI's
-              // HistoryManager: ArrowUp always recalls (stashing the current
-              // draft on entry), ArrowDown walks newer and finally restores
-              // the stashed draft.
-              if (e.key === "ArrowUp" && history.length) {
-                e.preventDefault();
-                if (histIdx < 0) histStash.current = draft;
-                const next = Math.min(histIdx < 0 ? history.length - 1 : Math.max(0, histIdx - 1), history.length - 1);
-                setHistIdx(next);
-                setDraft(history[next]);
-                return;
-              }
-              if (e.key === "ArrowDown" && histIdx >= 0) {
-                e.preventDefault();
-                const next = histIdx + 1;
-                if (next >= history.length) {
-                  setHistIdx(-1);
-                  setDraft(histStash.current);
-                  histStash.current = "";
-                } else {
+                  if (histIdx < 0) histStash.current = draft;
+                  const next = Math.min(
+                    histIdx < 0 ? history.length - 1 : Math.max(0, histIdx - 1),
+                    history.length - 1
+                  );
                   setHistIdx(next);
                   setDraft(history[next]);
+                  return;
                 }
-                return;
-              }
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void sendMessage();
-              }
-            }}
-          />
-          {connected && running ? (
-            <Button
-              size="icon-sm"
-              onClick={() => portRef.current?.postMessage({ type: "interrupt" } satisfies PanelInterrupt)}
-              className="bg-red-500 text-white hover:bg-red-600"
-              aria-label="Stop generating"
-            >
-              ■
-            </Button>
-          ) : (
-            <Button
-              size="icon-sm"
-              disabled={!connected || !projectDir || preparing || (!draft.trim() && !attachments.length)}
-              onClick={() => void sendMessage()}
-              className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
-              aria-label="Send message"
-            >
-              ↑
-            </Button>
+                if (e.key === "ArrowDown" && histIdx >= 0) {
+                  e.preventDefault();
+                  const next = histIdx + 1;
+                  if (next >= history.length) {
+                    setHistIdx(-1);
+                    setDraft(histStash.current);
+                    histStash.current = "";
+                  } else {
+                    setHistIdx(next);
+                    setDraft(history[next]);
+                  }
+                  return;
+                }
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendMessage();
+                }
+              }}
+            />
+            {connected && running ? (
+              <Button
+                size="icon-sm"
+                onClick={() => portRef.current?.postMessage({ type: "interrupt" } satisfies PanelInterrupt)}
+                className="bg-red-500 text-white hover:bg-red-600"
+                aria-label="Stop generating"
+              >
+                ■
+              </Button>
+            ) : (
+              <Button
+                size="icon-sm"
+                disabled={!connected || !projectDir || preparing || (!draft.trim() && !attachments.length)}
+                onClick={() => void sendMessage()}
+                className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90"
+                aria-label="Send message"
+              >
+                ↑
+              </Button>
+            )}
+          </div>
+          {menu && (
+            <SkillMenu
+              results={menu.results}
+              activeIndex={menu.active}
+              pos={menu.pos}
+              onHover={(i) => setMenu({ ...menu, active: i })}
+              onSelect={commitSkill}
+            />
           )}
-        </div>
-        {menu && (
-          <SkillMenu
-            results={menu.results}
-            activeIndex={menu.active}
-            pos={menu.pos}
-            onHover={(i) => setMenu({ ...menu, active: i })}
-            onSelect={commitSkill}
-          />
-        )}
         </div>
       </div>
     </div>
@@ -789,5 +858,5 @@ function SidePanel() {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <SidePanel />
-  </StrictMode>,
+  </StrictMode>
 );

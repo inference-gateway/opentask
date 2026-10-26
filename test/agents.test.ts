@@ -9,7 +9,9 @@ const agent = (over: Partial<AgentManifest>): AgentManifest => ({
 
 test("isAgentManifest requires metadata with name, description, and version strings", () => {
   expect(isAgentManifest(agent({}))).toBe(true);
-  expect(isAgentManifest({ metadata: { name: "a", description: "b", version: "c" }, _source: { repo: "r", ref: "m" } })).toBe(true);
+  expect(
+    isAgentManifest({ metadata: { name: "a", description: "b", version: "c" }, _source: { repo: "r", ref: "m" } })
+  ).toBe(true);
 });
 
 test("isAgentManifest rejects null and non-objects", () => {

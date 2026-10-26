@@ -38,9 +38,7 @@ export function SkillMenu({
       style={style}
       role="listbox"
     >
-      {results.length === 0 && (
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">No matching skill</div>
-      )}
+      {results.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">No matching skill</div>}
       {results.map((r, i) => {
         const badge = SCOPE_BADGE[r.item.scope] ?? FALLBACK_BADGE;
         return (

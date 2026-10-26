@@ -76,8 +76,8 @@ export function WorkflowTab({
         title="Debug logging"
         description={
           <>
-            Enable infer-action debug-level logging and diagnostic output in the workflow run logs.
-            Off by default. <strong>Re-install the workflow</strong> after changing this.
+            Enable infer-action debug-level logging and diagnostic output in the workflow run logs. Off by default.{" "}
+            <strong>Re-install the workflow</strong> after changing this.
           </>
         }
       >
@@ -90,8 +90,8 @@ export function WorkflowTab({
         title="Inline PR review comments"
         description={
           <>
-            When enabled and the run is a review (<em>pull_request_review_comment</em> trigger), findings are posted as inline,
-            line-anchored comments with one-click suggestion blocks (Files Changed tab). Off by default.{" "}
+            When enabled and the run is a review (<em>pull_request_review_comment</em> trigger), findings are posted as
+            inline, line-anchored comments with one-click suggestion blocks (Files Changed tab). Off by default.{" "}
             <strong>Re-install the workflow</strong> after changing this.
           </>
         }
@@ -105,8 +105,8 @@ export function WorkflowTab({
         title="Images"
         description={
           <>
-            Optional models for image understanding and generation.{" "}
-            <strong>Re-install the workflow</strong> after changing these.
+            Optional models for image understanding and generation. <strong>Re-install the workflow</strong> after
+            changing these.
           </>
         }
       >
@@ -119,8 +119,8 @@ export function WorkflowTab({
             onChange={(e) => setVisionModel(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Lets the agent read screenshots and diagrams embedded in issues/PRs, even when the task
-            model has no vision. Blank = off. Needs the model provider's API key secret in the repo.
+            Lets the agent read screenshots and diagrams embedded in issues/PRs, even when the task model has no vision.
+            Blank = off. Needs the model provider's API key secret in the repo.
           </p>
         </div>
         <div className="flex flex-col gap-2">
@@ -132,8 +132,8 @@ export function WorkflowTab({
             onChange={(e) => setImageModel(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Model for the agent's ImageGeneration/ImageEdit/ImageVariation tools. Blank keeps the
-            CLI default (<code>openai/gpt-image-2</code>, needs <code>OPENAI_API_KEY</code>).
+            Model for the agent's ImageGeneration/ImageEdit/ImageVariation tools. Blank keeps the CLI default (
+            <code>openai/gpt-image-2</code>, needs <code>OPENAI_API_KEY</code>).
           </p>
         </div>
       </Section>
@@ -142,10 +142,10 @@ export function WorkflowTab({
         title="Custom bot"
         description={
           <>
-            Run the agent as a GitHub App instead of <code>github-actions[bot]</code>. When enabled,
-            the generated workflow mints a token with <code>actions/create-github-app-token@v3</code>{" "}
-            and checks out + comments as your App, so its comments and commits are attributed to (and
-            verified for) the App. <strong>Re-install the workflow</strong> after changing this.
+            Run the agent as a GitHub App instead of <code>github-actions[bot]</code>. When enabled, the generated
+            workflow mints a token with <code>actions/create-github-app-token@v3</code> and checks out + comments as
+            your App, so its comments and commits are attributed to (and verified for) the App.{" "}
+            <strong>Re-install the workflow</strong> after changing this.
           </>
         }
       >
@@ -157,11 +157,7 @@ export function WorkflowTab({
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <Switch
-            id="igw-bot-enabled"
-            checked={bot.enabled}
-            onCheckedChange={(v) => setBot({ ...bot, enabled: v })}
-          />
+          <Switch id="igw-bot-enabled" checked={bot.enabled} onCheckedChange={(v) => setBot({ ...bot, enabled: v })} />
           <Label htmlFor="igw-bot-enabled">Use a custom bot (GitHub App)</Label>
         </div>
         {bot.enabled && (
@@ -175,11 +171,10 @@ export function WorkflowTab({
               onChange={(e) => setBot({ ...bot, clientId: e.target.value })}
             />
             <p className="text-sm text-muted-foreground">
-              On your App's settings page (<strong>General</strong>) under <strong>Client ID</strong> - it
-              starts with <code>Iv23li…</code>. This is <strong>not</strong> the numeric <em>App ID</em>{" "}
-              (e.g. <code>4394298</code>) shown at the top of the same page. You can also enter the
-              name of a repo secret holding it (e.g. <code>APP_CLIENT_ID</code>) and the workflow
-              will read it from <code>secrets</code>.
+              On your App's settings page (<strong>General</strong>) under <strong>Client ID</strong> - it starts with{" "}
+              <code>Iv23li…</code>. This is <strong>not</strong> the numeric <em>App ID</em> (e.g. <code>4394298</code>)
+              shown at the top of the same page. You can also enter the name of a repo secret holding it (e.g.{" "}
+              <code>APP_CLIENT_ID</code>) and the workflow will read it from <code>secrets</code>.
             </p>
             <Label htmlFor="igw-bot-secret">Private-key secret name</Label>
             <Input
@@ -190,8 +185,8 @@ export function WorkflowTab({
               onChange={(e) => setBot({ ...bot, privateKeySecret: e.target.value })}
             />
             <p className="text-sm text-muted-foreground">
-              Add this repo secret with your App's private key. The Client ID is also wrapped in
-              a secrets reference so it can be stored as a repo secret too.
+              Add this repo secret with your App's private key. The Client ID is also wrapped in a secrets reference so
+              it can be stored as a repo secret too.
             </p>
           </div>
         )}
@@ -205,8 +200,8 @@ export function WorkflowTab({
             <a href="https://github.com/inference-gateway/infer-action" className="underline">
               infer-action
             </a>{" "}
-            plugins the installed workflow pre-installs to extend the agent. All off by default; check the
-            ones you want. <strong>Re-install the workflow</strong> after changing these.
+            plugins the installed workflow pre-installs to extend the agent. All off by default; check the ones you
+            want. <strong>Re-install the workflow</strong> after changing these.
           </>
         }
       >
@@ -224,15 +219,22 @@ export function WorkflowTab({
   );
 }
 
-type InstallState =
-  | { kind: "idle" }
-  | { kind: "sent" }
-  | { kind: "error"; message: string };
+type InstallState = { kind: "idle" } | { kind: "sent" } | { kind: "error"; message: string };
 
 // One-click (re)install of the OpenTask workflow: sends /install-opentask into
 // the connected CLI's chat, so the run streams live in the side panel and the
 // push / PR creation go through the usual tool-approval flow there.
-function InstallSection({ connected, repos, reposError, defaultRepo }: { connected: boolean; repos: string[]; reposError: string; defaultRepo?: string }) {
+function InstallSection({
+  connected,
+  repos,
+  reposError,
+  defaultRepo,
+}: {
+  connected: boolean;
+  repos: string[];
+  reposError: string;
+  defaultRepo?: string;
+}) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [context, setContext] = useState("");
@@ -245,10 +247,15 @@ function InstallSection({ connected, repos, reposError, defaultRepo }: { connect
     setInstalled(false);
     if (!owner || !repo) return;
     let stale = false;
-    void chrome.runtime.sendMessage({ type: "check-install", owner, repo }).then((resp) => {
-      if (!stale && resp && resp.installed === true) setInstalled(true);
-    }).catch(() => undefined);
-    return () => { stale = true; };
+    void chrome.runtime
+      .sendMessage({ type: "check-install", owner, repo })
+      .then((resp) => {
+        if (!stale && resp && resp.installed === true) setInstalled(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      stale = true;
+    };
   }, [owner, repo]);
 
   useEffect(() => {
@@ -276,18 +283,16 @@ function InstallSection({ connected, repos, reposError, defaultRepo }: { connect
       title="Install workflow"
       description={
         <>
-          Asks the connected CLI's agent to add or update{" "}
-          <code>.github/workflows/tasks.yml</code> in the selected repository and open a pull
-          request. The run streams in the OpenTask side panel, where you approve the push and
-          PR creation. Re-installing updates the same open PR, and your repo-specific
-          customizations are preserved.
+          Asks the connected CLI's agent to add or update <code>.github/workflows/tasks.yml</code> in the selected
+          repository and open a pull request. The run streams in the OpenTask side panel, where you approve the push and
+          PR creation. Re-installing updates the same open PR, and your repo-specific customizations are preserved.
         </>
       }
     >
       {!connected && (
         <p className="text-sm text-muted-foreground">
-          Not connected to the infer CLI. Open the OpenTask side panel and click{" "}
-          <strong>Connect</strong> to load your repositories.
+          Not connected to the infer CLI. Open the OpenTask side panel and click <strong>Connect</strong> to load your
+          repositories.
         </p>
       )}
       {connected && reposError && !repos.length && <p className="text-sm text-destructive">{reposError}</p>}
@@ -297,7 +302,14 @@ function InstallSection({ connected, repos, reposError, defaultRepo }: { connect
         </p>
       )}
       <Label htmlFor="igw-install-owner">Owner</Label>
-      <Select value={owner || undefined} onValueChange={(o) => { setOwner(o); setRepo(""); }} disabled={!owners.length}>
+      <Select
+        value={owner || undefined}
+        onValueChange={(o) => {
+          setOwner(o);
+          setRepo("");
+        }}
+        disabled={!owners.length}
+      >
         <SelectTrigger id="igw-install-owner">
           <SelectValue placeholder={connected ? "Select an owner…" : "Connect the infer CLI first"} />
         </SelectTrigger>
@@ -337,8 +349,8 @@ function InstallSection({ connected, repos, reposError, defaultRepo }: { connect
       </div>
       {state.kind === "sent" && (
         <p className="text-sm">
-          Install request sent - follow the run in the OpenTask side panel, where you'll be asked
-          to approve the pull request.
+          Install request sent - follow the run in the OpenTask side panel, where you'll be asked to approve the pull
+          request.
         </p>
       )}
       {state.kind === "error" && <p className="text-sm text-destructive">{state.message}</p>}

@@ -6,13 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": [
-      "src/**",
-      "!src/**/*.css",
-      "test/**",
-      "tools/**",
-      "build.ts"
-    ]
+    "includes": ["src/**", "!src/**/*.css", "test/**", "tools/**", "build.ts"]
   },
   "formatter": {
     "enabled": true,

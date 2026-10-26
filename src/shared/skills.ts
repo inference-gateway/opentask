@@ -35,7 +35,7 @@ export function parseSource(url: string): { owner: string; repo: string; ref: st
 // ponytail: substring heuristic - upgrade to explicit language tags in the catalog if noisy.
 export function suggestForLanguages(
   skills: CatalogSkill[],
-  langs: string[],
+  langs: string[]
 ): { skill: CatalogSkill; suggested: boolean }[] {
   const needles = langs.map((l) => l.toLowerCase()).filter(Boolean);
   const scored = skills.map((skill) => {
