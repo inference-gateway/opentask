@@ -45,7 +45,7 @@
       "suspicious": {
         "noArrayIndexKey": "warn",
         "useIterableCallbackReturn": "warn",
-        "noControlCharactersInRegex": "off" // ANSI stripping on CLI output matches control chars deliberately
+        "noControlCharactersInRegex": "off"
       },
       "a11y": {
         "noAutofocus": "warn",
@@ -56,7 +56,7 @@
         "useValidAnchor": "warn"
       },
       "security": {
-        "noDangerouslySetInnerHtml": "warn" // markdown rendering goes through DOMPurify first
+        "noDangerouslySetInnerHtml": "warn"
       }
     }
   }
