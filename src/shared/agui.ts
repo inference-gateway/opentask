@@ -249,6 +249,23 @@ export function parseHistory(frame: Record<string, unknown>): string[] {
 // the CLI SkillScope: project | agents | user | plugin | catalog.
 export type PanelSkill = { name: string; description: string; scope: string };
 
+// A thread another client of the daemon is streaming right now, from the
+// `thread_activity` frames the daemon broadcasts on run start, end and attach.
+export type ActiveThread = { projectDir: string; conversationId: string };
+
+// Parses a `thread_activity` wire frame into ActiveThread[], mapping snake_case
+// wire fields and dropping entries without usable strings.
+export function parseActiveThreads(frame: Record<string, unknown>): ActiveThread[] {
+  const list = frame.threads;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((t) => {
+    const o = t as { project_dir?: unknown; conversation_id?: unknown } | null;
+    if (typeof o?.project_dir !== "string" || o.project_dir === "") return [];
+    if (typeof o?.conversation_id !== "string" || o.conversation_id === "") return [];
+    return [{ projectDir: o.project_dir, conversationId: o.conversation_id }];
+  });
+}
+
 // Parses a `skills` wire frame into PanelSkill[], dropping entries without a
 // usable string name.
 export function parseSkills(frame: Record<string, unknown>): PanelSkill[] {
@@ -337,6 +354,8 @@ export type PanelState = {
   // the CLI's agent mode as its allowlist key: "standard" | "plan" | "auto".
   mode?: string;
   activeConversationId?: string;
+  // threads other clients are streaming right now (from `thread_activity`).
+  activeThreads: ActiveThread[];
   // the daemon answered the hello with another protocol version: show "update infer".
   updateRequired: boolean;
   // the absolute project dir the panel opens threads in (Options -> CLI Bridge).
@@ -352,5 +371,6 @@ export type PanelSelectModel = { type: "select_model"; model: string };
 export type PanelSetMode = { type: "set_mode"; mode: string };
 export type PanelListConversations = { type: "list_conversations" };
 export type PanelResumeConversation = { type: "resume_conversation"; id: string };
+export type PanelFollowThread = { type: "follow_thread"; projectDir: string; conversationId: string };
 export type PanelApproval = { type: "approval_response"; id: string; approved: boolean };
 export type PanelQuestionResponse = { type: "question_response"; id: string; answers?: Answer[] };

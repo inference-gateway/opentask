@@ -1,5 +1,5 @@
 import * as storage from "../shared/storage";
-import { backoffMs, isClearCommand, isVisibleMessage, parseAttachments, parseConversations, parseEvent, parseFrame, parseHistory, parseSkills, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, userMessageContent, PROTOCOL_VERSION, type Answer, type Attachment, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, type PendingInterrupt, type PendingQuestion } from "../shared/agui";
+import { backoffMs, isClearCommand, isVisibleMessage, parseActiveThreads, parseAttachments, parseConversations, parseEvent, parseFrame, parseHistory, parseSkills, pendingInterrupts, reduceAgui, runningFromEvent, snapshotToMessages, stripAnsi, userMessageContent, PROTOCOL_VERSION, type ActiveThread, type Answer, type Attachment, type ConversationMeta, type Msg, type PanelSkill, type PanelState, type PendingApproval, type PendingInterrupt, type PendingQuestion } from "../shared/agui";
 import type { Event, Interrupt } from "@ag-ui/core";
 
 export const DEFAULT_PORT = "52789";
@@ -13,6 +13,7 @@ let attempt = 0;
 let messages: Msg[] = [];
 let conversations: ConversationMeta[] = [];
 let skills: PanelSkill[] = [];
+let activeThreads: ActiveThread[] = [];
 let history: string[] = [];
 let cliModels: string[] = [];
 let currentModel: string | undefined;
@@ -61,6 +62,7 @@ function disconnect() {
   wantConnected = false;
   connected = false;
   running = false;
+  activeThreads = [];
   clearPrompts();
   const sock = ws;
   ws = undefined;
@@ -100,7 +102,7 @@ export function panelState(): PanelState {
   }));
   const approval = pendingApproval();
   const cleanApproval = approval && { ...approval, toolName: stripAnsi(approval.toolName), toolArgs: stripAnsi(approval.toolArgs) };
-  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, history, models: cliModels, currentModel, mode, activeConversationId, updateRequired, projectDir, pendingApproval: cleanApproval, pendingQuestion: pendingQuestion() };
+  return { type: "state", connected, connecting: wantConnected && !connected, running, artifactBase: `http://127.0.0.1:${httpPort}`, messages: clean.filter(isVisibleMessage), conversations, skills, history, models: cliModels, currentModel, mode, activeConversationId, updateRequired, projectDir, activeThreads, pendingApproval: cleanApproval, pendingQuestion: pendingQuestion() };
 }
 
 function broadcast() {
@@ -225,6 +227,27 @@ export function startNewSession(): boolean {
   return true;
 }
 
+// Mirrors a thread another client is streaming (the desktop app runs its
+// threads on their own connections): follow it here, with the thread's project
+// dir so the panel and thread agree on one project.
+function followThread(t: ActiveThread) {
+  projectDir = t.projectDir;
+  activeConversationId = t.conversationId;
+  running = false;
+  clearPrompts();
+  send({ type: "resume_conversation", project_dir: t.projectDir, id: t.conversationId });
+  broadcast();
+}
+
+// Auto-follows the one streaming thread while the panel follows nothing - the
+// service worker forgets its thread on every restart. Several threads streaming,
+// or a busy panel, leave the choice to the user via the banner.
+function maybeFollowActive(): boolean {
+  if (activeConversationId !== undefined || running || activeThreads.length !== 1) return false;
+  followThread(activeThreads[0]);
+  return true;
+}
+
 // Send a prompt into the connection's thread as the next run: the turn streams
 // back as AG-UI events and approvals surface in the panel as interrupts.
 export function sendUserMessage(content: string, attachments: Attachment[] = []): boolean {
@@ -285,6 +308,7 @@ async function connect() {
     ws = undefined;
     connected = false;
     running = false;
+    activeThreads = [];
     clearPrompts();
     stopKeepalive();
     failPendingTools();
@@ -348,6 +372,10 @@ export async function handleFrame(socket: WebSocket, data: unknown) {
     case "mode":
       mode = typeof frame.mode === "string" && frame.mode ? frame.mode : undefined;
       broadcast();
+      return;
+    case "thread_activity":
+      activeThreads = parseActiveThreads(frame);
+      if (!maybeFollowActive()) broadcast();
       return;
     case "browser_command": {
       touch();
@@ -648,6 +676,7 @@ export function __reset(opts: { projectDir?: string } = {}) {
   wantConnected = false;
   running = false;
   messages = [];
+  activeThreads = [];
   activeConversationId = undefined;
   updateRequired = false;
   projectDir = opts.projectDir;
@@ -686,6 +715,9 @@ export function initBridge() {
         clearPrompts();
         sendInProject({ type: "resume_conversation", id: msg.id });
         broadcast();
+      }
+      if (msg?.type === "follow_thread" && typeof msg.projectDir === "string" && typeof msg.conversationId === "string" && msg.conversationId) {
+        followThread({ projectDir: msg.projectDir, conversationId: msg.conversationId });
       }
       if (msg?.type === "user_message" && typeof msg.content === "string" && msg.content.trim()) {
         const content = msg.content.trim();

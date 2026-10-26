@@ -208,6 +208,12 @@ Then open the side panel and click **Connect**. The panel speaks protocol versio
 of the daemon binding and shows an "update infer" notice when the daemon answers
 with another version.
 
+The panel also mirrors what other daemon clients stream, the desktop app included -
+the daemon tells every connection which threads have an open run (`thread_activity`
+frames in the [binding protocol](https://github.com/inference-gateway/cli/blob/main/docs/browser-extension-protocol.md)),
+the panel follows a single streaming thread on its own while it has none open, and
+anything else offers a **Follow** button in a banner instead of hijacking the panel.
+
 ### Quick prompts
 
 A JSON array of `{ id, label, description, insert }` objects shown in the palette.

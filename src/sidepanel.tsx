@@ -3,12 +3,14 @@ import { createRoot } from "react-dom/client";
 import * as storage from "./shared/storage";
 import { applyTheme, type Theme } from "./shared/theme";
 import type {
+  ActiveThread,
   Attachment,
   ConversationMeta,
   Msg,
   PanelApproval,
   PanelConnect,
   PanelDisconnect,
+  PanelFollowThread,
   PanelListConversations,
   PanelQuestionResponse,
   PanelResumeConversation,
@@ -69,6 +71,7 @@ function SidePanel() {
   const [artifactBase, setArtifactBase] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
+  const [activeThreads, setActiveThreads] = useState<ActiveThread[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [pendingQuestion, setPendingQuestion] = useState<PendingQuestion | undefined>(undefined);
@@ -115,6 +118,7 @@ function SidePanel() {
         setArtifactBase(msg.artifactBase);
         setMessages(msg.messages);
         setConversations(msg.conversations);
+      setActiveThreads(msg.activeThreads ?? []);
         setSkills(msg.skills);
         setHistory(msg.history);
         setModels(msg.models);
@@ -164,6 +168,10 @@ function SidePanel() {
 
   function resumeConversation(id: string) {
     portRef.current?.postMessage({ type: "resume_conversation", id } satisfies PanelResumeConversation);
+  }
+
+  function followThread(t: ActiveThread) {
+    portRef.current?.postMessage({ type: "follow_thread", projectDir: t.projectDir, conversationId: t.conversationId } satisfies PanelFollowThread);
   }
 
   const PREVIEWABLE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -421,6 +429,21 @@ function SidePanel() {
           Set the project directory in Options → Orchestrator → CLI Bridge to open a conversation.
         </div>
       )}
+
+      {connected &&
+        activeThreads
+          .filter((t) => t.conversationId !== activeConversationId)
+          .map((t) => (
+                <div key={t.conversationId} className="flex items-center gap-2 border-b border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300">
+                  <span className="min-w-0 flex-1">
+                    The desktop app is streaming in{" "}
+                    <span className="font-mono">{t.projectDir.split("/").filter(Boolean).pop() ?? t.projectDir}</span>
+                  </span>
+                  <Button size="sm" className="h-6 shrink-0 px-3 text-xs" onClick={() => followThread(t)}>
+                    Follow
+                  </Button>
+                </div>
+          ))}
 
       {!connected && (
         <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
