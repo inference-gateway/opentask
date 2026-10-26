@@ -72,7 +72,7 @@ tasks:
       - echo "  xcrun safari-web-extension-converter dist/ --bundle-identifier com.inference-gateway.opentask --project-location ../safari-extension --no-open"
 
   lint:
-    desc: Run Biome lint checks
+    desc: Run Biome checks (lint rules and formatting)
     cmds:
       - bun run lint
 

@@ -25,7 +25,7 @@ Manual testing: `task build`, reload the unpacked `dist/` in `chrome://extension
 
 ## Style
 
-TypeScript/TSX with ES modules, two-space indentation, double quotes, semicolons. Strict types; avoid `any` when a message/view/storage shape can be expressed. `camelCase` for functions and variables, `PascalCase` for components and types, lowercase filenames for utilities. Keep browser-privileged API and cross-origin fetch logic in the background worker, not UI components. Biome (`biome.jsonc`) lints and formats. `task lint` runs in `task check` and the pre-commit hook and must stay clean. `task format` applies Biome formatting — the repo-wide pass has not been applied yet, so until it lands keep new code consistent with the surrounding file.
+TypeScript/TSX with ES modules, two-space indentation, double quotes, semicolons. Strict types; avoid `any` when a message/view/storage shape can be expressed. `camelCase` for functions and variables, `PascalCase` for components and types, lowercase filenames for utilities. Keep browser-privileged API and cross-origin fetch logic in the background worker, not UI components. Biome (`biome.jsonc`) lints and formats. `task lint` runs `biome check` in `task check` and the pre-commit hook and must stay clean — it gates both lint findings and formatting, including LF line endings and the final newline at the end of every file. `task format` applies Biome formatting.
 
 Code readability:
 
