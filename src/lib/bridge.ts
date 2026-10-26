@@ -374,6 +374,7 @@ export async function handleFrame(socket: WebSocket, data: unknown) {
       broadcast();
       return;
     case "thread_activity":
+      touch();
       activeThreads = parseActiveThreads(frame);
       if (!maybeFollowActive()) broadcast();
       return;
