@@ -22,7 +22,7 @@
         "version": "3.53.1"
       },
       "infer": {
-        "flake": "github:inference-gateway/cli/v0.231.1"
+        "flake": "github:inference-gateway/cli/v0.235.0"
       }
     },
     "hook": {
@@ -121,17 +121,17 @@
     {
       "attr_path": "codex",
       "broken": false,
-      "derivation": "/nix/store/1jdfarca229sss8hbqynvja3zc7yn2sa-codex-0.162.1.drv",
+      "derivation": "/nix/store/5zp3i1fb5fxs3kxijizan9r81lxa43qm-codex-0.162.1.drv",
       "description": "Lightweight coding agent that runs in your terminal",
       "install_id": "codex",
       "license": "Apache-2.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=fe13242281a67641c0102cdb1087f0ebe586c7df",
       "name": "codex-0.162.1",
       "pname": "codex",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T04:01:53.026405Z",
+      "rev": "fe13242281a67641c0102cdb1087f0ebe586c7df",
+      "rev_count": 1093333,
+      "rev_date": "2026-10-15T20:04:02Z",
+      "scrape_date": "2026-10-20T12:27:54.828758Z",
       "stabilities": [
         "unstable"
       ],
@@ -150,17 +150,17 @@
     {
       "attr_path": "codex",
       "broken": false,
-      "derivation": "/nix/store/az4bdak0gn6dcfx6sq2hpij5y3az5vqw-codex-0.162.1.drv",
+      "derivation": "/nix/store/x2kq8k9frrlvszs30wdv70ryngg282ng-codex-0.162.1.drv",
       "description": "Lightweight coding agent that runs in your terminal",
       "install_id": "codex",
       "license": "Apache-2.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=fe13242281a67641c0102cdb1087f0ebe586c7df",
       "name": "codex-0.162.1",
       "pname": "codex",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T04:31:09.070974Z",
+      "rev": "fe13242281a67641c0102cdb1087f0ebe586c7df",
+      "rev_count": 1093333,
+      "rev_date": "2026-10-15T20:04:02Z",
+      "scrape_date": "2026-10-20T13:41:41.879036Z",
       "stabilities": [
         "unstable"
       ],
@@ -179,17 +179,17 @@
     {
       "attr_path": "codex",
       "broken": false,
-      "derivation": "/nix/store/x95nxwdzippplfvpmijz7cam9qs0mpf6-codex-0.162.1.drv",
+      "derivation": "/nix/store/0kjh00mvznjl0692gr102vd7kh9zmvi9-codex-0.162.1.drv",
       "description": "Lightweight coding agent that runs in your terminal",
       "install_id": "codex",
       "license": "Apache-2.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=fe13242281a67641c0102cdb1087f0ebe586c7df",
       "name": "codex-0.162.1",
       "pname": "codex",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T05:06:05.131835Z",
+      "rev": "fe13242281a67641c0102cdb1087f0ebe586c7df",
+      "rev_count": 1093333,
+      "rev_date": "2026-10-15T20:04:02Z",
+      "scrape_date": "2026-10-20T15:06:19.452732Z",
       "stabilities": [
         "unstable"
       ],
@@ -208,28 +208,27 @@
     {
       "attr_path": "bun",
       "broken": false,
-      "derivation": "/nix/store/dxpkypgcjj8jm5vpv7bvi3mdg45z32s2-bun-1.4.2.drv",
+      "derivation": "/nix/store/f23cfy3n50pzsx5apyxmwfmlkjnwkiqa-bun-1.4.2.drv",
       "description": "Incredibly fast JavaScript runtime, bundler, transpiler and package manager – all in one",
       "install_id": "bun",
       "license": "[ MIT, LGPL-2.1-only ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
       "name": "bun-1.4.2",
       "pname": "bun",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T04:01:53.013422Z",
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "rev_count": 1100280,
+      "rev_date": "2026-10-23T16:35:39Z",
+      "scrape_date": "2026-10-25T05:51:32.488429Z",
       "stabilities": [
         "unstable"
       ],
       "unfree": false,
       "version": "1.4.2",
       "outputs_to_install": [
-        "out",
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/r3r97834m65jnxck0556h2s1i63fmhsx-bun-1.4.2"
+        "out": "/nix/store/wjpdgxsjymr2nczy9y3d5h3h1xrbhhml-bun-1.4.2"
       },
       "system": "aarch64-darwin",
       "group": "toplevel",
@@ -238,17 +237,17 @@
     {
       "attr_path": "bun",
       "broken": false,
-      "derivation": "/nix/store/8km5ka96w77cvdnmkcdbsx1jm5vxsyk7-bun-1.4.2.drv",
+      "derivation": "/nix/store/3239bpm54higlwfdznq8cbsi4ln35fri-bun-1.4.2.drv",
       "description": "Incredibly fast JavaScript runtime, bundler, transpiler and package manager – all in one",
       "install_id": "bun",
       "license": "[ MIT, LGPL-2.1-only ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
       "name": "bun-1.4.2",
       "pname": "bun",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T04:31:09.061493Z",
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "rev_count": 1100280,
+      "rev_date": "2026-10-23T16:35:39Z",
+      "scrape_date": "2026-10-25T06:24:58.728611Z",
       "stabilities": [
         "unstable"
       ],
@@ -259,7 +258,7 @@
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/6m8rgpk9f3jfhv2sb7nvp9rjw3s26ffv-bun-1.4.2"
+        "out": "/nix/store/f8hiv5nmim0dpaxixmxiijdm8x0mffsy-bun-1.4.2"
       },
       "system": "aarch64-linux",
       "group": "toplevel",
@@ -268,17 +267,17 @@
     {
       "attr_path": "bun",
       "broken": false,
-      "derivation": "/nix/store/yf4ajmhr1g3x3m30vvxrhn83lbkyj987-bun-1.4.2.drv",
+      "derivation": "/nix/store/4ql11clbibnp4l68sf11j49fkaf0zivl-bun-1.4.2.drv",
       "description": "Incredibly fast JavaScript runtime, bundler, transpiler and package manager – all in one",
       "install_id": "bun",
       "license": "[ MIT, LGPL-2.1-only ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
       "name": "bun-1.4.2",
       "pname": "bun",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T05:06:05.121092Z",
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "rev_count": 1100280,
+      "rev_date": "2026-10-23T16:35:39Z",
+      "scrape_date": "2026-10-25T07:01:24.175483Z",
       "stabilities": [
         "unstable"
       ],
@@ -289,7 +288,7 @@
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/216mr46yy8xspaydgapjhf4a21y643ji-bun-1.4.2"
+        "out": "/nix/store/2mxhj3nrvxxqm6gf6rwnrvz048zqdclp-bun-1.4.2"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -298,17 +297,17 @@
     {
       "attr_path": "go-task",
       "broken": false,
-      "derivation": "/nix/store/djwj6r7zbxswxi8cwdbcp0925flpafh6-go-task-3.53.1.drv",
+      "derivation": "/nix/store/9q6bqrcppd0dw6nmwg39y7kaxc3rbi0g-go-task-3.53.1.drv",
       "description": "Task runner / simpler Make alternative written in Go",
       "install_id": "go-task",
       "license": "MIT",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
       "name": "go-task-3.53.1",
       "pname": "go-task",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T04:01:53.080378Z",
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "rev_count": 1100280,
+      "rev_date": "2026-10-23T16:35:39Z",
+      "scrape_date": "2026-10-25T05:51:32.528760Z",
       "stabilities": [
         "unstable"
       ],
@@ -318,7 +317,7 @@
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/mp3m86aziykrwshmqfr7i6w4ak4c8qz4-go-task-3.53.1"
+        "out": "/nix/store/8amiqdg642ily4ww57mbjq5ws36pflyy-go-task-3.53.1"
       },
       "system": "aarch64-darwin",
       "group": "toplevel",
@@ -327,17 +326,17 @@
     {
       "attr_path": "go-task",
       "broken": false,
-      "derivation": "/nix/store/wgkk7db5ak5ay4g3qpqxm6b3wp3j5qwi-go-task-3.53.1.drv",
+      "derivation": "/nix/store/z8m0zcs2myxg3rih4qfxmx4mxwglqpaz-go-task-3.53.1.drv",
       "description": "Task runner / simpler Make alternative written in Go",
       "install_id": "go-task",
       "license": "MIT",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
       "name": "go-task-3.53.1",
       "pname": "go-task",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T04:31:09.143911Z",
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "rev_count": 1100280,
+      "rev_date": "2026-10-23T16:35:39Z",
+      "scrape_date": "2026-10-25T06:24:58.772529Z",
       "stabilities": [
         "unstable"
       ],
@@ -347,7 +346,7 @@
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/mwy1kwfwgq3diqxqkrkj8qbhrsr8xa4x-go-task-3.53.1"
+        "out": "/nix/store/4y452dxbpi38hqc89h3zj3d9lk3vkpsv-go-task-3.53.1"
       },
       "system": "aarch64-linux",
       "group": "toplevel",
@@ -356,17 +355,17 @@
     {
       "attr_path": "go-task",
       "broken": false,
-      "derivation": "/nix/store/wzh5hcwbsb8h1y1gg0islvdivr73v0gc-go-task-3.53.1.drv",
+      "derivation": "/nix/store/y55wsggq6hl7dzj2k5qfz00fd6rz79ny-go-task-3.53.1.drv",
       "description": "Task runner / simpler Make alternative written in Go",
       "install_id": "go-task",
       "license": "MIT",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
       "name": "go-task-3.53.1",
       "pname": "go-task",
-      "rev": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "rev_count": 1092090,
-      "rev_date": "2026-10-14T05:35:54Z",
-      "scrape_date": "2026-10-17T05:06:05.161119Z",
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "rev_count": 1100280,
+      "rev_date": "2026-10-23T16:35:39Z",
+      "scrape_date": "2026-10-25T07:01:24.210543Z",
       "stabilities": [
         "unstable"
       ],
@@ -376,7 +375,7 @@
         "out"
       ],
       "outputs": {
-        "out": "/nix/store/3gax8wb82c05afr6bsi56ighadlzaqkc-go-task-3.53.1"
+        "out": "/nix/store/mi9v7221z1f70lvnj2iwlis26n6690g0-go-task-3.53.1"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -384,12 +383,12 @@
     },
     {
       "install_id": "infer",
-      "locked-url": "github:inference-gateway/cli/6ed069757fb4bc99e5fbdbc81ccd1dbd9c407810?narHash=sha256-AZ%2BESOUqtzfS35XRR3wtoenuCS8AXFcsTVWuNWPlPKs%3D",
+      "locked-url": "github:inference-gateway/cli/434f04a8e53c506bcc092bb0e3c45812e5d44dda?narHash=sha256-aAY203GhfH%2B7vHUnrJZGVb1Ki/YmJhRZYkNaXX7aQU8%3D",
       "flake-description": "Inference Gateway CLI - infer",
       "locked-flake-attr-path": "packages.aarch64-darwin.default",
-      "derivation": "/nix/store/62q1br0rqwh5q36gxrfr2z1lpn55g6bw-infer-0.231.1.drv",
+      "derivation": "/nix/store/rnx5lh67k6frvc101jx60i4p57f70p2w-infer-0.235.0.drv",
       "outputs": {
-        "out": "/nix/store/vmlwac5d62xi0qs3kij874ia88ymir6v-infer-0.231.1"
+        "out": "/nix/store/iqcd103b2pzvbvx77x77nisbxr9wbgl6-infer-0.235.0"
       },
       "output-names": [
         "out"
@@ -400,9 +399,9 @@
       "requested-outputs-to-install": [],
       "package-system": "aarch64-darwin",
       "system": "aarch64-darwin",
-      "name": "infer-0.231.1",
+      "name": "infer-0.235.0",
       "pname": "infer",
-      "version": "0.231.1",
+      "version": "0.235.0",
       "description": "Command-line interface for the Inference Gateway - AI model interaction manager",
       "licenses": [
         "MIT"
@@ -413,12 +412,12 @@
     },
     {
       "install_id": "infer",
-      "locked-url": "github:inference-gateway/cli/6ed069757fb4bc99e5fbdbc81ccd1dbd9c407810?narHash=sha256-AZ%2BESOUqtzfS35XRR3wtoenuCS8AXFcsTVWuNWPlPKs%3D",
+      "locked-url": "github:inference-gateway/cli/434f04a8e53c506bcc092bb0e3c45812e5d44dda?narHash=sha256-aAY203GhfH%2B7vHUnrJZGVb1Ki/YmJhRZYkNaXX7aQU8%3D",
       "flake-description": "Inference Gateway CLI - infer",
       "locked-flake-attr-path": "packages.aarch64-linux.default",
-      "derivation": "/nix/store/a1mjjixnv1jkpyjlpyn1bqzvffdykc5v-infer-0.231.1.drv",
+      "derivation": "/nix/store/3m5lzmban4bw3bbd25ibiiq3q1shl35z-infer-0.235.0.drv",
       "outputs": {
-        "out": "/nix/store/qsjrcn61si2i86k168668bw861gb3c3d-infer-0.231.1"
+        "out": "/nix/store/acvyb46shcmqihmbbn857129ysbz99kp-infer-0.235.0"
       },
       "output-names": [
         "out"
@@ -429,9 +428,9 @@
       "requested-outputs-to-install": [],
       "package-system": "aarch64-linux",
       "system": "aarch64-linux",
-      "name": "infer-0.231.1",
+      "name": "infer-0.235.0",
       "pname": "infer",
-      "version": "0.231.1",
+      "version": "0.235.0",
       "description": "Command-line interface for the Inference Gateway - AI model interaction manager",
       "licenses": [
         "MIT"
@@ -442,12 +441,12 @@
     },
     {
       "install_id": "infer",
-      "locked-url": "github:inference-gateway/cli/6ed069757fb4bc99e5fbdbc81ccd1dbd9c407810?narHash=sha256-AZ%2BESOUqtzfS35XRR3wtoenuCS8AXFcsTVWuNWPlPKs%3D",
+      "locked-url": "github:inference-gateway/cli/434f04a8e53c506bcc092bb0e3c45812e5d44dda?narHash=sha256-aAY203GhfH%2B7vHUnrJZGVb1Ki/YmJhRZYkNaXX7aQU8%3D",
       "flake-description": "Inference Gateway CLI - infer",
       "locked-flake-attr-path": "packages.x86_64-linux.default",
-      "derivation": "/nix/store/pfqfaz9wld6q5rh8vhv9m30mgr07p5y4-infer-0.231.1.drv",
+      "derivation": "/nix/store/4n4rpsv2zfzqk14qpj7c05l3ygzq98xc-infer-0.235.0.drv",
       "outputs": {
-        "out": "/nix/store/pw17p56akgixkj0vgbzsph5lzgapx86r-infer-0.231.1"
+        "out": "/nix/store/6vcqvi87505qhrlbzf1czhqp4hi5wg99-infer-0.235.0"
       },
       "output-names": [
         "out"
@@ -458,9 +457,9 @@
       "requested-outputs-to-install": [],
       "package-system": "x86_64-linux",
       "system": "x86_64-linux",
-      "name": "infer-0.231.1",
+      "name": "infer-0.235.0",
       "pname": "infer",
-      "version": "0.231.1",
+      "version": "0.235.0",
       "description": "Command-line interface for the Inference Gateway - AI model interaction manager",
       "licenses": [
         "MIT"

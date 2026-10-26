@@ -3,7 +3,7 @@ schema-version = "1.18.0"
 [install]
 bun.pkg-path = "bun"
 bun.version = "1.4.2"
-infer.flake = "github:inference-gateway/cli/v0.231.1"
+infer.flake = "github:inference-gateway/cli/v0.235.0"
 claude-code.pkg-path = "claude-code"
 claude-code.version = "2.1.296"
 claude-code.pkg-group = "claude-code"
