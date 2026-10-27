@@ -1,11 +1,11 @@
-schema-version = "1.18.0"
+schema-version = "1.19.0"
 
 [install]
 bun.pkg-path = "bun"
 bun.version = "1.4.2"
 infer.flake = "github:inference-gateway/cli/v0.235.0"
 claude-code.pkg-path = "claude-code"
-claude-code.version = "2.1.296"
+claude-code.version = "2.1.308"
 claude-code.pkg-group = "claude-code"
 codex.pkg-path = "codex"
 codex.version = "0.162.1"
