@@ -55,7 +55,7 @@ plugins:
         - browser-extension.zip
         - browser-extension.zip.sha256
       releasedLabels:
-        - released
+        - "<%= nextRelease.channel === 'rc' ? 'rc' : 'released' %>"
       releaseNameTemplate: '🚀 Version <%= nextRelease.version %>'
       successCommentCondition: 'false'
 
