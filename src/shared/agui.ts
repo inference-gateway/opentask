@@ -5,8 +5,6 @@
 import { EventSchema } from "@ag-ui/core/schemas";
 import type { ContentPart, Event, Interrupt, Message } from "@ag-ui/core";
 
-export const PROTOCOL_VERSION = 2;
-
 // Validates one wire frame as an AG-UI event with the upstream schema, or
 // undefined for an app frame or a malformed event.
 export function parseEvent(frame: Record<string, unknown>): Event | undefined {
@@ -393,8 +391,6 @@ export type PanelState = {
   activeConversationId?: string;
   // threads other clients are streaming right now (from `thread_activity`).
   activeThreads: ActiveThread[];
-  // the daemon answered the hello with another protocol version: show "update infer".
-  updateRequired: boolean;
   // the absolute project dir the panel opens threads in (Options -> CLI Bridge).
   projectDir?: string;
   pendingApproval?: PendingApproval;

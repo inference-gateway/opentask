@@ -204,9 +204,7 @@ Under **Options → Orchestrator → CLI Bridge**:
 - **Project directory**: the absolute path the panel's conversations run in, since
   one daemon serves every project.
 
-Then open the side panel and click **Connect**. The panel speaks protocol version 2
-of the daemon binding and shows an "update infer" notice when the daemon answers
-with another version.
+Then open the side panel and click **Connect**.
 
 The panel also mirrors what other daemon clients stream, the desktop app included -
 the daemon tells every connection which threads have an open run (`thread_activity`

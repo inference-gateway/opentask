@@ -75,7 +75,6 @@ function SidePanel() {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | undefined>(undefined);
   const [pendingQuestion, setPendingQuestion] = useState<PendingQuestion | undefined>(undefined);
-  const [updateRequired, setUpdateRequired] = useState(false);
   const [projectDir, setProjectDir] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -132,7 +131,6 @@ function SidePanel() {
         setActiveConversationId(msg.activeConversationId);
         setPendingApproval(msg.pendingApproval);
         setPendingQuestion(msg.pendingQuestion);
-        setUpdateRequired(msg.updateRequired);
         setProjectDir(msg.projectDir);
       });
       port.onDisconnect.addListener(() => {
@@ -433,13 +431,6 @@ function SidePanel() {
           >
             Auto
           </Button>
-        </div>
-      )}
-
-      {connected && updateRequired && (
-        <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          This panel speaks protocol version 2 and the daemon answered with another. Update infer and this extension to
-          matching releases.
         </div>
       )}
 
