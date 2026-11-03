@@ -16,7 +16,6 @@ import {
   snapshotToMessages,
   stripAnsi,
   userMessageContent,
-  PROTOCOL_VERSION,
   type ActiveThread,
   type Answer,
   type Attachment,
@@ -47,7 +46,6 @@ let cliModels: string[] = [];
 let currentModel: string | undefined;
 let mode: string | undefined;
 let activeConversationId: string | undefined;
-let updateRequired = false;
 let projectDir: string | undefined;
 // The CUSTOM approval_request of a panel tool_request, outside any run.
 let toolRequestApproval: PendingApproval | undefined;
@@ -149,7 +147,6 @@ export function panelState(): PanelState {
     currentModel,
     mode,
     activeConversationId,
-    updateRequired,
     projectDir,
     activeThreads,
     pendingApproval: cleanApproval,
@@ -360,7 +357,6 @@ async function connect() {
         type: "browser_hello",
         token,
         client: "extension",
-        protocol_version: PROTOCOL_VERSION,
         extension_version: chrome.runtime.getManifest().version,
       })
     );
@@ -412,7 +408,6 @@ export async function handleFrame(socket: WebSocket, data: unknown) {
   switch (frame.type) {
     case "browser_hello_ack":
       connected = true;
-      updateRequired = frame.protocol_version !== PROTOCOL_VERSION;
       attempt = 0;
       startKeepalive();
       requestLists();
@@ -783,7 +778,6 @@ export function __reset(opts: { projectDir?: string } = {}) {
   messages = [];
   activeThreads = [];
   activeConversationId = undefined;
-  updateRequired = false;
   projectDir = opts.projectDir;
   clearPrompts();
   selfToolIds.clear();

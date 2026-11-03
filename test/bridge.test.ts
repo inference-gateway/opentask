@@ -216,9 +216,9 @@ describe("isClearCommand", () => {
 
 describe("parseFrame", () => {
   test("parses a JSON object frame", () => {
-    expect(parseFrame('{"type":"browser_hello_ack","protocol_version":2}')).toEqual({
+    expect(parseFrame('{"type":"browser_hello_ack","workspace":"laptop"}')).toEqual({
       type: "browser_hello_ack",
-      protocol_version: 2,
+      workspace: "laptop",
     });
   });
 
@@ -620,20 +620,16 @@ describe("handleFrame on the daemon binding", () => {
     __setSocket(socket);
   });
 
-  test("the ack lists the project's data and a mismatched protocol version asks for an update", async () => {
-    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+  test("the ack connects and lists the project's data", async () => {
+    await frame(socket, { type: "browser_hello_ack" });
     expect(panelState().connected).toBe(true);
-    expect(panelState().updateRequired).toBe(false);
     expect(sent.map((f) => f.type)).toEqual(["list_conversations", "list_skills", "list_models", "list_history"]);
     expect(sent[0].project_dir).toBe("/proj");
-
-    await frame(socket, { type: "browser_hello_ack", protocol_version: 1 });
-    expect(panelState().updateRequired).toBe(true);
   });
 
   test("the hello ack without a project dir sends nothing thread-bound", async () => {
     __reset();
-    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    await frame(socket, { type: "browser_hello_ack" });
     expect(sent).toEqual([]);
     expect(panelState().projectDir).toBeUndefined();
   });
@@ -647,7 +643,7 @@ describe("handleFrame on the daemon binding", () => {
   });
 
   test("a prompt is a run_agent_input on the active thread, with attachments as content parts", async () => {
-    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    await frame(socket, { type: "browser_hello_ack" });
     await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: "r0" });
     sent.length = 0;
     expect(sendUserMessage("look", [{ filename: "a.png", mime_type: "image/png", data: "AAAA" }])).toBe(true);
@@ -662,7 +658,7 @@ describe("handleFrame on the daemon binding", () => {
   });
 
   test("a prompt without a thread opens a new session in the project first", async () => {
-    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    await frame(socket, { type: "browser_hello_ack" });
     sent.length = 0;
     sendUserMessage("hi");
     expect(sent.map((f) => f.type)).toEqual(["new_session", "run_agent_input"]);
@@ -734,7 +730,7 @@ describe("handleFrame on the daemon binding", () => {
   });
 
   test("a run carrying the extension's own tool_request id never arms the loader", async () => {
-    await frame(socket, { type: "browser_hello_ack", protocol_version: 2 });
+    await frame(socket, { type: "browser_hello_ack" });
     const p = callTool("Bash", { command: "gh api user" });
     const id = (sent.at(-1) as { id: string }).id;
     await frame(socket, { type: "RUN_STARTED", threadId: "s1", runId: id });
