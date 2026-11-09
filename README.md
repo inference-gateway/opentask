@@ -206,6 +206,14 @@ Under **Options → Orchestrator → CLI Bridge**:
 
 Then open the side panel and click **Connect**.
 
+An unattended browser can take the same settings from enterprise policy instead. Set
+`bridge-port`, `bridge-token`, and `bridge-project-dir` as strings under
+`3rdparty.Extensions.opentask@inference-gateway.github.io` in Firefox's
+`policies.json`, or under `3rdparty.extensions.<extension id>` in Chrome's policy
+(declared by the bundled `managed_schema.json`). A value saved in the options page
+wins over policy. A token from policy makes the bridge connect on its own and
+re-dial every minute, side panel or not.
+
 The panel also mirrors what other daemon clients stream, the desktop app included -
 the daemon tells every connection which threads have an open run (`thread_activity`
 frames in the [binding protocol](https://github.com/inference-gateway/cli/blob/main/docs/browser-extension-protocol.md)),
@@ -403,9 +411,9 @@ task package:firefox   # builds with Firefox manifest, zips to firefox-extension
 task build:safari      # builds with Safari manifest; see docs/store/safari-listing.md for Xcode conversion
 ```
 
-Every GitHub Release carries the Chrome ZIP (`browser-extension.zip`), its `.sha256`,
-and `CHANGELOG.md`. The Edge and Firefox ZIPs are not attached - build them locally
-with `task package:edge` / `task package:firefox`.
+Every GitHub Release carries the Chrome ZIP (`browser-extension.zip`), the Firefox
+bundle (`opentask-firefox.xpi`), their `.sha256` files, and `CHANGELOG.md`. The Edge
+ZIP is not attached - build it locally with `task package:edge`.
 
 ## Roadmap
 

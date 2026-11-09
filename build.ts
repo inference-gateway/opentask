@@ -33,14 +33,17 @@ if (isFirefox) {
   const overrides = JSON.parse(await readFile("manifest.firefox.json", "utf-8"));
   const manifest = { ...base, ...overrides };
   delete manifest.side_panel; // Chrome-only; shallow merge can't remove keys
+  delete manifest.storage;
   await writeFile("dist/manifest.json", JSON.stringify(manifest, null, 2));
 } else if (isSafari) {
   const overrides = JSON.parse(await readFile("manifest.safari.json", "utf-8"));
   const manifest = { ...base, ...overrides };
   delete manifest.side_panel;
+  delete manifest.storage;
   await writeFile("dist/manifest.json", JSON.stringify(manifest, null, 2));
 } else {
   await cp("manifest.json", "dist/manifest.json");
+  await cp("managed_schema.json", "dist/managed_schema.json");
 }
 
 // Tailwind/shadcn CSS for the standalone pages only (options + popup). Bun.build does

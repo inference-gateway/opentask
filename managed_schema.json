@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "bridge-port": {
+      "type": "string",
+      "description": "Port of the infer daemon's binding (default 52789)."
+    },
+    "bridge-token": {
+      "type": "string",
+      "description": "Shared token of the infer daemon's binding."
+    },
+    "bridge-project-dir": {
+      "type": "string",
+      "description": "Absolute path the bridge's conversations run in."
+    }
+  }
+}

@@ -553,7 +553,22 @@ function stubNoPanelChrome(stored: Record<string, unknown>) {
   };
 }
 
-describe("initBridge without a side panel", () => {
+// The Chrome background: a side panel to click Connect in, plus enterprise policy
+// readable through storage.managed.
+function stubPanelChrome(stored: Record<string, unknown>, policy: Record<string, unknown>) {
+  (globalThis as Record<string, unknown>).chrome = {
+    runtime: { onConnect: { addListener: () => undefined }, getManifest: () => ({ version: "1.0.0" }) },
+    alarms: { create: () => undefined, onAlarm: { addListener: () => undefined } },
+    sidePanel: {},
+    storage: {
+      local: { get: async (k: string) => ({ [k]: stored[k] }) },
+      managed: { get: async (k: string) => ({ [k]: policy[k] }) },
+      onChanged: { addListener: () => undefined },
+    },
+  };
+}
+
+describe("initBridge", () => {
   const realWebSocket = globalThis.WebSocket;
   let urls: string[];
 
@@ -576,15 +591,29 @@ describe("initBridge without a side panel", () => {
     __setSocket(undefined);
   });
 
-  test("registers without chrome.notifications and dials the daemon from the stored token", async () => {
+  test("without a side panel, registers without chrome.notifications and dials the daemon from the stored token", async () => {
     stubNoPanelChrome({ "bridge-token": "t0k", "bridge-port": "9999", "bridge-project-dir": "/proj" });
     initBridge();
     await new Promise((r) => setTimeout(r, 0));
     expect(urls).toEqual(["ws://127.0.0.1:9999/ws"]);
   });
 
-  test("stays idle until a token is configured", async () => {
+  test("without a side panel, stays idle until a token is configured", async () => {
     stubNoPanelChrome({});
+    initBridge();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(urls).toEqual([]);
+  });
+
+  test("with a side panel, dials the daemon on its own when policy supplies the token", async () => {
+    stubPanelChrome({}, { "bridge-token": "t0k", "bridge-port": "52790" });
+    initBridge();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(urls).toEqual(["ws://127.0.0.1:52790/ws"]);
+  });
+
+  test("with a side panel, waits for Connect when the token is only stored locally", async () => {
+    stubPanelChrome({ "bridge-token": "t0k" }, {});
     initBridge();
     await new Promise((r) => setTimeout(r, 0));
     expect(urls).toEqual([]);

@@ -55,5 +55,8 @@
   },
   "side_panel": {
     "default_path": "sidepanel.html"
+  },
+  "storage": {
+    "managed_schema": "managed_schema.json"
   }
 }

@@ -330,15 +330,16 @@ function failPendingTools() {
 }
 
 async function connect() {
-  const token = (await storage.get<string>("bridge-token"))?.trim();
+  const settings = await storage.bridgeSettings();
+  const token = settings.token;
   if (!token) {
     wantConnected = false;
     broadcast();
     return;
   }
-  const port = (await storage.get<string>("bridge-port"))?.trim() || DEFAULT_PORT;
+  const port = settings.port || DEFAULT_PORT;
   httpPort = port;
-  projectDir = (await storage.get<string>("bridge-project-dir"))?.trim() || undefined;
+  projectDir = settings.projectDir || undefined;
   if (!wantConnected) return;
 
   ws?.close();
@@ -382,6 +383,19 @@ async function connect() {
 // Chrome dials on the side panel's Connect button. Firefox and Safari have no side
 // panel to click, so there a configured token is itself the request to connect.
 const noPanelSurface = () => !chrome.sidePanel;
+
+// A token from enterprise policy marks an unattended browser - nobody is there to
+// click Connect, so it dials on its own like a panel-less one.
+async function connectsUnattended(): Promise<boolean> {
+  return noPanelSurface() || (await storage.bridgeSettings()).policyManaged;
+}
+
+// Dials (again) when the user asked to connect or the browser connects unattended.
+async function connectIfWanted() {
+  if (!wantConnected && !(await connectsUnattended())) return;
+  connected = false;
+  requestConnect();
+}
 
 function requestConnect() {
   wantConnected = true;
@@ -859,16 +873,14 @@ export function initBridge() {
   chrome.alarms.create("bridge-redial", { periodInMinutes: 1 });
   chrome.alarms.onAlarm.addListener((a) => {
     if (a.name !== "bridge-redial" || connected) return;
-    if (wantConnected || noPanelSurface()) requestConnect();
+    void connectIfWanted();
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
+    if (area !== "local" && area !== "managed") return;
     if (!("bridge-port" in changes || "bridge-token" in changes || "bridge-project-dir" in changes)) return;
-    if (!wantConnected && !noPanelSurface()) return;
-    connected = false;
-    requestConnect();
+    void connectIfWanted();
   });
 
-  if (noPanelSurface()) requestConnect();
+  void connectIfWanted();
 }
