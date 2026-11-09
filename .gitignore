@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.zip
+*.xpi
 *.sha256
 .DS_Store
 **/.env

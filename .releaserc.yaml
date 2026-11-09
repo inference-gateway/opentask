@@ -47,13 +47,15 @@ plugins:
       verifyConditions: true
 
   - - '@semantic-release/exec'
-    - prepareCmd: "jq --arg v \"${nextRelease.version}\" '.version=$v' manifest.json > manifest.json.tmp && mv manifest.json.tmp manifest.json && jq --arg v \"${nextRelease.version}\" '.version=$v' package.json > package.json.tmp && mv package.json.tmp package.json && bun install --frozen-lockfile && bun run build && cd dist && zip -r ../browser-extension.zip . && cd .. && sha256sum browser-extension.zip > browser-extension.zip.sha256"
+    - prepareCmd: "jq --arg v \"${nextRelease.version}\" '.version=$v' manifest.json > manifest.json.tmp && mv manifest.json.tmp manifest.json && jq --arg v \"${nextRelease.version}\" '.version=$v' package.json > package.json.tmp && mv package.json.tmp package.json && bun install --frozen-lockfile && bun run build && cd dist && zip -r ../browser-extension.zip . && cd .. && sha256sum browser-extension.zip > browser-extension.zip.sha256 && bun run build.ts --firefox && cd dist && zip -r ../opentask-firefox.xpi . && cd .. && sha256sum opentask-firefox.xpi > opentask-firefox.xpi.sha256"
 
   - - '@semantic-release/github'
     - assets:
         - CHANGELOG.md
         - browser-extension.zip
         - browser-extension.zip.sha256
+        - opentask-firefox.xpi
+        - opentask-firefox.xpi.sha256
       releasedLabels:
         - "<%= nextRelease.channel === 'rc' ? 'rc' : 'released' %>"
       releaseNameTemplate: '🚀 Version <%= nextRelease.version %>'
