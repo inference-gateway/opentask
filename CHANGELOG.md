@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.19.0](https://github.com/inference-gateway/opentask/compare/v1.18.0...v1.19.0) (2026-11-09)
+
+### ✨ Features
+
+* **bridge:** read the CLI bridge settings from enterprise policy ([#253](https://github.com/inference-gateway/opentask/issues/253)) ([58a922e](https://github.com/inference-gateway/opentask/commit/58a922e825c1889cbbf32b33e948b9fed07e2b0f))
+
+### ♻️ Improvements
+
+* **bridge:** stop sending and reading the daemon handshake's protocol_version ([#249](https://github.com/inference-gateway/opentask/issues/249)) ([2b855d3](https://github.com/inference-gateway/opentask/commit/2b855d3b3a998a3ffb422803a731db4ea97d4b38)), closes [#248](https://github.com/inference-gateway/opentask/issues/248)
+
+### 🐛 Bug Fixes
+
+* **firefox:** keep the bridge's ws:// to the daemon from being upgraded to wss:// ([#252](https://github.com/inference-gateway/opentask/issues/252)) ([f8d6985](https://github.com/inference-gateway/opentask/commit/f8d69852d03113fb8999c6412998dc0f8f9d90c0))
+
+### 👷 CI
+
+* **release:** label issues and PRs shipped in an rc with rc ([#247](https://github.com/inference-gateway/opentask/issues/247)) ([fca56e6](https://github.com/inference-gateway/opentask/commit/fca56e665dd462a213f317289188b8119c6efb2c))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.296 -> 2.1.308 ([#244](https://github.com/inference-gateway/opentask/issues/244)) ([c1c410a](https://github.com/inference-gateway/opentask/commit/c1c410a4c38fc90b704dd992c5f7ca076747ebeb))
+* **deps:** bump inference-gateway/infer-action ([#245](https://github.com/inference-gateway/opentask/issues/245)) ([8199960](https://github.com/inference-gateway/opentask/commit/81999604ca952c07ac7241b985b753882ac48ed4))
+* **deps:** bump inference-gateway/infer-action ([#250](https://github.com/inference-gateway/opentask/issues/250)) ([aa6c377](https://github.com/inference-gateway/opentask/commit/aa6c3771a26265ae51c61f7d04e69a0b56f27386))
+* **deps:** bump the npm group with 4 updates ([#246](https://github.com/inference-gateway/opentask/issues/246)) ([059d424](https://github.com/inference-gateway/opentask/commit/059d42481818054b9428952aeb7838e8832a3398))
+* **deps:** bump the npm group with 6 updates ([#251](https://github.com/inference-gateway/opentask/issues/251)) ([1790122](https://github.com/inference-gateway/opentask/commit/1790122ea069420f6878a10817609aa07398bb2b))
+
 ## [1.18.0](https://github.com/inference-gateway/opentask/compare/v1.17.2...v1.18.0) (2026-10-26)
 
 ### ✨ Features
