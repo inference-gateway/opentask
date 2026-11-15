@@ -235,15 +235,6 @@ export function callTool(toolName: string, args: object, timeoutMs = 120_000): P
   });
 }
 
-// Mirrors the CLI's history append for a just-sent message (trimmed, consecutive
-// duplicates skipped) so arrow-up recall is fresh without re-fetching the list;
-// the CLI persists the same entry to the shared store on its side.
-function recordHistory(content: string) {
-  const c = content.trim();
-  if (!c || history[history.length - 1] === c) return;
-  history = [...history, c];
-}
-
 // Grab the user's attention on an approval request: try to open the side panel
 // outright (Chrome only allows that on a user gesture, so it usually throws
 // when triggered by a WebSocket frame), and fall back to an action badge plus
@@ -309,13 +300,15 @@ function maybeFollowActive(): boolean {
 }
 
 // Send a prompt into the connection's thread as the next run: the turn streams
-// back as AG-UI events and approvals surface in the panel as interrupts.
+// back as AG-UI events and approvals surface in the panel as interrupts. The
+// worker records the prompt in the shared history before it answers the list
+// request that follows it on the same connection.
 export function sendUserMessage(content: string, attachments: Attachment[] = []): boolean {
   if (!connected) return false;
   if (!activeConversationId && !startNewSession()) return false;
   touch();
   sendRunInput(userMessageContent(content, attachments));
-  recordHistory(content);
+  sendInProject({ type: "list_history" });
   running = true;
   broadcast();
   return true;

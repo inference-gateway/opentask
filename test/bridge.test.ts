@@ -690,8 +690,9 @@ describe("handleFrame on the daemon binding", () => {
     await frame(socket, { type: "browser_hello_ack" });
     sent.length = 0;
     sendUserMessage("hi");
-    expect(sent.map((f) => f.type)).toEqual(["new_session", "run_agent_input"]);
+    expect(sent.map((f) => f.type)).toEqual(["new_session", "run_agent_input", "list_history"]);
     expect(sent[0].project_dir).toBe("/proj");
+    expect(sent[2].project_dir).toBe("/proj");
   });
 
   test("MESSAGES_SNAPSHOT replaces the transcript without ending an active run", async () => {
