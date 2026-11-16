@@ -315,7 +315,7 @@ body via `gh issue edit`, so the installed workflow needs **Create GitHub issues
 permission above - **re-install** after enabling.
 
 - **Show a Refine button on issue pages** (default on)
-- **Auto-refine issues you create on GitHub** (default off)
+- **Auto-refine issues you create** (default off)
 
 ### Project init
 
@@ -391,7 +391,7 @@ making changes:
 flox activate
 task hooks:install  # required first-time setup
 task setup          # installs the hook and Bun dependencies
-task check          # typecheck, test, and build
+task check          # typecheck, lint, test, and build
 ```
 
 Layout: `src/content.ts` is the imperative controller (DOM detection, caret math,
