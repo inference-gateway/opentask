@@ -5,6 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// How long the "Copied" feedback shows before flipping back to "Copy".
+export const COPIED_RESET_MS = 1500;
+
 // Approval-prompt shortcut (a = approve, d = deny), mirroring the desktop's
 // Transcript.tsx binding: ignores auto-repeat and modifier combos, and no-ops
 // when the key lands in an editable element so the composer keeps its keys.

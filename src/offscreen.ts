@@ -85,7 +85,7 @@ async function stopRecording(): Promise<RecordState & { recording?: Attachment }
 }
 
 // stop() fires its events in a later task, so the chunks only hold the whole
-// capture once the stop event has landed; muxing before that drops the tail.
+// capture once the stop event has landed: muxing before that drops the tail.
 function waitForStop(rec: MediaRecorder): Promise<void> {
   return new Promise((resolve) => rec.addEventListener("stop", () => resolve(), { once: true }));
 }

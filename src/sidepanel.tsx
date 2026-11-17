@@ -38,10 +38,43 @@ import { fuzzyFilter, type FuzzyResult } from "./lib/fuzzy";
 import { caretPosition, type CaretPos } from "./lib/caret";
 import { getTrigger } from "./lib/dom";
 import { replaceRange } from "./lib/insert";
-import { approvalShortcut } from "./lib/utils";
+import { COPIED_RESET_MS, approvalShortcut } from "./lib/utils";
 import { SkillMenu } from "@/ui/SkillMenu";
 import { TodoPanel } from "@/ui/TodoPanel";
 import { RecordButton } from "@/ui/RecordButton";
+
+const RECONNECT_DELAY_MS = 1000;
+
+const PREVIEWABLE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+// The whitelisted mime type for a chip thumbnail's data: URL, or undefined when
+// the file isn't a browser-renderable image. Only the preview is sanitized, the
+// wire keeps the file's real type so the CLI can tell a HEIC or PDF apart from
+// an opaque blob.
+function previewMimeType(mimeType: string): string | undefined {
+  const normalized = mimeType.trim().toLowerCase();
+  return PREVIEWABLE_IMAGE_MIME_TYPES.has(normalized) ? normalized : undefined;
+}
+
+function readFileAsBase64(file: File): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? "").split(",")[1]);
+    reader.onerror = () => resolve(undefined);
+    reader.readAsDataURL(file);
+  });
+}
+
+// The worker installs the frame extractor the recording prompt names: a send
+// carrying a capture waits for it and reports the reason when it could not.
+function frameToolsReady(): Promise<string> {
+  return new Promise((resolve) =>
+    ask({ type: "record-tools" }, (resp) => {
+      const r = resp as RecordToolsResponse;
+      resolve("error" in r ? r.error : "");
+    })
+  );
+}
 
 // Hover-reveal copy-to-clipboard under a chat bubble, desktop-app style.
 function CopyButton({ text }: { text: string }) {
@@ -55,7 +88,7 @@ function CopyButton({ text }: { text: string }) {
       onClick={() => {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
+          setTimeout(() => setCopied(false), COPIED_RESET_MS);
         });
       }}
     >
@@ -134,7 +167,7 @@ function SidePanel() {
         setProjectDir(msg.projectDir);
       });
       port.onDisconnect.addListener(() => {
-        if (!closed) timer = setTimeout(dial, 1000);
+        if (!closed) timer = setTimeout(dial, RECONNECT_DELAY_MS);
       });
     }
     dial();
@@ -145,9 +178,6 @@ function SidePanel() {
     };
   }, []);
 
-  // Stick to the bottom only while the user is already there; scrolling up
-  // during a streaming turn must not be fought - a floating arrow offers the
-  // way back down instead.
   useEffect(() => {
     if (atBottom) endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, atBottom]);
@@ -181,26 +211,6 @@ function SidePanel() {
     } satisfies PanelFollowThread);
   }
 
-  const PREVIEWABLE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
-
-  // The whitelisted mime type for a chip thumbnail's data: URL, or undefined
-  // when the file isn't a browser-renderable image. Only the preview is
-  // sanitized; the wire keeps the file's real type so the CLI can tell a
-  // HEIC or PDF apart from an opaque blob.
-  function previewMimeType(mimeType: string): string | undefined {
-    const normalized = mimeType.trim().toLowerCase();
-    return PREVIEWABLE_IMAGE_MIME_TYPES.has(normalized) ? normalized : undefined;
-  }
-
-  function readFileAsBase64(file: File): Promise<string | undefined> {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result ?? "").split(",")[1]);
-      reader.onerror = () => resolve(undefined);
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
     for (const file of Array.from(files)) {
@@ -220,24 +230,6 @@ function SidePanel() {
           : [...list, { filename: file.name || "pasted-image.png", mime_type: mimeType, data }]
       );
     }
-  }
-
-  // A claimed capture lands in the composer as both an attachment and a ready
-  // prompt, so sending it takes no guessing about what to ask the agent for.
-  function addRecording(recording: Attachment) {
-    setAttachments((list) => [recording, ...list]);
-    setDraft((text) => (text.trim() ? text : recordingLine(recording.filename)));
-  }
-
-  // The worker installs the frame extractor the recording prompt names; a send that
-  // carries a capture waits for it and reports the reason when it could not.
-  function frameToolsReady(): Promise<string> {
-    return new Promise((resolve) =>
-      ask({ type: "record-tools" }, (resp) => {
-        const r = resp as RecordToolsResponse;
-        resolve("error" in r ? r.error : "");
-      })
-    );
   }
 
   async function sendMessage() {
@@ -308,10 +300,6 @@ function SidePanel() {
     setPendingQuestion(undefined);
   }
 
-  // Window-level a/d while an approval is pending, matching the visible
-  // button labels; approvalShortcut no-ops while typing in the composer.
-  // The prompt steals focus (Approve button) on mount so a/d and native
-  // Enter/Space work without a click, even though the composer held focus.
   useEffect(() => {
     if (!pendingApproval) return;
     approveRef.current?.focus();
@@ -329,7 +317,12 @@ function SidePanel() {
           ⌘
         </div>
         <span className="font-semibold tracking-tight">OpenTask</span>
-        <RecordButton onRecording={addRecording} />
+        <RecordButton
+          onRecording={(rec) => {
+            setAttachments((list) => [rec, ...list]);
+            setDraft((text) => (text.trim() ? text : recordingLine(rec.filename)));
+          }}
+        />
         <span
           className={
             "ml-auto flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium " +
@@ -776,10 +769,6 @@ function SidePanel() {
                     return;
                   }
                 }
-                // The CLI's shared shell input history, mirroring the TUI's
-                // HistoryManager: ArrowUp always recalls (stashing the current
-                // draft on entry), ArrowDown walks newer and finally restores
-                // the stashed draft.
                 if (e.key === "ArrowUp" && history.length) {
                   e.preventDefault();
                   if (histIdx < 0) histStash.current = draft;
