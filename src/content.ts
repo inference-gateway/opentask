@@ -1,6 +1,3 @@
-// Content-script controller. Owns all state for the inline skill menu and drives
-// React purely as a view (root.render on each change). The textarea keeps focus, so
-// keyboard nav for the skill menu is intercepted here, not in React.
 import { createElement, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { App } from "./ui/App";
@@ -110,7 +107,6 @@ function commitSkill(): void {
   if (!skill || skill.results.length === 0) return closeSkill();
   const chosen = skill.results[skill.active];
   if (chosen) {
-    // Replace the typed '!query' with the skill invocation.
     replaceRange(
       skill.box,
       skill.triggerIndex,
@@ -174,7 +170,6 @@ document.addEventListener("focusout", (e) => {
 document.addEventListener(
   "keydown",
   (e) => {
-    // Skill menu navigation (intercept before GitHub's own handlers).
     if (skill && view?.kind === "skill") {
       const len = skill.results.length;
       if (e.key === "ArrowDown" && len) {
@@ -194,7 +189,6 @@ document.addEventListener(
       }
       return;
     }
-    // Palette shortcut: Ctrl/Cmd+Shift+P while a comment box is focused.
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "P" || e.key === "p")) {
       if (isCommentBox(document.activeElement)) {
         e.preventDefault();
@@ -205,8 +199,8 @@ document.addEventListener(
   true
 );
 
-// ponytail: best-effort toolbar button - GitHub's markdown toolbar markup churns, so
-// this is allowed to find nothing; the keyboard shortcut is the reliable path.
+// ponytail: best-effort toolbar button: GitHub's markdown toolbar markup churns, so
+// this is allowed to find nothing and the keyboard shortcut is the reliable path.
 const buttoned = new WeakSet<Element>();
 function tryInjectButton(box: HTMLTextAreaElement): void {
   try {
@@ -226,13 +220,11 @@ function tryInjectButton(box: HTMLTextAreaElement): void {
     });
     toolbar.appendChild(btn);
   } catch {
-    // ignore - the shortcut still works
+    return;
   }
 }
 
 // --- "Tasks" repo-nav item + install popover (integrated into GitHub's own nav) ---
-// We never hardcode GitHub's hashed CSS-module class names (e.g. ...UnderlineItem-7fP-n) -
-// those change between deploys. Instead we clone a live nav item, inheriting whatever
 const TASKS_NAV_ID = "igw-tasks-nav";
 const SKILLS_NAV_ID = "igw-skills-nav";
 const INIT_NAV_ID = "igw-init-nav";
@@ -244,8 +236,10 @@ const SKILLS_ICON =
 const INIT_ICON =
   "M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z";
 
-// One popover at a time, shared by both nav buttons. openId tracks which nav opened it, so
-// clicking the same button toggles it closed.
+// One popover at a time, shared by both nav buttons: openId tracks which nav
+// opened it, so clicking the same button toggles it closed.
+const PANEL_Z_INDEX = 2147483000;
+const PANEL_ANCHOR_GAP_PX = 6;
 let panelRoot: Root | null = null;
 let panelHost: HTMLElement | null = null;
 let openId: string | null = null;
@@ -266,19 +260,18 @@ function onDocClick(e: MouseEvent): void {
 }
 
 function openPanel(id: string, anchor: HTMLElement, make: (owner: string, repo: string) => ReactElement): void {
-  if (openId === id) return closePanel(); // toggle off
+  if (openId === id) return closePanel();
   closePanel();
   const repo = repoFromUrl();
   if (!repo) return;
   const r = anchor.getBoundingClientRect();
   const host = document.createElement("div");
-  host.style.cssText = `position:absolute;z-index:2147483000;top:${Math.round(r.bottom + window.scrollY + 6)}px;left:${Math.round(r.left + window.scrollX)}px;`;
+  host.style.cssText = `position:absolute;z-index:${PANEL_Z_INDEX};top:${Math.round(r.bottom + window.scrollY + PANEL_ANCHOR_GAP_PX)}px;left:${Math.round(r.left + window.scrollX)}px;`;
   document.body.appendChild(host);
   panelHost = host;
   openId = id;
   panelRoot = createRoot(host);
   panelRoot.render(make(repo.owner, repo.repo));
-  // Defer so the click that opened it isn't the one that closes it.
   setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
 }
 
@@ -325,7 +318,6 @@ function tryInjectNav(): void {
     if (!list) return;
     const items = [...list.querySelectorAll("li")];
     const agents = items.find((li) => /^Agents$/i.test(li.querySelector("a")?.textContent?.trim() ?? ""));
-    // Clone Agents when present (nice placement); otherwise any item that carries a label.
     const sample = (agents ?? items.find((li) => li.querySelector("a [data-content]"))) as HTMLElement | undefined;
     if (!sample) return;
     let after: Element = agents ?? items[items.length - 1];
@@ -366,7 +358,7 @@ function tryInjectNav(): void {
       after = li;
     }
   } catch {
-    // best-effort; GitHub markup churns
+    return;
   }
 }
 
@@ -386,9 +378,11 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
 
 const REFINE_BTN_ID = "igw-refine-btn";
 const REFINE_PENDING = "igw-refine-pending";
+const REFINE_RESET_MS = 3000;
+const REFINE_PENDING_TTL_MS = 15_000;
 let refined = false;
 
-// ponytail: best-effort injection like tryInjectButton - GitHub's issue-header markup is
+// ponytail: best-effort injection like tryInjectButton: GitHub's issue-header markup is
 // hashed and churns, so anchoring off the stable kebab octicon is allowed to find nothing.
 function tryInjectRefine(): void {
   try {
@@ -414,7 +408,7 @@ function tryInjectRefine(): void {
     });
     anchor.parentElement.insertBefore(btn, anchor);
   } catch {
-    // best-effort; GitHub markup churns
+    return;
   }
 }
 
@@ -428,7 +422,7 @@ function refineNow(btn: HTMLButtonElement, loc: { owner: string; repo: string; i
       btn.textContent = "Refine failed";
       setTimeout(() => {
         btn.textContent = "Refine";
-      }, 3000);
+      }, REFINE_RESET_MS);
       return;
     }
     refined = true;
@@ -436,9 +430,9 @@ function refineNow(btn: HTMLButtonElement, loc: { owner: string; repo: string; i
   });
 }
 
-// ponytail: best-effort native-issue-creation detection - flag the "Create" click, then
+// ponytail: best-effort native-issue-creation detection: flag the "Create" click, then
 // dispatch once we land on the new issue. A submit that fails validation leaves a stale
-// flag; the 15s TTL + consume-once caps it. Upgrade to a real form hook only if it misfires.
+// flag, and the 15s TTL + consume-once caps it. Upgrade to a real form hook only if it misfires.
 document.addEventListener(
   "click",
   (e) => {
@@ -448,7 +442,7 @@ document.addEventListener(
       try {
         sessionStorage.setItem(REFINE_PENDING, String(Date.now()));
       } catch {
-        /* ignore */
+        return;
       }
     }
   },
@@ -468,10 +462,8 @@ function maybeAutoRefine(): void {
   } catch {
     return;
   }
-  if (!ts || Date.now() - ts > 15000) return;
-  chrome.runtime.sendMessage({ type: "refine-issue", ...loc }, () => {
-    /* fire-and-forget */
-  });
+  if (!ts || Date.now() - ts > REFINE_PENDING_TTL_MS) return;
+  chrome.runtime.sendMessage({ type: "refine-issue", ...loc }, () => undefined);
 }
 
 new MutationObserver(() => {

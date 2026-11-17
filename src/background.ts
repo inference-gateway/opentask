@@ -1,5 +1,6 @@
 import * as storage from "./shared/storage";
 import {
+  MAX_ERROR_DETAIL_CHARS,
   isValidHf,
   podRequestBody,
   githubError,
@@ -54,6 +55,20 @@ import { initBridge, callTool, sendUserMessage, startNewSession, CLI_DOWN } from
 initBridge();
 
 const TTL = 10 * 60 * 1000;
+
+const TOOL_TIMEOUT_MS = 310_000;
+const PR_RETRY_DELAY_MS = 1500;
+const OFFSCREEN_SEND_RETRY_MS = 150;
+
+// HTTP status codes the gh API call paths branch on.
+const HTTP_STATUS = {
+  OK: 200,
+  NO_CONTENT: 204,
+  NOT_FOUND: 404,
+  EMPTY_REPO: 409,
+  VALIDATION_FAILED: 422,
+  SERVER_ERROR: 500,
+} as const;
 
 const WORKFLOW_PATH = ".github/workflows/tasks.yml";
 const WORKFLOW_FILE = "tasks.yml";
@@ -241,7 +256,7 @@ async function listRepos(): Promise<{ repos: string[] } | { error: string }> {
   const r = await callTool(
     "Bash",
     { command: "gh api 'user/repos?per_page=100' --paginate --jq '.[].full_name'" },
-    310_000
+    TOOL_TIMEOUT_MS
   );
   if (!r.success) return { error: r.error || r.output || "gh api user/repos failed" };
   return {
@@ -262,7 +277,7 @@ async function currentRepo(): Promise<{ repo: string } | { error: string }> {
 
 async function fetchFromGitHub(owner: string, repo: string): Promise<Skill[]> {
   const res = await ghFetch(owner, repo, "contents/.agents/skills");
-  if (res.status === 404) return []; // repo has no skills - degrade gracefully
+  if (res.status === HTTP_STATUS.NOT_FOUND) return [];
   if (!res.ok) throw await ghFail(res);
   const data = await res.json();
   if (!Array.isArray(data)) return [];
@@ -298,7 +313,7 @@ async function ghFail(res: GhResponse): Promise<Error> {
 async function headShaFor(owner: string, repo: string, branch: string): Promise<string> {
   const res = await ghFetch(owner, repo, `git/ref/heads/${branch}`);
   if (res.ok) return (await res.json()).object.sha;
-  if (res.status !== 404 && res.status !== 409) throw await ghFail(res);
+  if (res.status !== HTTP_STATUS.NOT_FOUND && res.status !== HTTP_STATUS.EMPTY_REPO) throw await ghFail(res);
   return createInitialCommit(owner, repo);
 }
 
@@ -307,11 +322,11 @@ async function checkInstall(
   repo: string
 ): Promise<{ installed: boolean; url?: string } | { error: string }> {
   const res = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}`);
-  if (res.status === 200) {
+  if (res.status === HTTP_STATUS.OK) {
     const data = await res.json();
     return { installed: true, url: data.html_url };
   }
-  if (res.status === 404) return { installed: false };
+  if (res.status === HTTP_STATUS.NOT_FOUND) return { installed: false };
   throw await ghFail(res);
 }
 
@@ -372,7 +387,7 @@ async function createTask(owner: string, repo: string, prompt: string): Promise<
     method: "POST",
     body: JSON.stringify({ title: taskTitle(prompt), body: taskBody(prompt) }),
   });
-  if (res.status === 404) return { error: "Repo not found, or your gh account can't access it." };
+  if (res.status === HTTP_STATUS.NOT_FOUND) return { error: "Repo not found, or your gh account can't access it." };
   if (!res.ok) throw await ghFail(res);
   const data = await res.json();
   return { url: data.html_url };
@@ -401,11 +416,11 @@ async function dispatchTask(
     });
   const core: Record<string, string> = model ? { model, prompt } : { prompt };
   let res = await dispatch({ ...core, ...extra });
-  if (res.status === 422 && extra) res = await dispatch(core);
-  if (res.status === 204) return { url: `https://github.com/${owner}/${repo}/actions` };
-  if (res.status === 404)
+  if (res.status === HTTP_STATUS.VALIDATION_FAILED && extra) res = await dispatch(core);
+  if (res.status === HTTP_STATUS.NO_CONTENT) return { url: `https://github.com/${owner}/${repo}/actions` };
+  if (res.status === HTTP_STATUS.NOT_FOUND)
     return { error: "Workflow not found on the default branch. Merge the OpenTask Agent install PR first." };
-  if (res.status === 422)
+  if (res.status === HTTP_STATUS.VALIDATION_FAILED)
     return {
       error:
         "Dispatch rejected - the installed workflow may predate the prompt input. Re-install the OpenTask Agent workflow.",
@@ -552,9 +567,9 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
   const body = skillsPrBody(add, remove);
   const prRes = await openPull(owner, repo, { title, head: skillsBranch, base, body });
   if (prRes.ok) return { prUrl: (await prRes.json()).html_url };
-  if (prRes.status >= 500) {
+  if (prRes.status >= HTTP_STATUS.SERVER_ERROR) {
     const detail = await prRes.text().catch(() => "");
-    console.warn(`[igw] POST /pulls ${prRes.status}: ${detail.slice(0, 300)}`);
+    console.warn(`[igw] POST /pulls ${prRes.status}: ${detail.slice(0, MAX_ERROR_DETAIL_CHARS)}`);
     const q = `expand=1&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
     return { prUrl: `https://github.com/${owner}/${repo}/compare/${base}...${skillsBranch}?${q}` };
   }
@@ -584,7 +599,7 @@ async function openPull(owner: string, repo: string, payload: Record<string, unk
       body: JSON.stringify(payload),
     });
     if (res.ok || res.status < 500) return res;
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, PR_RETRY_DELAY_MS));
   }
   return res;
 }
@@ -628,7 +643,7 @@ function decodeBase64(b64: string): string {
 }
 
 async function ghError(res: GhResponse): Promise<{ error: string }> {
-  if (res.status === 404) return { error: "Repo not found, or your gh account can't access it." };
+  if (res.status === HTTP_STATUS.NOT_FOUND) return { error: "Repo not found, or your gh account can't access it." };
   return { error: githubError(res.status, await res.text().catch(() => "")) };
 }
 
@@ -647,19 +662,20 @@ async function runpodFetch(path: string, init?: RequestInit): Promise<Response> 
   });
 }
 
-// RunPod error bodies are JSON like {"error":"..."} or plain text; surface whichever.
+// RunPod error bodies are JSON like {"error":"..."} or plain text: surface whichever.
 async function runpodError(res: Response): Promise<string> {
   const text = await res.text().catch(() => "");
-  let detail = text;
-  try {
-    detail =
-      (JSON.parse(text) as { error?: string; message?: string }).error ??
-      (JSON.parse(text) as { message?: string }).message ??
-      text;
-  } catch {
-    /* not JSON */
-  }
+  const detail = runpodErrorDetail(text) ?? text;
   return `RunPod ${res.status}: ${detail || res.statusText}`;
+}
+
+function runpodErrorDetail(text: string): string {
+  try {
+    const json = JSON.parse(text) as { error?: string; message?: string };
+    return json.error ?? json.message ?? text;
+  } catch {
+    return text;
+  }
 }
 
 async function loadGpuState(): Promise<GpuState> {
@@ -708,7 +724,7 @@ async function deprovisionGPU(): Promise<{ state: GpuState } | { error: string }
   const state = await loadGpuState();
   if (!state.podId) return { state: { status: "idle" } };
   const res = await runpodFetch(`/pods/${state.podId}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 404) return { error: await runpodError(res) };
+  if (!res.ok && res.status !== HTTP_STATUS.NOT_FOUND) return { error: await runpodError(res) };
   const idle: GpuState = { status: "idle" };
   await saveGpuState(idle);
   return { state: idle };
@@ -718,7 +734,7 @@ async function gpuStatus(): Promise<{ state: GpuState } | { error: string }> {
   const state = await loadGpuState();
   if (!state.podId || state.status === "idle") return { state };
   const res = await runpodFetch(`/pods/${state.podId}`);
-  if (res.status === 404) {
+  if (res.status === HTTP_STATUS.NOT_FOUND) {
     const idle: GpuState = { status: "idle" };
     await saveGpuState(idle);
     return { state: idle };
@@ -765,7 +781,7 @@ async function closeOffscreen(): Promise<void> {
       await chrome.offscreen.closeDocument();
     }
   } catch {
-    /* already gone */
+    return;
   }
 }
 
@@ -794,7 +810,7 @@ async function sendToOffscreen(
       return (await chrome.runtime.sendMessage(msg)) as { state?: RecordState; error?: string } | undefined;
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, OFFSCREEN_SEND_RETRY_MS));
     }
   }
   throw lastErr;
@@ -873,7 +889,7 @@ async function installFrameTools(): Promise<RecordToolsResponse> {
 }
 
 async function runFrameToolsInstall(): Promise<RecordToolsResponse> {
-  const r = await callTool("Bash", { command: frameToolsCommand() }, 310_000);
+  const r = await callTool("Bash", { command: frameToolsCommand() }, TOOL_TIMEOUT_MS);
   return r.success ? { ok: true } : { error: r.error || r.output || "Could not install the frame extractor." };
 }
 
@@ -883,7 +899,7 @@ async function markRecordingTab(tabId: number, on: boolean): Promise<void> {
   try {
     await chrome.scripting.executeScript({ target: { tabId }, func: paintRecordingOverlay, args: [on] });
   } catch {
-    /* not injectable */
+    return;
   }
 }
 
