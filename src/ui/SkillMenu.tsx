@@ -19,7 +19,7 @@ const FALLBACK_BADGE = { label: "skill", className: "bg-muted text-muted-foregro
 
 // Sidepanel "/" skill dropdown, anchored above the caret. Reuses Menu's fuzzy
 // highlight but is Tailwind-styled for the panel (Menu's igw-* classes depend
-// on GitHub CSS vars absent here); the badge color encodes the skill source.
+// on GitHub CSS vars absent here), and the badge color encodes the skill source.
 export function SkillMenu({
   results,
   activeIndex,

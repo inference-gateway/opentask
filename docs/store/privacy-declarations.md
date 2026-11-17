@@ -36,7 +36,7 @@ hides itself without `chrome.tabCapture`.
 > Lets the bridge open, focus, inspect, and switch between tabs on the user's behalf
 > (browser-use commands from the side panel) and focus the right window when an
 > approval notification is clicked. Tab URLs are read only to execute the user's
-> requested commands; they are not collected.
+> requested commands, and they are not collected.
 
 ### `scripting`
 > Injects helper scripts into tabs the user targets through the bridge, so the AI
@@ -55,7 +55,7 @@ hides itself without `chrome.tabCapture`.
 ### `notifications`
 > Shows a system notification when the AI agent asks the user to approve a tool
 > call from the side panel, so the request can be reviewed without watching the
-> panel. The notification carries the tool name only; clicking it focuses the
+> panel. The notification carries the tool name only, and clicking it focuses the
 > panel.
 
 ### `tabCapture`
@@ -86,13 +86,13 @@ hides itself without `chrome.tabCapture`.
 > The content script runs on github.com to detect the issue/PR comment textarea,
 > render the completion dropdown and prompts palette, inject the repo-nav items and
 > the issue Refine button, and insert text at the caret. It reads only the focused
-> comment box's value/caret and the page path (to resolve `owner/repo`); it does
+> comment box's value/caret and the page path (to resolve `owner/repo`), and it does
 > not read cookies or credentials.
 
 ## Remote code
 
 > **No.** The extension executes no remotely hosted code. All logic ships in the
-> package; network calls fetch JSON data (skill listings, the agents catalog,
+> package, and network calls fetch JSON data (skill listings, the agents catalog,
 > RunPod pod state), never code.
 
 ## Data usage disclosures
@@ -100,7 +100,7 @@ hides itself without `chrome.tabCapture`.
 - **Data collected:** none is transmitted to the developer. There is no backend
   server, no analytics, and no telemetry.
 - **Settings and API keys:** stored locally in `chrome.storage.local` on the
-  user's device only. This includes an optional RunPod API key the user enters;
+  user's device only. This includes an optional RunPod API key the user enters, and
   the extension holds no GitHub credential (GitHub calls run through the user's
   own `gh` CLI on the connected CLI host).
 - **Not sold or transferred** to third parties.

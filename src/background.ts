@@ -284,7 +284,7 @@ async function fetchFromGitHub(owner: string, repo: string): Promise<Skill[]> {
   return data.filter((e) => e?.type === "dir").map((e) => ({ name: String(e.name) }));
 }
 
-// Response-shaped subset the ~20 call sites actually use; backed by `gh api` on
+// Response-shaped subset the ~20 call sites actually use, backed by `gh api` on
 // the CLI host instead of a direct fetch, so the extension never holds a credential.
 type GhResponse = { status: number; ok: boolean; json(): Promise<any>; text(): Promise<string> };
 
@@ -615,7 +615,7 @@ function skillsPrBody(add: string[], remove: string[]): string {
   return lines.join("\n") + "\n";
 }
 
-// Resolve a ref (branch or tag) to its tree sha; the trees API wants a tree sha, not a ref.
+// Resolve a ref (branch or tag) to its tree sha: the trees API wants a tree sha, not a ref.
 async function resolveTree(owner: string, repo: string, ref: string): Promise<string> {
   const res = await ghFetch(owner, repo, `commits/${ref}`);
   if (!res.ok) throw await ghFail(res);
@@ -636,7 +636,7 @@ async function listTreeFiles(
     .map((e: { path: string; sha: string; mode: string }) => ({ path: e.path, sha: e.sha, mode: e.mode }));
 }
 
-// GitHub Contents/blob base64 comes newline-wrapped; decode as UTF-8 (skill text may be non-ASCII).
+// GitHub Contents/blob base64 comes newline-wrapped: decode as UTF-8 (skill text may be non-ASCII).
 function decodeBase64(b64: string): string {
   const bin = atob(b64.replace(/\s/g, ""));
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
@@ -756,7 +756,7 @@ async function gpuStatus(): Promise<{ state: GpuState } | { error: string }> {
 }
 
 // --- Tab recording (Chrome only) ---
-// The offscreen document owns the MediaRecorder; its "#recording" URL hash is
+// The offscreen document owns the MediaRecorder: its "#recording" URL hash is
 // the authoritative state (it survives service-worker restarts) - the same
 // trick as Chrome's tab-capture sample. The UI mints the stream id on its own
 // click gesture, so startRecording/stopRecording below carry no gesture needs.
@@ -771,7 +771,7 @@ async function ensureOffscreen(): Promise<void> {
   });
 }
 
-// Closes the offscreen recorder page once a save is done; tolerates it already
+// Closes the offscreen recorder page once a save is done, and tolerates it already
 // being gone (a restart, a second stop click) without throwing.
 async function closeOffscreen(): Promise<void> {
   if (!chrome.offscreen) return;
@@ -799,7 +799,7 @@ async function recordState(): Promise<RecordState> {
   return { status: "recording", ...(meta ?? {}) };
 }
 
-// The offscreen listener responds asynchronously; right after createDocument it
+// The offscreen listener responds asynchronously: right after createDocument it
 // may not be listening yet, so retry the send briefly.
 async function sendToOffscreen(
   msg: Record<string, unknown>
@@ -850,7 +850,7 @@ async function recordStop(): Promise<RecordStopResponse> {
 }
 
 // A cap stop has no panel waiting on it, so its capture waits in the recording box
-// until the panel claims it; the outline and the offscreen recorder go right away.
+// until the panel claims it, and the outline and the offscreen recorder go right away.
 async function holdRecording(recording: Attachment): Promise<void> {
   heldRecording.hold(recording);
   announceCapture();
@@ -858,7 +858,7 @@ async function holdRecording(recording: Attachment): Promise<void> {
 }
 
 // The box is invisible to the panel, so a held capture is announced instead of
-// polled for; claiming stays the panel's move, which keeps the hand-over single
+// polled for: claiming stays the panel's move, which keeps the hand-over single
 // even when the panel also watched the recording end.
 function announceCapture(): void {
   void chrome.runtime.sendMessage({ type: "record-available" }).catch(() => {});
@@ -866,7 +866,7 @@ function announceCapture(): void {
 
 // The frame extractor recordingLine points the agent at. Claiming a capture starts
 // this in the background and the first send waits on it, so the agent never reads a
-// recording against a missing ffmpeg; a failed attempt is retried on the next call.
+// recording against a missing ffmpeg, and a failed attempt is retried on the next call.
 function ensureFrameTools(): Promise<RecordToolsResponse> {
   frameTools ??= installFrameTools().catch((err) => ({ error: String(err) }));
   return frameTools.then((r) => {
@@ -893,7 +893,7 @@ async function runFrameToolsInstall(): Promise<RecordToolsResponse> {
   return r.success ? { ok: true } : { error: r.error || r.output || "Could not install the frame extractor." };
 }
 
-// Outlines the captured tab while it records; restricted pages and tabs that went away
+// Outlines the captured tab while it records, and restricted pages and tabs that went away
 // just ignore the injection.
 async function markRecordingTab(tabId: number, on: boolean): Promise<void> {
   try {
