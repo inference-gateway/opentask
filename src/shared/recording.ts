@@ -7,7 +7,7 @@ export const RECORD_CAP_DEFAULT = 60;
 export const RECORD_CAP_MIN = 5;
 export const RECORD_CAP_MAX = 300;
 
-// GitHub rejects attachments over 10 MB; the bitrate budget targets this.
+// GitHub rejects attachments over 10 MB, the bitrate budget targets this.
 export const RECORD_MAX_BYTES = 10 * 1000 * 1000;
 export const RECORD_BITRATE_MIN = 250_000;
 export const RECORD_BITRATE_MAX = 5_000_000;
@@ -19,7 +19,7 @@ export type RecordState = {
   mime?: string;
 };
 
-// Clamps the stored cap setting to the enforced bounds; anything non-numeric
+// Clamps the stored cap setting to the enforced bounds, anything non-numeric
 // falls back to the default.
 export function normalizeRecordCap(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -27,7 +27,7 @@ export function normalizeRecordCap(value: unknown): number {
   return Math.min(RECORD_CAP_MAX, Math.max(RECORD_CAP_MIN, Math.round(n)));
 }
 
-// Tab recording needs the Chrome/Edge-only tabCapture + offscreen APIs;
+// Tab recording needs the Chrome/Edge-only tabCapture + offscreen APIs,
 // Firefox and Safari builds hide the control instead of shipping a broken one.
 export function supportsTabCapture(): boolean {
   return (
@@ -38,7 +38,7 @@ export function supportsTabCapture(): boolean {
 }
 
 // mp4 muxing is supported by MediaRecorder in current Chrome and attaches to
-// GitHub without transcoding; webm is the fallback where it is unavailable.
+// GitHub without transcoding, webm is the fallback where it is unavailable.
 export function recordingMime(isTypeSupported: (mime: string) => boolean): "video/mp4" | "video/webm" {
   return isTypeSupported("video/mp4") ? "video/mp4" : "video/webm";
 }
@@ -141,7 +141,7 @@ export function frameToolsCommand(): string {
 }
 
 // Chrome mints a capture token only for a tab the extension was invoked on (the
-// toolbar icon, a context menu, a command); a click inside the side panel is not
+// toolbar icon, a context menu, a command). A click inside the side panel is not
 // an invocation, so a tab the user switched to is out of reach and the message
 // has to name the way back instead of repeating Chrome's jargon.
 export function captureFailureMessage(err: unknown): string {
@@ -151,18 +151,18 @@ export function captureFailureMessage(err: unknown): string {
     : message;
 }
 
-// Outlines a captured tab so it is obvious on the page itself; call with false to
+// Outlines a captured tab so it is obvious on the page itself, call with false to
 // clear it. It runs inside the recorded page via chrome.scripting, so it stays
 // self-contained (no imports, no captured variables) - and its border lands in the
 // recording, which captures page pixels.
 export function paintRecordingOverlay(on: boolean): void {
+  const TOPMOST_Z_INDEX = 2147483647;
   const existing = document.getElementById("opentask-recording-overlay");
   if (existing) existing.remove();
   if (!on) return;
   const overlay = document.createElement("div");
   overlay.id = "opentask-recording-overlay";
   overlay.setAttribute("aria-hidden", "true");
-  overlay.style.cssText =
-    "position: fixed; inset: 0; pointer-events: none; z-index: 2147483647; border: 4px solid #ef4444; box-shadow: inset 0 0 16px rgba(239, 68, 68, 0.45);";
+  overlay.style.cssText = `position: fixed; inset: 0; pointer-events: none; z-index: ${TOPMOST_Z_INDEX}; border: 4px solid #ef4444; box-shadow: inset 0 0 16px rgba(239, 68, 68, 0.45);`;
   (document.body || document.documentElement).append(overlay);
 }

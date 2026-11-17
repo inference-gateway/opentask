@@ -61,11 +61,14 @@ export type GpuState = {
 // A llama.cpp -hf ref: "owner/repo" with an optional ":quant" (e.g. bartowski/foo-GGUF:Q4_K_M).
 export const isValidHf = (hf: string) => /^[\w.-]+\/[\w.-]+(:[\w.]+)?$/.test(hf.trim());
 
+// Max characters of an upstream error body kept in surfaced messages (shared
+// with the background worker's gh error path).
+export const MAX_ERROR_DETAIL_CHARS = 300;
+
 // GitHub error bodies carry the actual reason - {"message":"Invalid tree info"} or a
 // "message" plus an "errors" array. A bare "GitHub 422" tells the user nothing and hides
 // which call failed, so always fold the body into the message we surface.
-export function githubError(status: number, body: string): string {
-  let detail = body.trim();
+function githubErrorDetail(body: string): string {
   try {
     const json = JSON.parse(body) as {
       message?: string;
@@ -75,11 +78,15 @@ export function githubError(status: number, body: string): string {
       .map((e) => e.message ?? [e.field, e.code].filter(Boolean).join(" "))
       .filter(Boolean)
       .join("; ");
-    detail = [json.message, errors].filter(Boolean).join(" - ");
+    return [json.message, errors].filter(Boolean).join(" - ");
   } catch {
-    /* not JSON - fall back to the raw text */
+    return body.trim();
   }
-  return detail ? `GitHub ${status}: ${detail.slice(0, 300)}` : `GitHub ${status}`;
+}
+
+export function githubError(status: number, body: string): string {
+  const detail = githubErrorDetail(body);
+  return detail ? `GitHub ${status}: ${detail.slice(0, MAX_ERROR_DETAIL_CHARS)}` : `GitHub ${status}`;
 }
 
 // Parses `gh api --include` output (status line + headers + body) into the HTTP
@@ -97,7 +104,7 @@ export function parseGhHttp(output: string, toolError?: string): { status: numbe
   return { status: Number(last[1]), body };
 }
 
-// RunPod's REST API has no GPU-types list endpoint; the ids below are the enum
+// RunPod's REST API has no GPU-types list endpoint, so the ids below are the enum
 // values it accepts for gpuTypeIds. Enough spread to fit a 7-14B GGUF at Q4.
 // ponytail: static list, revisit if RunPod ships a catalog endpoint.
 export type GpuType = { id: string; label: string };
@@ -121,7 +128,7 @@ export const LLAMA_MODELS: LlamaModel[] = [
 ];
 
 // Pod create body for RunPod's REST API, running llama.cpp server with the chosen model.
-// apiKey secures the endpoint (llama.cpp --api-key); the gateway forwards it as a bearer.
+// apiKey secures the endpoint (llama.cpp --api-key), the gateway forwards it as a bearer.
 export function podRequestBody(gpuTypeId: string, model: LlamaModel, apiKey: string, cloudType?: string) {
   return {
     name: `opentask-${model.id}`,

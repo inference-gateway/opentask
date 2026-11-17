@@ -241,8 +241,6 @@ function InstallSection({
   const [state, setState] = useState<InstallState>({ kind: "idle" });
   const [installed, setInstalled] = useState(false);
 
-  // Reconcile vs first install: probe for an existing tasks.yml when a repo is
-  // picked; on any error just keep the Install label.
   useEffect(() => {
     setInstalled(false);
     if (!owner || !repo) return;

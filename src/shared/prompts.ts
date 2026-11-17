@@ -1,4 +1,4 @@
-// Quick-prompt palette defaults: infer-action directives. Editable in the options page.
+// A quick-prompt palette entry: infer-action directives, editable in the options page.
 export type Prompt = { id: string; label: string; description: string; insert: string };
 
 export const DEFAULT_PROMPTS: Prompt[] = [

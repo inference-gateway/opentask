@@ -1,6 +1,3 @@
-// Shared theme control for the standalone pages (options + popup). shadcn's dark
-// mode is class-based (.dark), so we toggle that class rather than data-theme.
-// "system" follows the OS live: we keep a matchMedia listener while it's active.
 export type Theme = "system" | "light" | "dark";
 
 // Resolve to a concrete light/dark given the chosen theme and the OS preference.
@@ -11,6 +8,8 @@ export function resolveDark(theme: Theme, prefersDark: boolean): boolean {
 let mql: MediaQueryList | null = null;
 let onChange: (() => void) | null = null;
 
+// Applies the theme to standalone pages (options + popup): toggles shadcn's
+// class-based dark mode, and for "system" follows the OS preference live.
 export function applyTheme(theme: Theme): void {
   const root = document.documentElement;
   const setDark = (dark: boolean) => {

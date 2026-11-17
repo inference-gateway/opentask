@@ -15,7 +15,6 @@ test("initPrompt always asks for AGENTS.md and a PR, and names the repo", () => 
   expect(p).toContain("acme/widget");
   expect(p).toContain("AGENTS.md");
   expect(p).toContain("pull request");
-  // Extras off by default.
   expect(p).not.toContain(".githooks/pre-commit");
   expect(p).not.toContain("CLAUDE.md");
   expect(p).not.toContain(".claude/skills");

@@ -2,14 +2,9 @@ import DOMPurify from "dompurify";
 import { Marked } from "marked";
 import type { ReactNode } from "react";
 
-// Full GFM rendering (tables, nested lists, strikethrough) via marked, sanitized
-// with DOMPurify. Raw HTML in the source is escaped, never passed through; link
-// and image URLs are vetted in the renderer before sanitization. Element styling
-// lives in src/ui/globals.css under `.md`.
-
 // The CLI saves generated images to ~/.infer/projects/<slug>/artifacts/<...> and
 // only sends the local path. An MV3 extension can't load a local file path, so
-// rewrite it onto the daemon's per-project artifact route; otherwise only
+// rewrite it onto the daemon's per-project artifact route: otherwise only
 // http(s)/data:image URLs are allowed.
 let artifactBase = "";
 function resolveImg(url: string): string | undefined {
@@ -34,6 +29,10 @@ function img(src: string, alt: string): string {
   return `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`;
 }
 
+// Full GFM rendering (tables, nested lists, strikethrough) via marked: raw HTML
+// in the source is escaped, never passed through, and link and image URLs are
+// vetted in the renderer before sanitization. Element styling lives in
+// src/ui/globals.css under `.md`.
 const marked = new Marked({
   gfm: true,
   breaks: true,

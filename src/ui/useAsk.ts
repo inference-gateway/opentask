@@ -4,9 +4,9 @@ import { ask } from "./ask";
 export type AskStatus<T> = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: T };
 
 // The loading/error/ready fetch boilerplate that Skills/Agents/Install panels each
-// hand-rolled around ask(). `message` is (re)sent on mount and whenever `deps` change;
-// `reload()` re-sends on demand. Discriminated-union status is the panel's single source
-// of truth for what to render.
+// hand-rolled around ask(). `message` is (re)sent on mount and whenever `deps` change,
+// and `reload()` re-sends on demand. Discriminated-union status is the panel's single
+// source of truth for what to render.
 export function useAsk<T>(
   message: unknown,
   fallbackError: string,
@@ -28,7 +28,6 @@ export function useAsk<T>(
     return () => {
       cancelled = true;
     };
-    // message is derived from deps; re-send when deps (or nonce) change.
   }, [...deps, nonce]);
 
   return { status, reload };

@@ -1,6 +1,3 @@
-// The form of an input_required interrupt: the AskUserQuestion tool's
-// questions, each with its options (radios, or checkboxes when multiSelect)
-// plus an "other" text box. Submit answers every question in one go.
 import { useState } from "react";
 import { Button } from "@/ui/components/button";
 import { Input } from "@/ui/components/input";
