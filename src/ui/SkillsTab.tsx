@@ -20,7 +20,6 @@ export function SkillsTab({ owner, repo }: { owner: string; repo: string }) {
   const [query, setQuery] = useState("");
   const [apply, setApply] = useState<Apply>({ kind: "idle" });
 
-  // Seed installed/selected from each fresh catalog load.
   useEffect(() => {
     if (status.kind !== "ready") return;
     const inst = new Set(status.data.installed);

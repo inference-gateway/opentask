@@ -7,6 +7,8 @@ export function taskBody(prompt: string): string {
   return TRIGGER.test(text) ? text : `@opentask\n\n${text}`;
 }
 
+const TASK_TITLE_MAX_CHARS = 80;
+
 export function taskTitle(prompt: string): string {
   const first =
     prompt
@@ -18,12 +20,12 @@ export function taskTitle(prompt: string): string {
     .replace(/^[\s:\u2013\u2014-]+/, "")
     .trim();
   const base = cleaned || "OpenTask task";
-  return base.length > 80 ? `${base.slice(0, 79)}…` : base;
+  return base.length > TASK_TITLE_MAX_CHARS ? `${base.slice(0, TASK_TITLE_MAX_CHARS - 1)}…` : base;
 }
 
 // Default direct-prompt for a workflow_dispatch refine run: read one existing issue and
 // rewrite its body in place. Uses {owner}/{repo}/{issue} placeholders so it can be edited in
-// the options Prompts tab; refinePrompt() substitutes them. Names the issue explicitly since
+// the options Prompts tab, refinePrompt() substitutes them. Names the issue explicitly since
 // dispatch runs have no issue event context.
 export const DEFAULT_REFINE_PROMPT = [
   `Refine GitHub issue #{issue} in {owner}/{repo}.`,
@@ -46,8 +48,8 @@ export const DEFAULT_REFINE_PROMPT = [
 ].join(" ");
 
 // Full replacement for infer-action's bundled direct-prompt system prompt on refine runs.
-// The bundled default is an entirely git/branch/commit/PR workflow; refine only edits an
-// issue in place, so we swap in this issue-focused prompt (passed via the system_prompt
+// The bundled default is an entirely git/branch/commit/PR workflow, while refine only edits
+// an issue in place, so we swap in this issue-focused prompt (passed via the system_prompt
 // dispatch input). Regular tasks send no override and keep the bundled default.
 export const REFINE_SYSTEM_PROMPT = [
   "# Refine Agent (manual run)",

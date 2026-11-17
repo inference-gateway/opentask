@@ -222,7 +222,7 @@ describe("frameToolsCommand", () => {
 
 type OffscreenListener = (msg: Record<string, unknown>, sender: unknown, respond: (resp: unknown) => void) => unknown;
 
-// MediaRecorder and FileReader do not exist outside a browser; the fakes keep the
+// MediaRecorder and FileReader do not exist outside a browser, the fakes keep the
 // two behaviours the recorder leans on: stop() fires its events in a later task,
 // and the data URL carries the bytes the chunks held.
 class FakeMediaRecorder {

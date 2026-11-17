@@ -1,9 +1,13 @@
-// Quick-prompt palette: a self-contained popup with its own search input, focus,
-// and keyboard handling. Opened by the shortcut or the injected toolbar button.
 import { useEffect, useRef, useState } from "react";
 import { fuzzyFilter } from "../lib/fuzzy";
 import type { PaletteView } from "./types";
 
+const PALETTE_MAX_WIDTH = 420;
+const PALETTE_WIDTH_RATIO = 0.92;
+const MENU_MARGIN = 8;
+
+// Quick-prompt palette: a self-contained popup with its own search input, focus,
+// and keyboard handling, opened by the shortcut or the injected toolbar button.
 export function Palette({ prompts, pos, onPick, onClose }: PaletteView) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -31,8 +35,8 @@ export function Palette({ prompts, pos, onPick, onClose }: PaletteView) {
     }
   }
 
-  const width = Math.min(420, window.innerWidth * 0.92);
-  const left = Math.min(Math.max(8, pos.left), window.innerWidth - width - 8);
+  const width = Math.min(PALETTE_MAX_WIDTH, window.innerWidth * PALETTE_WIDTH_RATIO);
+  const left = Math.min(Math.max(MENU_MARGIN, pos.left), window.innerWidth - width - MENU_MARGIN);
   const top = pos.top + pos.height + 4;
 
   return (

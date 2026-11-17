@@ -1,5 +1,6 @@
 import * as storage from "./shared/storage";
 import {
+  MAX_ERROR_DETAIL_CHARS,
   isValidHf,
   podRequestBody,
   githubError,
@@ -54,6 +55,21 @@ import { initBridge, callTool, sendUserMessage, startNewSession, CLI_DOWN } from
 initBridge();
 
 const TTL = 10 * 60 * 1000;
+
+const TOOL_TIMEOUT_MS = 310_000;
+const PR_RETRY_DELAY_MS = 1500;
+const PR_RETRY_ATTEMPTS = 3;
+const OFFSCREEN_SEND_RETRY_MS = 150;
+
+// HTTP status codes the gh API call paths branch on.
+const HTTP_STATUS = {
+  OK: 200,
+  NO_CONTENT: 204,
+  NOT_FOUND: 404,
+  EMPTY_REPO: 409,
+  VALIDATION_FAILED: 422,
+  SERVER_ERROR: 500,
+} as const;
 
 const WORKFLOW_PATH = ".github/workflows/tasks.yml";
 const WORKFLOW_FILE = "tasks.yml";
@@ -241,7 +257,7 @@ async function listRepos(): Promise<{ repos: string[] } | { error: string }> {
   const r = await callTool(
     "Bash",
     { command: "gh api 'user/repos?per_page=100' --paginate --jq '.[].full_name'" },
-    310_000
+    TOOL_TIMEOUT_MS
   );
   if (!r.success) return { error: r.error || r.output || "gh api user/repos failed" };
   return {
@@ -262,14 +278,14 @@ async function currentRepo(): Promise<{ repo: string } | { error: string }> {
 
 async function fetchFromGitHub(owner: string, repo: string): Promise<Skill[]> {
   const res = await ghFetch(owner, repo, "contents/.agents/skills");
-  if (res.status === 404) return []; // repo has no skills - degrade gracefully
+  if (res.status === HTTP_STATUS.NOT_FOUND) return [];
   if (!res.ok) throw await ghFail(res);
   const data = await res.json();
   if (!Array.isArray(data)) return [];
   return data.filter((e) => e?.type === "dir").map((e) => ({ name: String(e.name) }));
 }
 
-// Response-shaped subset the ~20 call sites actually use; backed by `gh api` on
+// Response-shaped subset the ~20 call sites actually use, backed by `gh api` on
 // the CLI host instead of a direct fetch, so the extension never holds a credential.
 type GhResponse = { status: number; ok: boolean; json(): Promise<any>; text(): Promise<string> };
 
@@ -298,7 +314,7 @@ async function ghFail(res: GhResponse): Promise<Error> {
 async function headShaFor(owner: string, repo: string, branch: string): Promise<string> {
   const res = await ghFetch(owner, repo, `git/ref/heads/${branch}`);
   if (res.ok) return (await res.json()).object.sha;
-  if (res.status !== 404 && res.status !== 409) throw await ghFail(res);
+  if (res.status !== HTTP_STATUS.NOT_FOUND && res.status !== HTTP_STATUS.EMPTY_REPO) throw await ghFail(res);
   return createInitialCommit(owner, repo);
 }
 
@@ -307,11 +323,11 @@ async function checkInstall(
   repo: string
 ): Promise<{ installed: boolean; url?: string } | { error: string }> {
   const res = await ghFetch(owner, repo, `contents/${WORKFLOW_PATH}`);
-  if (res.status === 200) {
+  if (res.status === HTTP_STATUS.OK) {
     const data = await res.json();
     return { installed: true, url: data.html_url };
   }
-  if (res.status === 404) return { installed: false };
+  if (res.status === HTTP_STATUS.NOT_FOUND) return { installed: false };
   throw await ghFail(res);
 }
 
@@ -372,7 +388,7 @@ async function createTask(owner: string, repo: string, prompt: string): Promise<
     method: "POST",
     body: JSON.stringify({ title: taskTitle(prompt), body: taskBody(prompt) }),
   });
-  if (res.status === 404) return { error: "Repo not found, or your gh account can't access it." };
+  if (res.status === HTTP_STATUS.NOT_FOUND) return { error: "Repo not found, or your gh account can't access it." };
   if (!res.ok) throw await ghFail(res);
   const data = await res.json();
   return { url: data.html_url };
@@ -401,11 +417,11 @@ async function dispatchTask(
     });
   const core: Record<string, string> = model ? { model, prompt } : { prompt };
   let res = await dispatch({ ...core, ...extra });
-  if (res.status === 422 && extra) res = await dispatch(core);
-  if (res.status === 204) return { url: `https://github.com/${owner}/${repo}/actions` };
-  if (res.status === 404)
+  if (res.status === HTTP_STATUS.VALIDATION_FAILED && extra) res = await dispatch(core);
+  if (res.status === HTTP_STATUS.NO_CONTENT) return { url: `https://github.com/${owner}/${repo}/actions` };
+  if (res.status === HTTP_STATUS.NOT_FOUND)
     return { error: "Workflow not found on the default branch. Merge the OpenTask Agent install PR first." };
-  if (res.status === 422)
+  if (res.status === HTTP_STATUS.VALIDATION_FAILED)
     return {
       error:
         "Dispatch rejected - the installed workflow may predate the prompt input. Re-install the OpenTask Agent workflow.",
@@ -552,9 +568,9 @@ async function applySkills(owner: string, repo: string, add: string[], remove: s
   const body = skillsPrBody(add, remove);
   const prRes = await openPull(owner, repo, { title, head: skillsBranch, base, body });
   if (prRes.ok) return { prUrl: (await prRes.json()).html_url };
-  if (prRes.status >= 500) {
+  if (prRes.status >= HTTP_STATUS.SERVER_ERROR) {
     const detail = await prRes.text().catch(() => "");
-    console.warn(`[igw] POST /pulls ${prRes.status}: ${detail.slice(0, 300)}`);
+    console.warn(`[igw] POST /pulls ${prRes.status}: ${detail.slice(0, MAX_ERROR_DETAIL_CHARS)}`);
     const q = `expand=1&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
     return { prUrl: `https://github.com/${owner}/${repo}/compare/${base}...${skillsBranch}?${q}` };
   }
@@ -578,13 +594,13 @@ async function createInitialCommit(owner: string, repo: string): Promise<string>
 // updated + committed (its diff isn't computed yet), so retry a few times on 5xx.
 async function openPull(owner: string, repo: string, payload: Record<string, unknown>): Promise<GhResponse> {
   let res!: GhResponse;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < PR_RETRY_ATTEMPTS; i++) {
     res = await ghFetch(owner, repo, "pulls", {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    if (res.ok || res.status < 500) return res;
-    await new Promise((r) => setTimeout(r, 1500));
+    if (res.ok || res.status < HTTP_STATUS.SERVER_ERROR) return res;
+    await new Promise((r) => setTimeout(r, PR_RETRY_DELAY_MS));
   }
   return res;
 }
@@ -600,7 +616,7 @@ function skillsPrBody(add: string[], remove: string[]): string {
   return lines.join("\n") + "\n";
 }
 
-// Resolve a ref (branch or tag) to its tree sha; the trees API wants a tree sha, not a ref.
+// Resolve a ref (branch or tag) to its tree sha: the trees API wants a tree sha, not a ref.
 async function resolveTree(owner: string, repo: string, ref: string): Promise<string> {
   const res = await ghFetch(owner, repo, `commits/${ref}`);
   if (!res.ok) throw await ghFail(res);
@@ -621,14 +637,14 @@ async function listTreeFiles(
     .map((e: { path: string; sha: string; mode: string }) => ({ path: e.path, sha: e.sha, mode: e.mode }));
 }
 
-// GitHub Contents/blob base64 comes newline-wrapped; decode as UTF-8 (skill text may be non-ASCII).
+// GitHub Contents/blob base64 comes newline-wrapped: decode as UTF-8 (skill text may be non-ASCII).
 function decodeBase64(b64: string): string {
   const bin = atob(b64.replace(/\s/g, ""));
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
 async function ghError(res: GhResponse): Promise<{ error: string }> {
-  if (res.status === 404) return { error: "Repo not found, or your gh account can't access it." };
+  if (res.status === HTTP_STATUS.NOT_FOUND) return { error: "Repo not found, or your gh account can't access it." };
   return { error: githubError(res.status, await res.text().catch(() => "")) };
 }
 
@@ -647,19 +663,20 @@ async function runpodFetch(path: string, init?: RequestInit): Promise<Response> 
   });
 }
 
-// RunPod error bodies are JSON like {"error":"..."} or plain text; surface whichever.
+// RunPod error bodies are JSON like {"error":"..."} or plain text: surface whichever.
 async function runpodError(res: Response): Promise<string> {
   const text = await res.text().catch(() => "");
-  let detail = text;
-  try {
-    detail =
-      (JSON.parse(text) as { error?: string; message?: string }).error ??
-      (JSON.parse(text) as { message?: string }).message ??
-      text;
-  } catch {
-    /* not JSON */
-  }
+  const detail = runpodErrorDetail(text) ?? text;
   return `RunPod ${res.status}: ${detail || res.statusText}`;
+}
+
+function runpodErrorDetail(text: string): string {
+  try {
+    const json = JSON.parse(text) as { error?: string; message?: string };
+    return json.error ?? json.message ?? text;
+  } catch {
+    return text;
+  }
 }
 
 async function loadGpuState(): Promise<GpuState> {
@@ -708,7 +725,7 @@ async function deprovisionGPU(): Promise<{ state: GpuState } | { error: string }
   const state = await loadGpuState();
   if (!state.podId) return { state: { status: "idle" } };
   const res = await runpodFetch(`/pods/${state.podId}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 404) return { error: await runpodError(res) };
+  if (!res.ok && res.status !== HTTP_STATUS.NOT_FOUND) return { error: await runpodError(res) };
   const idle: GpuState = { status: "idle" };
   await saveGpuState(idle);
   return { state: idle };
@@ -718,7 +735,7 @@ async function gpuStatus(): Promise<{ state: GpuState } | { error: string }> {
   const state = await loadGpuState();
   if (!state.podId || state.status === "idle") return { state };
   const res = await runpodFetch(`/pods/${state.podId}`);
-  if (res.status === 404) {
+  if (res.status === HTTP_STATUS.NOT_FOUND) {
     const idle: GpuState = { status: "idle" };
     await saveGpuState(idle);
     return { state: idle };
@@ -740,7 +757,7 @@ async function gpuStatus(): Promise<{ state: GpuState } | { error: string }> {
 }
 
 // --- Tab recording (Chrome only) ---
-// The offscreen document owns the MediaRecorder; its "#recording" URL hash is
+// The offscreen document owns the MediaRecorder: its "#recording" URL hash is
 // the authoritative state (it survives service-worker restarts) - the same
 // trick as Chrome's tab-capture sample. The UI mints the stream id on its own
 // click gesture, so startRecording/stopRecording below carry no gesture needs.
@@ -755,7 +772,7 @@ async function ensureOffscreen(): Promise<void> {
   });
 }
 
-// Closes the offscreen recorder page once a save is done; tolerates it already
+// Closes the offscreen recorder page once a save is done, and tolerates it already
 // being gone (a restart, a second stop click) without throwing.
 async function closeOffscreen(): Promise<void> {
   if (!chrome.offscreen) return;
@@ -765,7 +782,7 @@ async function closeOffscreen(): Promise<void> {
       await chrome.offscreen.closeDocument();
     }
   } catch {
-    /* already gone */
+    return;
   }
 }
 
@@ -783,7 +800,7 @@ async function recordState(): Promise<RecordState> {
   return { status: "recording", ...(meta ?? {}) };
 }
 
-// The offscreen listener responds asynchronously; right after createDocument it
+// The offscreen listener responds asynchronously: right after createDocument it
 // may not be listening yet, so retry the send briefly.
 async function sendToOffscreen(
   msg: Record<string, unknown>
@@ -794,7 +811,7 @@ async function sendToOffscreen(
       return (await chrome.runtime.sendMessage(msg)) as { state?: RecordState; error?: string } | undefined;
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, OFFSCREEN_SEND_RETRY_MS));
     }
   }
   throw lastErr;
@@ -834,7 +851,7 @@ async function recordStop(): Promise<RecordStopResponse> {
 }
 
 // A cap stop has no panel waiting on it, so its capture waits in the recording box
-// until the panel claims it; the outline and the offscreen recorder go right away.
+// until the panel claims it, and the outline and the offscreen recorder go right away.
 async function holdRecording(recording: Attachment): Promise<void> {
   heldRecording.hold(recording);
   announceCapture();
@@ -842,7 +859,7 @@ async function holdRecording(recording: Attachment): Promise<void> {
 }
 
 // The box is invisible to the panel, so a held capture is announced instead of
-// polled for; claiming stays the panel's move, which keeps the hand-over single
+// polled for: claiming stays the panel's move, which keeps the hand-over single
 // even when the panel also watched the recording end.
 function announceCapture(): void {
   void chrome.runtime.sendMessage({ type: "record-available" }).catch(() => {});
@@ -850,7 +867,7 @@ function announceCapture(): void {
 
 // The frame extractor recordingLine points the agent at. Claiming a capture starts
 // this in the background and the first send waits on it, so the agent never reads a
-// recording against a missing ffmpeg; a failed attempt is retried on the next call.
+// recording against a missing ffmpeg, and a failed attempt is retried on the next call.
 function ensureFrameTools(): Promise<RecordToolsResponse> {
   frameTools ??= installFrameTools().catch((err) => ({ error: String(err) }));
   return frameTools.then((r) => {
@@ -873,17 +890,17 @@ async function installFrameTools(): Promise<RecordToolsResponse> {
 }
 
 async function runFrameToolsInstall(): Promise<RecordToolsResponse> {
-  const r = await callTool("Bash", { command: frameToolsCommand() }, 310_000);
+  const r = await callTool("Bash", { command: frameToolsCommand() }, TOOL_TIMEOUT_MS);
   return r.success ? { ok: true } : { error: r.error || r.output || "Could not install the frame extractor." };
 }
 
-// Outlines the captured tab while it records; restricted pages and tabs that went away
+// Outlines the captured tab while it records, and restricted pages and tabs that went away
 // just ignore the injection.
 async function markRecordingTab(tabId: number, on: boolean): Promise<void> {
   try {
     await chrome.scripting.executeScript({ target: { tabId }, func: paintRecordingOverlay, args: [on] });
   } catch {
-    /* not injectable */
+    return;
   }
 }
 

@@ -10,13 +10,25 @@ import type {
   RecordTakeResponse,
 } from "@/shared/messages";
 
+// The offscreen recorder muxes the capture a moment after the stop, so a claim
+// made right after one retries briefly.
 const CLAIM_RETRIES = 5;
 const CLAIM_RETRY_MS = 1000;
+const RECORD_TICK_MS = 1000;
+
+// The popup can record a tab the panel cannot (it is invoked from the toolbar), so the
+// worker announces a held capture and the panel claims it. Subscribes once on mount.
+function useHeldCaptureNudge(onNudge: () => void): void {
+  useEffect(() => {
+    chrome.runtime.onMessage.addListener(onNudge);
+    return () => chrome.runtime.onMessage.removeListener(onNudge);
+  }, []);
+}
 
 // Starts a tab recording with a stream id minted on the click gesture - the
 // user-activation requirement lives here, in the extension page. Polls the
 // background for status while recording and offers the stop control. With
-// onRecording set (the side panel) the finished capture is handed to that composer;
+// onRecording set (the side panel) the finished capture is handed to that composer,
 // without it (the popup) the worker keeps the capture for the panel to claim.
 export function RecordButton({ onRecording }: { onRecording?: (recording: Attachment) => void }) {
   const [state, setState] = useState<RecordState>({ status: "idle" });
@@ -37,8 +49,6 @@ export function RecordButton({ onRecording }: { onRecording?: (recording: Attach
     });
   }
 
-  // Claims the capture the worker holds. The offscreen recorder muxes the file a
-  // moment after the stop, so a claim made right after one retries briefly.
   function claim(retries: number) {
     if (!handler.current) return;
     ask({ type: "record-take" }, (resp) => {
@@ -54,16 +64,7 @@ export function RecordButton({ onRecording }: { onRecording?: (recording: Attach
     return () => clearTimeout(retryTimer.current);
   }, []);
 
-  // The popup can record a tab this panel cannot (it is invoked from the
-  // toolbar), so its capture needs a nudge to reach the composer: the worker
-  // announces a held capture and the panel takes it out of the box.
-  useEffect(() => {
-    function onAvailable() {
-      claim(0);
-    }
-    chrome.runtime.onMessage.addListener(onAvailable);
-    return () => chrome.runtime.onMessage.removeListener(onAvailable);
-  }, []);
+  useHeldCaptureNudge(() => claim(0));
 
   const recording = state.status === "recording";
   useEffect(() => {
@@ -81,7 +82,7 @@ export function RecordButton({ onRecording }: { onRecording?: (recording: Attach
     const id = setInterval(() => {
       refresh();
       setNow(Date.now());
-    }, 1000);
+    }, RECORD_TICK_MS);
     return () => clearInterval(id);
   }, [recording]);
 

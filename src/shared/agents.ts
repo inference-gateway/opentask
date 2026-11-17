@@ -20,8 +20,8 @@ export function isAgentManifest(m: unknown): m is AgentManifest {
   return typeof meta.name === "string" && typeof meta.description === "string" && typeof meta.version === "string";
 }
 
-// The catalog is a wrapper object { version, updated, agents: [...] }; a bare
-// array shape is tolerated for forward-compat.
+// The catalog is a wrapper object { version, updated, agents: [...] }, with a bare
+// array shape tolerated for forward-compat.
 export function agentsFromCatalog(json: unknown): AgentManifest[] {
   const arr = Array.isArray(json)
     ? json

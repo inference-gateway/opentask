@@ -1,4 +1,4 @@
-// textarea-caret ships no types; this is its full surface.
+// textarea-caret ships no types, so declare its full surface.
 declare module "textarea-caret" {
   export default function getCaretCoordinates(
     element: HTMLTextAreaElement | HTMLInputElement,

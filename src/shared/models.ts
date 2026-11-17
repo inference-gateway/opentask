@@ -1,11 +1,8 @@
-// Install-workflow config. A BotConfig optionally makes the workflow authenticate
-// as a GitHub App. All of this is editable in the options page.
-
-// Choices for the Run task model override, curated from infer-action's README
-// supported-model list. This is a menu, not a default: no entry is privileged, and
-// an empty selection omits the `model` dispatch input so the repository's
-// DEFAULT_MODEL variable decides. The workflow already wires every provider key,
-// so an entry needs no secret mapping of its own.
+// Run task model override choices for the generated install workflow, curated from
+// infer-action's README supported-model list. This is a menu, not a default: no
+// entry is privileged, and an empty selection omits the `model` dispatch input so
+// the repository's DEFAULT_MODEL variable decides (the workflow wires every
+// provider key already, so an entry needs no secret mapping of its own).
 export const MODELS = [
   "ollama_cloud/deepseek-v4-flash:preview",
   "deepseek/deepseek-v4-flash",
@@ -35,7 +32,7 @@ export function isBotConfig(b: unknown): b is BotConfig {
 // Prefills GitHub's App-creation form for an owner via query params on the plain GET
 // flow (settings/apps/new). This reliably sets the required Homepage (url) and unchecks
 // the webhook (webhook_active=false) - the manifest POST flow can't be submitted from an
-// extension origin. A non-blank owner targets that org's settings; blank = personal.
+// extension origin. A non-blank owner targets that org's settings, blank = personal.
 export function githubAppUrl(owner: string, isOrg: boolean): string {
   const base =
     owner && isOrg
@@ -56,10 +53,10 @@ export function githubAppUrl(owner: string, isOrg: boolean): string {
   return `${base}?${params}`;
 }
 
-// What the agent may do at runtime. infer-action gives the agent a read-only bash baseline;
-// these map to the two inputs that widen it: git writes + `gh pr create` are gated by
-// enable-git-operations, and other writes (issue create, comments) must be appended to the
-// allow-list via bash-allow-append. All default on; unchecking one drops that capability.
+// What the agent may do at runtime. infer-action gives the agent a read-only bash
+// baseline, and these map to the two inputs that widen it: git writes + `gh pr create`
+// are gated by enable-git-operations, other writes (issue create, comments) must go to
+// the allow-list via bash-allow-append. All default on, unchecking one drops that capability.
 export type Permissions = { createPRs: boolean; createIssues: boolean; comment: boolean };
 export const DEFAULT_PERMISSIONS: Permissions = { createPRs: true, createIssues: true, comment: true };
 
@@ -71,13 +68,13 @@ export function isPermissions(p: unknown): p is Permissions {
   );
 }
 
-// Issue refinement: `manual` shows a Refine button in the issue header; `auto` dispatches a
+// Issue refinement: `manual` shows a Refine button in the issue header, `auto` dispatches a
 // refine run when the user creates a new issue via GitHub's native form. Stored under "refine".
 export type RefineConfig = { auto: boolean; manual: boolean };
 export const DEFAULT_REFINE: RefineConfig = { auto: false, manual: true };
 
 // The infer-action plugins the extension knows about. Each is installed via
-// `infer plugins install --yes` before the agent runs. Disabled by default; a user opts
+// `infer plugins install --yes` before the agent runs. Disabled by default, a user opts
 // in per-plugin in options, and only enabled ids get baked into the generated workflow.
 export type PluginOption = { id: string; enabled: boolean };
 export const DEFAULT_PLUGINS: PluginOption[] = [
@@ -98,12 +95,11 @@ export function isPluginOption(p: unknown): p is PluginOption {
 // ids of the plugins toggled on - what actually gets baked into the workflow.
 export const enabledPlugins = (plugins: PluginOption[]): string[] => plugins.filter((p) => p.enabled).map((p) => p.id);
 
-// Common CI dependencies for the generated workflow. Language toolchains are installed
-// by infer-action itself via its `languages:` input; only `task` remains a real setup
-// step (not covered by `languages`). `autoDetect` (default off) ignores the language
-// toggles and instead resolves the list at install time from the repo's GitHub
-// languages API. `apt` is a space-separated package list for infer-action's `apt:`
-// input. Stored under "dependencies", reusing PluginOption's {id, enabled} shape.
+// Common CI dependencies for the generated workflow, reusing PluginOption's
+// {id, enabled} shape under "dependencies". `autoDetect` (default off) ignores
+// the language toggles and instead resolves the list at install time from the
+// repo's GitHub languages API. `apt` is a space-separated package list for
+// infer-action's `apt:` input, beyond the toolchains installed via `languages:`.
 export type DependenciesConfig = { autoDetect: boolean; items: PluginOption[]; apt: string };
 
 export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
@@ -118,14 +114,11 @@ export const DEFAULT_DEPENDENCIES: DependenciesConfig = {
   ],
 };
 
-// Registry of dependency toggles. Language runtimes carry a `lang` id passed to
-// infer-action's `languages:` input (the action installs the toolchain, respecting
-// version files like go.mod/.nvmrc); `task` keeps a rendered setup step (6-space indent
-// for `- uses:`, matching checkoutStep) since `languages` does not cover go-task.
-// `allow` lists the bash-allow-append entries (Go regexes, anchored by the CLI matcher)
-// granted alongside the toolchain - infer-action does NOT auto-append these, and an
-// installed toolchain the agent cannot invoke leaves it hand-simulating the tool.
-// `task` needs none: it is already in the Infer CLI's read-only bash baseline.
+// Registry of dependency toggles. Language runtimes carry a `lang` id for
+// infer-action's `languages:` input (the action installs the toolchain,
+// respecting version files like go.mod/.nvmrc), `task` keeps a rendered setup
+// step since `languages` does not cover go-task. `allow` lists bash-allow-append
+// entries granted alongside the toolchain - infer-action does NOT auto-append them.
 export const DEPENDENCY_DEFS: { id: string; label: string; step?: string; lang?: string; allow?: string[] }[] = [
   {
     id: "task",
@@ -168,7 +161,7 @@ export function isRefineConfig(r: unknown): r is RefineConfig {
 }
 
 // Project init: what the Init button asks the agent to scaffold. AGENTS.md is always
-// generated; the toggles add optional extras. All default off. Stored under "init".
+// generated, the toggles add optional extras. All default off. Stored under "init".
 export type InitConfig = { githooks: boolean; claudeSymlink: boolean; skillsSymlink: boolean };
 export const DEFAULT_INIT: InitConfig = { githooks: false, claudeSymlink: false, skillsSymlink: false };
 

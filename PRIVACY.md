@@ -36,14 +36,14 @@ it hands the bytes to your own `infer` CLI, which writes them into its scratch
 directory on your machine so the agent it runs can inspect the capture. The
 extension never uploads the recording anywhere, and it leaves your device only
 through that local CLI. While a capture runs the extension draws a red outline on
-that tab, and Chrome shows its own recording indicator; the outline is part of the
+that tab, and Chrome shows its own recording indicator, and the outline is part of the
 page, so it appears in the recording as well. The recording is deleted when you
 delete the file the CLI wrote.
 
 The prompt the extension puts in the composer names the frame extractor the agent
 should use, `~/.infer/bin/tools/ffmpeg`. If your CLI has not downloaded it (it only
 auto-downloads the *speech* binaries), the extension checks it with `infer binaries
-status ffmpeg` through that CLI (approval-free; a sha256 match against the release) and,
+status ffmpeg` through that CLI (approval-free, a sha256 match against the release) and,
 when it reports missing or stale, installs it through the same CLI with `infer binaries
 install ffmpeg`: the CLI fetches the platform build from
 [`inference-gateway/binaries`](https://github.com/inference-gateway/binaries) into
@@ -70,7 +70,7 @@ The extension talks to the following hosts:
   query a GPU pod that serves a llama.cpp OpenAI-compatible model endpoint.
 - **The sites your agent automates.** With the browser-use bridge, the agent you
   run locally can navigate, read, and act in tabs you direct it to. Those requests
-  are made by your own browser to the sites you choose; the extension does not
+  are made by your own browser to the sites you choose, and the extension does not
   route them anywhere else.
 
 No analytics, tracking, error-reporting, or beacon traffic of any kind is sent to

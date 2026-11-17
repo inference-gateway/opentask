@@ -12,10 +12,14 @@ import {
   type DeprovisionGPUResponse,
 } from "./shared/messages";
 import { ask } from "./ui/ask";
+import { COPIED_RESET_MS } from "./lib/utils";
 import { Button } from "@/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/components/select";
 import { RecordButton } from "@/ui/RecordButton";
 import { supportsTabCapture } from "./shared/recording";
+
+const GPU_POLL_INTERVAL_MS = 3000;
+const CUSTOM_MODEL_ID_MAX_CHARS = 40;
 
 // A "name = value" row with a click-to-copy button. secret masks the displayed value
 // (Copy still copies the real one).
@@ -32,7 +36,7 @@ function CopyRow({ label, name, value, secret }: { label: string; name: string; 
         onClick={() => {
           void navigator.clipboard.writeText(value).then(() => {
             setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
+            setTimeout(() => setCopied(false), COPIED_RESET_MS);
           });
         }}
       >
@@ -75,7 +79,7 @@ function Popup() {
         const r = resp as GPUStatusResponse;
         if ("state" in r) setGpu(r.state);
       });
-    }, 3000);
+    }, GPU_POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [gpu.status]);
 
@@ -89,7 +93,7 @@ function Popup() {
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "")
-          .slice(0, 40)
+          .slice(0, CUSTOM_MODEL_ID_MAX_CHARS)
       : selectedModel;
     ask({ type: "provision-gpu", gpuTypeId: selectedGpu, modelId, hf }, (resp) => {
       const r = resp as ProvisionGPUResponse;

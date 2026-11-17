@@ -1,7 +1,6 @@
-// The Inference Gateway skills registry (inference-gateway/skills) and helpers for the
-// Tasks panel's skills tab. The registry's root catalog.json lists every skill; each
-// `source` is a GitHub tree URL pointing at the skill's folder, which "install" copies
-// into the target repo's .agents/skills/<name>/ (the dir the extension already reads).
+// A skill in the Inference Gateway skills registry (inference-gateway/skills):
+// its `source` is a GitHub tree URL pointing at the skill's folder, which
+// "install" copies into the target repo's .agents/skills/<name>/
 export type CatalogSkill = {
   name: string;
   description: string;
@@ -22,7 +21,7 @@ export function isCatalogSkill(s: unknown): s is CatalogSkill {
 //   https://github.com/inference-gateway/skills/tree/main/skills/adl
 //   https://github.com/Xquik-dev/x-twitter-scraper/tree/v2.4.16/skills/x-twitter-scraper
 // ponytail: assumes the ref is a single segment (branch/tag with no slash), true for the
-// registry today; refs with slashes would need the API to disambiguate ref from path.
+// registry today, refs with slashes would need the API to disambiguate ref from path.
 export function parseSource(url: string): { owner: string; repo: string; ref: string; path: string } | null {
   const m = /github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)\/(.+?)\/?$/.exec(url);
   if (!m) return null;
@@ -31,7 +30,7 @@ export function parseSource(url: string): { owner: string; repo: string; ref: st
 
 // Rank catalog skills for a repo's languages: a skill is "suggested" when any language
 // (case-insensitive) appears in its name/description/tags/categories. Suggested skills come
-// first; original catalog order is preserved within each group.
+// first, original catalog order is preserved within each group.
 // ponytail: substring heuristic - upgrade to explicit language tags in the catalog if noisy.
 export function suggestForLanguages(
   skills: CatalogSkill[],

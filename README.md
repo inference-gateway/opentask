@@ -47,9 +47,9 @@ Firefox, and Safari.
   editable templates. Open with `Ctrl/Cmd+Shift+P` or the `⚡` toolbar button.
 - 🔍 **Repo-Aware**: Resolves `owner/repo` from the page and fetches
   `.agents/skills/` via the GitHub Contents API, cached per repo.
-- 🤝 **Non-Intrusive**: Never touches GitHub's native `@` / `#` / `:` completion;
+- 🤝 **Non-Intrusive**: Never touches GitHub's native `@` / `#` / `:` completion:
   insertions fire an `input` event so draft-autosave and preview stay in sync.
-- 🌐 **Multi-Browser Ready**: One `dist/` bundle; browser differences (background
+- 🌐 **Multi-Browser Ready**: One `dist/` bundle: browser differences (background
   worker vs scripts, side panel, notifications) are absorbed by per-browser manifest
   overrides and `build.ts`, not code forks.
 - 🔒 **Private-Repo Support**: The extension stores no GitHub credential. Every
@@ -58,10 +58,10 @@ Firefox, and Safari.
 - 🚀 **Agent Install**: Install or update the OpenTask Agent workflow from
   **Options → Workflows → Install workflow**. It lists your repos through the
   connected CLI's `gh` auth and sends `/install-opentask owner/repo` into the CLI
-  chat; you approve the push and pull request in the side panel.
+  chat: you approve the push and pull request in the side panel.
 - 🧩 **Skills Install/Uninstall**: In the repo's **Skills** tab (repo nav), a
   searchable, multi-select list of the [Inference Gateway skills registry](https://github.com/inference-gateway/skills).
-  Skills matching the repo's top languages are suggested first; applying opens a single PR
+  Skills matching the repo's top languages are suggested first, and applying opens a single PR
   that adds/removes skill folders under `.agents/skills/`.
 - 🤖 **Agent Selection**: Pick A2A agents from the
   [agents registry](https://github.com/inference-gateway/agents) in
@@ -80,14 +80,14 @@ Firefox, and Safari.
   option exists), and never set Done - that happens at merge. Best-effort and board-agnostic.
   This text is the editable "System instructions" default in **Options → Prompts**. Board writes
   need a token with `Projects: read and write` - enable the GitHub App option, since the default
-  `GITHUB_TOKEN` can't reach Projects v2; without it the agent skips board updates silently.
+  `GITHUB_TOKEN` can't reach Projects v2, so without it the agent skips board updates silently.
 - 🤝 **GitHub App Bot**: Run the agent as your own GitHub App instead of
   `github-actions[bot]`. When configured, the workflow mints an installation token via
   `actions/create-github-app-token` and checks out + comments as the App, so its
   comments and commits are attributed to (and verified for) the App.
 - 🖥️ **Self-Hosted GPU Models**: From the extension popup, provision a [RunPod](https://runpod.io)
   GPU that serves a llama.cpp OpenAI-compatible endpoint. Pick a catalog GGUF (or any custom
-  Hugging Face `repo:quant`), choose a GPU, and deploy; the popup then hands you the repo
+  Hugging Face `repo:quant`), choose a GPU, and deploy: the popup then hands you the repo
   secrets/variable to route tasks at `llamacpp/<model>`. See [Self-hosted GPU models](#self-hosted-gpu-models-runpod).
 - 🧩 **Plugin Support**: Optional [infer-action plugins](https://github.com/inference-gateway/infer-action)
   extend the agent's capabilities. Toggle them on in Settings and re-install the workflow
@@ -167,7 +167,7 @@ bun run build      # outputs dist/
 - **Record a workflow to turn into a skill**: click **Record tab** (popup or side panel,
   Chrome/Edge only), perform the flow in the tab, then stop - or let it hard-stop at the
   cap. The capture lands in the side panel's composer as an attachment together with the
-  prompt that asks the agent to distil it; send it and the connected CLI saves it on your
+  prompt that asks the agent to distil it: send it and the connected CLI saves it on your
   machine, and the agent inspects the frames, asks whether the flow is worth keeping, and
   proposes the skill.
 - **Manage skills**: the **Skills** tab shows the skills registry, filtered by the
@@ -246,13 +246,13 @@ names the path to the agent -> the agent extracts frames with the bundled `ffmpe
 whether to save the flow as a skill, and writes it only once you say so. Audio capture is
 deliberately out of scope.
 
-The prompt names the extractor the CLI ships (`~/.infer/bin/tools/ffmpeg`); the CLI owns that
+The prompt names the extractor the CLI ships (`~/.infer/bin/tools/ffmpeg`), which the CLI owns that
 tool, so the extension checks it with the approval-free `infer binaries status ffmpeg` (a
 sha256 match against the release) and, only when it is missing or stale, installs it through
 the connected CLI with `infer binaries install ffmpeg` - the platform build, verified against
 the release checksums. A send carrying a recording waits for that install (a Bash approval in
 the panel, headed `# opentask: download the latest ffmpeg ...`) and reports in the composer if
-a first install failed; a denied upgrade keeps the old copy.
+a first install failed, and a denied upgrade keeps the old copy.
 
 ### Self-hosted GPU models (RunPod)
 
@@ -276,7 +276,7 @@ is set.
   small model tuned for agentic tool-calling, unlike general chat GGUFs.
 - Choose a GPU (RTX 4090 → A100 80GB). The pod is pinned to hosts with CUDA ≥ 12.8
   (the image's requirement) and secured with a generated `--api-key` bearer token.
-- Hit **Deploy**. Status goes *provisioning → running*; the model's GGUF downloads and
+- Hit **Deploy**. Status goes *provisioning → running*: the model's GGUF downloads and
   loads on the pod first (watch the pod's logs for `server is listening`).
 
 **3. Wire it into the repo.** Once running, the popup shows copy-to-clipboard rows -
@@ -285,12 +285,12 @@ add them under the repo's **Settings → Secrets and variables → Actions**:
 | Kind | Name | Value |
 | --- | --- | --- |
 | Secret | `LLAMACPP_API_URL` | the pod endpoint + `/v1` |
-| Secret | `LLAMACPP_API_KEY` | the generated bearer token (masked; **Copy** copies the real value) |
+| Secret | `LLAMACPP_API_KEY` | the generated bearer token (masked, **Copy** copies the real value) |
 | Variable | `DEFAULT_MODEL` | `llamacpp/<repo:quant>` (the model the gateway registers) |
 
 `DEFAULT_MODEL` is the model used for every run that does not name one explicitly -
 issue-triggered runs, **Refine**, and **Init**. Only **Run task** can override it, via
-the Tasks-tab model dropdown; it offers a curated list of hosted models, the running
+the Tasks-tab model dropdown: it offers a curated list of hosted models, the running
 llama.cpp model when one is up, and *Repository default (DEFAULT_MODEL)*. Then
 **re-install the workflow** so it wires the `LLAMACPP_*` secrets onto infer-action.
 
@@ -301,7 +301,7 @@ llama.cpp model when one is up, and *Repository default (DEFAULT_MODEL)*. Then
 ### Permissions
 
 What the OpenTask agent may do while a task runs. These widen infer-action's read-only
-baseline; unchecked capabilities stay blocked. **Re-install the workflow** after
+baseline, so unchecked capabilities stay blocked. **Re-install the workflow** after
 changing these.
 
 - **Create pull requests** (commit & push)
@@ -320,7 +320,7 @@ permission above - **re-install** after enabling.
 ### Project init
 
 What the **Init** button (in a repo's nav) asks the agent to scaffold. It always
-generates an `AGENTS.md` and opens a PR; these add optional extras. Requires the
+generates an `AGENTS.md` and opens a PR, and these add optional extras. Requires the
 OpenTask Agent workflow to be installed on the repo.
 
 - **Add a `.githooks/pre-commit` hook**
@@ -332,7 +332,7 @@ OpenTask Agent workflow to be installed on the repo.
 - **Install workflow**: pick an owner and repository (listed from the connected CLI's
   `gh api user/repos`) and click **Install** - or **Reconcile**, the label the button
   takes when the repo already has `.github/workflows/tasks.yml`. The CLI's agent adds or updates
-  `.github/workflows/tasks.yml` and opens a pull request; approve the push and PR in
+  `.github/workflows/tasks.yml` and opens a pull request, and you approve the push and PR in
   the side panel. Re-installing updates the same open PR and preserves
   repo-specific customizations.
 - **Custom bot (GitHub App)**: when enabled, the generated workflow authenticates as
@@ -341,13 +341,13 @@ OpenTask Agent workflow to be installed on the repo.
   key. The App needs `Contents: write`, `Issues: write`, `Pull requests: write`,
   `Actions: write`, and `Workflows: write`.
 - **Timeout (minutes)**: per-run job timeout for the generated workflow (default 25).
-  Applies to newly installed workflows; re-run **Install** on a repo to update an
+  Applies to newly installed workflows, so re-run **Install** on a repo to update an
   existing one.
 
 ### Plugins
 
 Optional [infer-action](https://github.com/inference-gateway/infer-action) plugins
-the installed workflow pre-installs to extend the agent. All off by default; check
+the installed workflow pre-installs to extend the agent. All off by default, so check
 the ones you want. **Re-install the workflow** after changing these.
 
 ### Theme
@@ -360,9 +360,9 @@ Choose how the options page and toolbar popup are displayed: **System default**,
 Everything the extension stores (your settings, the CLI bridge port and shared token,
 and a short per-repo skill cache) stays in this browser's local storage - nothing is
 synced or sent to a first-party server. GitHub calls run as `gh api` on the CLI host,
-and the bridge talks only to the local CLI; there is **no backend and no telemetry**. See
+and the bridge talks only to the local CLI, and there is **no backend and no telemetry**. See
 [PRIVACY.md](PRIVACY.md) for the full data-flow breakdown and how to delete stored
-data; per-permission justifications for the store listing live in
+data. Per-permission justifications for the store listing live in
 [docs/store/privacy-declarations.md](docs/store/privacy-declarations.md).
 
 ## Multi-Browser Support
@@ -376,7 +376,7 @@ recording. Per-browser notes:
 | Browser      | What's needed                                                            |                                                                                                                                              
 | ------------ | ------------------------------------------------------------------------ |                                                                                                                                              
 | Chrome, Edge | Works as-is (`background.service_worker` + side panel). Chrome Web Store and Edge Add-ons use the same `dist/` ZIP. Tab recording works here. |                                                                                              
-| Firefox 109+ | Build with `task build:firefox`: `manifest.firefox.json` overrides `background.scripts` + `browser_specific_settings.gecko.id` and replaces `permissions` (no `sidePanel`/`notifications` - Firefox lacks those APIs), and `build.ts` deletes the Chrome-only `side_panel` key. Without a side panel there is no Connect button, so the bridge dials the daemon on its own from the token in **Options → Orchestrator → CLI Bridge**; the panel chat (and the Install workflow flow that streams through it) stays Chrome-only. The Record button hides itself (no `tabCapture`). |                                                                                      
+| Firefox 109+ | Build with `task build:firefox`: `manifest.firefox.json` overrides `background.scripts` + `browser_specific_settings.gecko.id` and replaces `permissions` (no `sidePanel`/`notifications` - Firefox lacks those APIs), and `build.ts` deletes the Chrome-only `side_panel` key. Without a side panel there is no Connect button, so the bridge dials the daemon on its own from the token in **Options → Orchestrator → CLI Bridge**: the panel chat (and the Install workflow flow that streams through it) stays Chrome-only. The Record button hides itself (no `tabCapture`). |                                                                                      
 | Safari 16.4+ | Build with `task build:safari`, then wrap with `xcrun safari-web-extension-converter` on macOS. `manifest.safari.json` replaces `permissions` (no `sidePanel`/`notifications`), and `build.ts` deletes the `side_panel` key. The bridge auto-connects from the stored token, as on Firefox. See [`docs/store/safari-listing.md`](docs/store/safari-listing.md) for the full packaging and App Store release guide. The Record button hides itself (no `tabCapture`). |
 
 If a port needs the Promise-based `browser.*` namespace, drop in Mozilla's
@@ -395,9 +395,9 @@ task check          # typecheck, lint, test, and build
 ```
 
 Layout: `src/content.ts` is the imperative controller (DOM detection, caret math,
-insertion, keyboard, repo-nav injection of the Tasks/Skills/Init tabs); `src/ui/*`
-holds the comment-box surfaces (skill menu, palette, Tasks/Skills/Init panels);
-`src/options.tsx` and `src/ui/options/*` are the settings tabs; `src/background.ts`
+insertion, keyboard, repo-nav injection of the Tasks/Skills/Init tabs). `src/ui/*`
+holds the comment-box surfaces (skill menu, palette, Tasks/Skills/Init panels).
+`src/options.tsx` and `src/ui/options/*` are the settings tabs, and `src/background.ts`
 is the service worker that fetches and caches skills, manages workflows, and proxies
 every GitHub call through the CLI bridge (`src/lib/bridge.ts`). Tab recording runs in
 `src/offscreen.ts`, an offscreen document the service worker supervises.
@@ -408,7 +408,7 @@ To produce a store ZIP:
 task package:chrome    # builds, zips dist/ to browser-extension.zip, writes SHA-256
 task package:edge      # same ZIP, named edge-extension.zip for Edge Add-ons
 task package:firefox   # builds with Firefox manifest, zips to firefox-extension.zip, writes SHA-256
-task build:safari      # builds with Safari manifest; see docs/store/safari-listing.md for Xcode conversion
+task build:safari      # builds with Safari manifest, see docs/store/safari-listing.md for Xcode conversion
 ```
 
 Every GitHub Release carries the Chrome ZIP (`browser-extension.zip`), the Firefox
@@ -419,7 +419,7 @@ ZIP is not attached - build it locally with `task package:edge`.
 
 - The newer React/ProseMirror composer on some 2024+ issue pages (v1 targets the
   classic `<textarea>`).
-- Skill descriptions in the dropdown (would cost one API call per skill; names only
+- Skill descriptions in the dropdown (would cost one API call per skill: names only
   for now, one call per repo).
 - An org-wide skill catalog (v1 is per-repo).
 - A build-time watch mode.
@@ -428,7 +428,7 @@ ZIP is not attached - build it locally with `task package:edge`.
 
 Found a bug or have a feature in mind? You're more than welcome to open issues or submit
 pull requests for any fixes, improvements, or new ideas. Read the
-[Repository Guidelines](AGENTS.md) before contributing; they cover project structure,
+[Repository Guidelines](AGENTS.md) before contributing: they cover project structure,
 testing, style, commits, and pull-request expectations.
 
 ## License
