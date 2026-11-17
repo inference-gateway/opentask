@@ -1,22 +1,18 @@
-// Pure helpers for the infer daemon binding. The wire contract is the Daemon
-// Binding Protocol (inference-gateway/cli docs/browser-extension-protocol.md):
-// a frame with an uppercase type is a standard AG-UI 1.0 event, validated here
-// with the upstream schemas; unknown frame types must be ignored.
 import { EventSchema } from "@ag-ui/core/schemas";
 import type { ContentPart, Event, Interrupt, Message } from "@ag-ui/core";
 
 // Validates one wire frame as an AG-UI event with the upstream schema, or
-// undefined for an app frame or a malformed event.
+// undefined for an app frame, a malformed event, or any frame the CLI must ignore
+// (Daemon Binding Protocol, inference-gateway/cli docs/browser-extension-protocol.md).
 export function parseEvent(frame: Record<string, unknown>): Event | undefined {
   const r = EventSchema.safeParse(frame);
   return r.success ? r.data : undefined;
 }
 
 // `args` accumulates the tool call's TOOL_CALL_ARGS deltas (raw JSON) for the
-// tool role; `id` is its toolCallId and `ok`/`error` arrive with
+// tool role, `id` is its toolCallId, and `ok`/`error` arrive with
 // TOOL_CALL_RESULT (unset while the tool is still running). Other roles leave
-// them unset.
-// `result` is the tool's output text when known (snapshot history).
+// them unset. `result` is the tool's output text when known (snapshot history).
 export type Msg = {
   role: string;
   content: string;
@@ -27,8 +23,14 @@ export type Msg = {
   result?: string;
 };
 
+// A TEXT_MESSAGE_CONTENT delta belongs to the message START opened (by id),
+// otherwise it can only continue an assistant message, never a finished user one.
+function continuesStreamedMessage(last: Msg | undefined, messageId?: string): boolean {
+  return !!last && ((!!last.id && last.id === messageId) || last.role !== "user");
+}
+
 // Folds one AG-UI chat_event into the rendered message list. Text streaming,
-// reasoning streaming, and tool calls (name + args) are rendered; everything
+// reasoning streaming, and tool calls (name + args) are rendered: everything
 // else is a no-op by contract.
 export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
   const e = event as {
@@ -46,10 +48,8 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
       return [...messages, { role: e.role ?? "assistant", content: "", id: e.messageId }];
     case "TEXT_MESSAGE_CONTENT": {
       const last = messages[messages.length - 1];
-      // A delta belongs to the message START opened (by id); otherwise it can
-      // only continue an assistant message, never a finished user one.
-      const continues = !!last && ((!!last.id && last.id === e.messageId) || last.role !== "user");
-      if (!continues) return [...messages, { role: "assistant", content: e.delta ?? "" }];
+      if (!continuesStreamedMessage(last, e.messageId))
+        return [...messages, { role: "assistant", content: e.delta ?? "" }];
       return [...messages.slice(0, -1), { ...last, content: last.content + (e.delta ?? "") }];
     }
     case "REASONING_MESSAGE_START":
@@ -67,13 +67,8 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
       return [...messages.slice(0, -1), { ...last, args: (last.args ?? "") + (e.delta ?? "") }];
     }
     case "TOOL_CALL_RESULT": {
-      // content is the CLI's ToolExecutionResult JSON ({success, error, ...}).
-      let r: { success?: unknown; error?: unknown };
-      try {
-        r = JSON.parse(e.content ?? "");
-      } catch {
-        return messages;
-      }
+      const r = parseToolResult(e.content ?? "");
+      if (!r) return messages;
       let i = messages.findIndex((m) => m.role === "tool" && m.id !== undefined && m.id === e.toolCallId);
       if (i < 0) i = messages.map((m) => m.role).lastIndexOf("tool");
       if (i < 0) return messages;
@@ -82,6 +77,16 @@ export function reduceAgui(messages: Msg[], event: unknown): Msg[] {
     }
     default:
       return messages;
+  }
+}
+
+// content is the CLI's ToolExecutionResult JSON ({success, error, ...}),
+// undefined when it does not parse.
+function parseToolResult(content: string): { success?: unknown; error?: unknown } | undefined {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return undefined;
   }
 }
 
@@ -228,8 +233,10 @@ export function stripAnsi(text: string): string {
 }
 
 // Reconnect backoff: 1s, 2s, 4s ... capped at 30s.
+const BACKOFF_BASE_MS = 1000;
+const BACKOFF_CAP_MS = 30_000;
 export function backoffMs(attempt: number): number {
-  return Math.min(30_000, 1000 * 2 ** attempt);
+  return Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** attempt);
 }
 
 export function isClearCommand(content: string): boolean {
@@ -237,7 +244,7 @@ export function isClearCommand(content: string): boolean {
   return c === "/clear" || c === "/cls";
 }
 
-// One wire frame per WS text message; garbage is ignored, not thrown.
+// One wire frame per WS text message: garbage is ignored, not thrown.
 export function parseFrame(data: unknown): Record<string, unknown> | undefined {
   if (typeof data !== "string") return undefined;
   try {
@@ -371,6 +378,13 @@ export function approvalDetail(approval: PendingApproval): string {
   }
 }
 
+// Bridge-panel `state` frame: this panel's live snapshot. `history` is the CLI's
+// shell input history, oldest first, for arrow-up recall in the composer.
+// `models` holds the provider/model ids the CLI is configured with (first = CLI
+// default) and `currentModel` the model for the next turn (from the `models`
+// frame). `mode` is the CLI's agent mode allowlist key: "standard" | "plan" |
+// "auto". `projectDir` is the absolute dir the panel opens threads in
+// (Options -> CLI Bridge).
 export type PanelState = {
   type: "state";
   connected: boolean;
@@ -380,18 +394,12 @@ export type PanelState = {
   messages: Msg[];
   conversations: ConversationMeta[];
   skills: PanelSkill[];
-  // the CLI's shell input history, oldest first, for arrow-up recall in the composer.
   history: string[];
-  // provider/model ids the CLI is configured with (first = CLI default), for model pickers.
   models: string[];
-  // the model the CLI will use for the next turn (from the `models` frame).
   currentModel?: string;
-  // the CLI's agent mode as its allowlist key: "standard" | "plan" | "auto".
   mode?: string;
   activeConversationId?: string;
-  // threads other clients are streaming right now (from `thread_activity`).
   activeThreads: ActiveThread[];
-  // the absolute project dir the panel opens threads in (Options -> CLI Bridge).
   projectDir?: string;
   pendingApproval?: PendingApproval;
   pendingQuestion?: PendingQuestion;

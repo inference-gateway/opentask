@@ -1,7 +1,3 @@
-// The only chrome.* surface besides runtime messaging, isolated here so a future
-// browser port swaps one file (or drops in webextension-polyfill). Every accessor
-// tolerates an invalidated extension context (stale content script after a reload),
-// where chrome.storage is undefined - it degrades to a no-op instead of throwing.
 export function get<T>(key: string): Promise<T | undefined> {
   const area = chrome?.storage?.local;
   if (!area) return Promise.resolve(undefined);
@@ -20,9 +16,9 @@ export function remove(key: string): Promise<void> {
   return area.remove(key);
 }
 
-// The CLI bridge settings the extension dials the infer daemon with, blank when
-// unset. policyManaged marks a token supplied by enterprise policy, the sign of an
-// unattended browser that should connect without a click.
+// chrome.storage.local access, isolated so a browser port swaps one file.
+// Every accessor tolerates an invalidated extension context, where chrome.storage
+// is undefined, degrading to a no-op instead of throwing.
 export interface BridgeSettings {
   port: string;
   token: string;

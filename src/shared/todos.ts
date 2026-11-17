@@ -1,20 +1,19 @@
-// The session todo list the agent keeps through its TodoWrite tool, plus the
-// user's edits to it before handing it back. Names follow the CLI's TodoWrite
-// schema ({content, status}), shared with the desktop app, so a todo means the
-// same thing in the CLI, the desktop app and this panel.
 import type { Msg } from "./agui";
 
 export type TodoStatus = "pending" | "in_progress" | "completed";
+
+// One session-todo item, in the CLI's TodoWrite schema ({content, status})
+// shared with the desktop app, so a todo means the same in the CLI, the
+// desktop app and this panel.
 export type Todo = { content: string; status: TodoStatus };
 
 const STATUS_CYCLE: TodoStatus[] = ["pending", "in_progress", "completed"];
 
-// Translates a todo-list tool call's args JSON into Todos: `{"todos":[…]}` (or a
-// bare array) whose items carry text under content/text/subject/task (other
-// agents' todo tools) and a status of completed/in_progress (anything else
-// reads as pending). An explicit empty list parses as [] (the list was
-// cleared). Returns undefined — the caller falls back to the plain pill — for
-// a non-todo tool, unparseable (mid-stream partial) args, or a non-todo shape.
+// Parses a todo-list tool call's args JSON into Todos ({todos:[...]} or a bare
+// array, text under content/text/subject/task, status completed/in_progress,
+// anything else pending). An explicit empty list parses as [] (cleared).
+// Returns undefined, the caller falls back to the plain pill, for a non-todo
+// tool, unparseable args, or a non-todo shape.
 export function parseTodos(name: string, args?: string): Todo[] | undefined {
   if (!args || !name.toLowerCase().includes("todo")) return undefined;
   let o: unknown;
@@ -60,7 +59,7 @@ export function todosDiffer(a: Todo[], b: Todo[]): boolean {
   return a.length !== b.length || a.some((t, i) => t.content !== b[i].content || t.status !== b[i].status);
 }
 
-// Reorders one todo; out-of-range or no-op moves return the list unchanged.
+// Reorders one todo, out-of-range or no-op moves return the list unchanged.
 export function moveTodo(todos: Todo[], from: number, to: number): Todo[] {
   if (from === to || from < 0 || to < 0 || from >= todos.length || to >= todos.length) return todos;
   const next = [...todos];
@@ -77,7 +76,7 @@ export function advanceTodo(todos: Todo[], i: number): Todo[] {
 }
 
 // The user message handing an edited list back to the agent (same wording as
-// the desktop app). Blank todos are dropped; an empty list clears it.
+// the desktop app). Blank todos are dropped, an empty list clears it.
 export function todoHandoff(todos: Todo[]): string {
   const list = todos.filter((t) => t.content.trim());
   return `Update the session todo list to exactly the following by calling the TodoWrite tool now with this argument:\n${JSON.stringify({ todos: list })}`;
