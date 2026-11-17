@@ -56,7 +56,7 @@ export function githubAppUrl(owner: string, isOrg: boolean): string {
 // What the agent may do at runtime. infer-action gives the agent a read-only bash
 // baseline, and these map to the two inputs that widen it: git writes + `gh pr create`
 // are gated by enable-git-operations, other writes (issue create, comments) must go to
-// the allow-list via bash-allow-append. All default on; unchecking one drops that capability.
+// the allow-list via bash-allow-append. All default on, unchecking one drops that capability.
 export type Permissions = { createPRs: boolean; createIssues: boolean; comment: boolean };
 export const DEFAULT_PERMISSIONS: Permissions = { createPRs: true, createIssues: true, comment: true };
 

@@ -30,6 +30,7 @@ import {
 import type { Event, Interrupt } from "@ag-ui/core";
 
 export const DEFAULT_PORT = "52789";
+const DAEMON_HOST = "127.0.0.1";
 
 let ws: WebSocket | undefined;
 let connected = false;
@@ -138,7 +139,7 @@ export function panelState(): PanelState {
     connected,
     connecting: wantConnected && !connected,
     running,
-    artifactBase: `http://127.0.0.1:${httpPort}`,
+    artifactBase: `http://${DAEMON_HOST}:${httpPort}`,
     messages: clean.filter(isVisibleMessage),
     conversations,
     skills,
@@ -241,15 +242,7 @@ export function callTool(toolName: string, args: object, timeoutMs = 120_000): P
 // a clickable system notification that opens the panel.
 const APPROVAL_NOTIFICATION = "opentask-approval";
 async function alertApproval(req: PendingApproval) {
-  const win = await chrome.windows.getLastFocused().catch(() => undefined);
-  if (win?.id !== undefined) {
-    try {
-      await chrome.sidePanel.open({ windowId: win.id });
-      return;
-    } catch {
-      // No user gesture - fall through to badge + notification.
-    }
-  }
+  if (await openSidePanel()) return;
   void chrome.action.setBadgeText({ text: "!" });
   void chrome.action.setBadgeBackgroundColor({ color: "#f59e0b" });
   void chrome.notifications?.create(APPROVAL_NOTIFICATION, {
@@ -258,6 +251,19 @@ async function alertApproval(req: PendingApproval) {
     title: "OpenTask: approval needed",
     message: `The agent wants to run ${stripAnsi(req.toolName)}. Click to review.`,
   });
+}
+
+// Chrome only allows sidePanel.open on a user gesture, so a WebSocket frame
+// trigger usually throws - false means the panel could not be opened.
+async function openSidePanel(): Promise<boolean> {
+  const win = await chrome.windows.getLastFocused().catch(() => undefined);
+  if (win?.id === undefined) return false;
+  try {
+    await chrome.sidePanel.open({ windowId: win.id });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function clearApprovalAlert() {
@@ -338,7 +344,7 @@ async function connect() {
   ws?.close();
   let socket: WebSocket;
   try {
-    socket = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+    socket = new WebSocket(`ws://${DAEMON_HOST}:${port}/ws`);
   } catch {
     scheduleReconnect();
     return;

@@ -1,8 +1,8 @@
-// Generates extension icons from the source logo at /tmp/logo.png.
-// Run: bun run tools/generate-icons.ts
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 
+// Generates extension icons (src/icons/icon-<size>.png) from /tmp/logo.png,
+// run via `bun run icons`.
 const SIZES = [16, 32, 48, 128];
 const SRC = "/tmp/logo.png";
 

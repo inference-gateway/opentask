@@ -1,5 +1,3 @@
-// DOM helpers for locating GitHub comment textareas, the '!' trigger, and the repo.
-
 const COMMENT_SELECTOR = [
   "textarea.js-comment-field",
   'textarea[name="comment[body]"]',
@@ -21,7 +19,7 @@ function nearMarkdownToolbar(el: HTMLTextAreaElement): boolean {
 
 // Open the skill menu only at a word boundary: the trigger char at input start or
 // after whitespace, followed by the (non-space) query typed so far. Defaults to
-// '!' (GitHub comment boxes); the sidepanel passes '/'.
+// '!' (GitHub comment boxes), the sidepanel passes '/'.
 export function getTrigger(box: HTMLTextAreaElement, trigger = "!"): { index: number; query: string } | null {
   const pos = box.selectionStart ?? 0;
   const before = box.value.slice(0, pos);
