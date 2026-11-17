@@ -1,7 +1,3 @@
-// Pinned, editable todo list above the side panel composer (port of the
-// desktop app's TodoPanel). The list is the agent's latest TodoWrite call (see
-// latestTodos); user edits live in a local draft until handed back to the
-// agent with "Send to agent". Callers key it by conversation to reset the draft.
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -29,6 +25,14 @@ const STATUS_CLASS = {
 const ROW_BUTTON =
   "shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-default disabled:opacity-30";
 
+// Insertion indicator: move(from, i) lands the row after the hovered row when
+// dragging down, before it when dragging up - mark exactly that edge.
+function dropIndicator(dragFrom: number, i: number): string {
+  return i > dragFrom
+    ? "shadow-[inset_0_-2px_0_0_var(--color-indigo-500)]"
+    : "shadow-[inset_0_2px_0_0_var(--color-indigo-500)]";
+}
+
 export function TodoPanel({
   messages,
   canSend,
@@ -46,14 +50,9 @@ export function TodoPanel({
   const [input, setInput] = useState("");
   const [dropAt, setDropAt] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
-  // "+ Todo" opens the empty panel for its add input.
   const [adding, setAdding] = useState(false);
-  // The agent list the draft was edited from.
   const draftBase = useRef<Todo[]>([]);
 
-  // The agent's TodoWrite is the source of truth: any list it writes after
-  // the draft started (an answer to a hand-off, or its own progress)
-  // supersedes the draft, so a stale draft never masks the agent's list.
   useEffect(() => {
     if (draft !== null && todosDiffer(draftBase.current, agentTodos)) setDraft(null);
   }, [draft, agentTodos]);
@@ -63,8 +62,6 @@ export function TodoPanel({
     setDraft(next);
   };
 
-  // An empty list has nothing to show - unless the user just deleted every
-  // todo, which still needs "Send to agent" to clear the agent's list.
   if (shown.length === 0 && !adding && !dirty) {
     return (
       <button
@@ -123,15 +120,10 @@ export function TodoPanel({
                   key={i}
                   className={cn(
                     "flex items-center gap-1 border-b border-border/60 px-1.5 py-1 last:border-b-0",
-                    // Insertion indicator: move(from, i) lands the row after
-                    // the hovered row when dragging down, before it when
-                    // dragging up - mark exactly that edge.
                     dropAt === i &&
                       dragFrom.current !== null &&
                       dragFrom.current !== i &&
-                      (i > dragFrom.current
-                        ? "shadow-[inset_0_-2px_0_0_var(--color-indigo-500)]"
-                        : "shadow-[inset_0_2px_0_0_var(--color-indigo-500)]")
+                      dropIndicator(dragFrom.current, i)
                   )}
                   onDragOver={(e) => {
                     e.preventDefault();

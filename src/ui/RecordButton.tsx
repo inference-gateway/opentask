@@ -10,13 +10,16 @@ import type {
   RecordTakeResponse,
 } from "@/shared/messages";
 
+// The offscreen recorder muxes the capture a moment after the stop, so a claim
+// made right after one retries briefly.
 const CLAIM_RETRIES = 5;
 const CLAIM_RETRY_MS = 1000;
+const RECORD_TICK_MS = 1000;
 
 // Starts a tab recording with a stream id minted on the click gesture - the
 // user-activation requirement lives here, in the extension page. Polls the
 // background for status while recording and offers the stop control. With
-// onRecording set (the side panel) the finished capture is handed to that composer;
+// onRecording set (the side panel) the finished capture is handed to that composer,
 // without it (the popup) the worker keeps the capture for the panel to claim.
 export function RecordButton({ onRecording }: { onRecording?: (recording: Attachment) => void }) {
   const [state, setState] = useState<RecordState>({ status: "idle" });
@@ -37,8 +40,6 @@ export function RecordButton({ onRecording }: { onRecording?: (recording: Attach
     });
   }
 
-  // Claims the capture the worker holds. The offscreen recorder muxes the file a
-  // moment after the stop, so a claim made right after one retries briefly.
   function claim(retries: number) {
     if (!handler.current) return;
     ask({ type: "record-take" }, (resp) => {
@@ -58,11 +59,11 @@ export function RecordButton({ onRecording }: { onRecording?: (recording: Attach
   // toolbar), so its capture needs a nudge to reach the composer: the worker
   // announces a held capture and the panel takes it out of the box.
   useEffect(() => {
-    function onAvailable() {
+    function claimHeldCapture() {
       claim(0);
     }
-    chrome.runtime.onMessage.addListener(onAvailable);
-    return () => chrome.runtime.onMessage.removeListener(onAvailable);
+    chrome.runtime.onMessage.addListener(claimHeldCapture);
+    return () => chrome.runtime.onMessage.removeListener(claimHeldCapture);
   }, []);
 
   const recording = state.status === "recording";
@@ -81,7 +82,7 @@ export function RecordButton({ onRecording }: { onRecording?: (recording: Attach
     const id = setInterval(() => {
       refresh();
       setNow(Date.now());
-    }, 1000);
+    }, RECORD_TICK_MS);
     return () => clearInterval(id);
   }, [recording]);
 

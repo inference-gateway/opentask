@@ -1,11 +1,11 @@
-// Sidepanel "/" skill dropdown, anchored above the caret. Reuses the fuzzy
-// highlight from Menu but is Tailwind-styled for the panel (Menu's igw-* classes
-// depend on GitHub CSS vars absent here). Badge color encodes the skill source.
 import { highlight } from "./Menu";
 import type { CaretPos } from "../lib/caret";
 import type { PanelSkill } from "../shared/agui";
 
 export type SkillItem = { item: PanelSkill; positions: number[] };
+
+const MENU_WIDTH = 268;
+const MENU_MARGIN = 8;
 
 const SCOPE_BADGE: Record<string, { label: string; className: string }> = {
   project: { label: "project", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
@@ -17,6 +17,9 @@ const SCOPE_BADGE: Record<string, { label: string; className: string }> = {
 
 const FALLBACK_BADGE = { label: "skill", className: "bg-muted text-muted-foreground" };
 
+// Sidepanel "/" skill dropdown, anchored above the caret. Reuses Menu's fuzzy
+// highlight but is Tailwind-styled for the panel (Menu's igw-* classes depend
+// on GitHub CSS vars absent here); the badge color encodes the skill source.
 export function SkillMenu({
   results,
   activeIndex,
@@ -30,7 +33,7 @@ export function SkillMenu({
   onHover: (i: number) => void;
   onSelect: (i: number) => void;
 }) {
-  const left = Math.max(8, Math.min(pos.left, window.innerWidth - 268));
+  const left = Math.max(MENU_MARGIN, Math.min(pos.left, window.innerWidth - MENU_WIDTH));
   const style = { left, bottom: window.innerHeight - pos.top + 6 };
   return (
     <div

@@ -1,11 +1,15 @@
-// Presentational skill dropdown, anchored at the caret. No focus, no local state -
-// the controller owns activeIndex and keyboard nav so the textarea keeps focus.
 import type { ReactNode } from "react";
 import type { SkillView } from "./types";
 
+const MENU_WIDTH = 260;
+const MENU_MARGIN = 8;
+
+// Presentational skill dropdown, anchored at the caret. No focus, no local
+// state - the controller owns activeIndex and keyboard nav so the textarea
+// keeps focus.
 export function Menu({ results, activeIndex, pos, onHover, onSelect }: SkillView) {
-  const left = Math.min(pos.left, window.innerWidth - 260);
-  const style = { left: Math.max(8, left), top: pos.top + pos.height + 2 };
+  const left = Math.min(pos.left, window.innerWidth - MENU_WIDTH);
+  const style = { left: Math.max(MENU_MARGIN, left), top: pos.top + pos.height + 2 };
   return (
     <div className="igw-menu" style={style} role="listbox">
       {results.length === 0 && <div className="igw-empty">No matching skill</div>}
@@ -17,7 +21,7 @@ export function Menu({ results, activeIndex, pos, onHover, onSelect }: SkillView
           aria-selected={i === activeIndex}
           onMouseEnter={() => onHover(i)}
           onMouseDown={(e) => {
-            e.preventDefault(); // keep the textarea focused
+            e.preventDefault();
             onSelect(i);
           }}
         >
