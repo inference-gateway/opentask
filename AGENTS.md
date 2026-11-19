@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Chrome-first Manifest V3 browser extension built with Bun, TypeScript, and React. It surfaces repo skills and `@opentask` directives inside GitHub's comment box and injects a repo-nav bar (Tasks / Skills / Agents / Init). README.md covers features and configuration. This file covers how to work on the code.
+Chrome-first Manifest V3 browser extension built with Bun, TypeScript, and React. It surfaces repo skills and `@opentask` directives inside GitHub's comment box and injects a repo-nav bar (Tasks / Skills / Init). README.md covers features and configuration. This file covers how to work on the code.
 ## Commands
 
 - `flox activate` — enter the pinned Bun + go-task environment.
@@ -9,7 +9,7 @@ Chrome-first Manifest V3 browser extension built with Bun, TypeScript, and React
 - `task check` — typecheck, lint, test, and production build. Run before submitting (CI runs it on every PR).
 - `task build` / `task test` / `task typecheck` / `task lint` — individual checks.
 - `task format` — apply Biome formatting (the repo-wide pass has not been applied yet).
-- `task build:firefox` / `task build:safari` / `task package:chrome` — per-browser builds and store ZIPs.
+- `task build:firefox` / `task build:safari` — per-browser builds. `task package:chrome` / `task package:edge` / `task package:firefox` / `task package:safari` — store ZIPs, each running the matching build first.
 
 The pre-commit hook runs typecheck, lint, and tests on every commit. Skip with `GIT_HOOKS_SKIP=1`.
 
@@ -19,7 +19,7 @@ Manual testing: `task build`, reload the unpacked `dist/` in `chrome://extension
 
 - `src/content.ts` — imperative controller: DOM detection, caret math, insertion, keyboard, repo-nav injection.
 - `src/background.ts` — service worker that owns GitHub API access, caching, and workflow/registry management.
-- `src/ui/` — React views, `src/lib/` — DOM/matching helpers, `src/shared/` — messages, prompts, storage contracts.
+- `src/ui/` — React views, `src/lib/` — DOM/matching helpers and the CLI bridge, `src/shared/` — messages, prompts, storage contracts.
 - `build.ts` — build pipeline. Firefox/Safari manifests are shallow-merged over `manifest.json`. Removing a key (e.g. `side_panel`) must happen in `build.ts`, not the override files.
 - `dist/` is generated. Never edit it directly.
 
@@ -52,7 +52,7 @@ TypeScript/TSX with ES modules, two-space indentation, double quotes, semicolons
 
 ## Testing
 
-`bun:test`, files named `test/*.test.ts`. jsdom's `window`/`document`/`Event` are preloaded globally by `bunfig.toml` → `test/setup.ts`, which deliberately does not expose `location` — stub it in tests instead of the real DOM. Cover matching, trigger boundaries, DOM helpers, and other pure behavior. Name tests by observable outcome. No coverage threshold — cover regressions and edge cases introduced by each change.
+`bun:test`, files named `test/*.test.ts`. jsdom's `window`/`document`/`Event`/`KeyboardEvent` are preloaded globally by `bunfig.toml` → `test/setup.ts`, which deliberately does not expose `location` — stub it in tests instead of the real DOM. Cover matching, trigger boundaries, DOM helpers, and other pure behavior. Name tests by observable outcome. No coverage threshold — cover regressions and edge cases introduced by each change.
 
 ## Security
 
